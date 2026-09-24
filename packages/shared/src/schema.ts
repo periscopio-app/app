@@ -7,6 +7,7 @@ import {
   jsonb,
   boolean,
   integer,
+  date,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -64,6 +65,8 @@ export const teacherObservations = pgTable("teacher_observations", {
   kind: varchar("kind", { length: 20 }).notNull(), // flash | full
   domain: varchar("domain", { length: 20 }), // social | crisis | neuro | mental_learning
   payload: jsonb("payload").notNull(),
+  marcosDesenvolvimento: jsonb("marcos_desenvolvimento"),
+  statusCalculado: varchar("status_calculado", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -86,6 +89,7 @@ export const cases = pgTable("cases", {
   status: varchar("status", { length: 30 }).notNull(),
   // triagem | sisreg | investigacao | reabilitacao
   assignedToId: uuid("assigned_to_id").references(() => users.id),
+  dataInicioIntervencao: date("data_inicio_intervencao"),
   slaDueAt: timestamp("sla_due_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

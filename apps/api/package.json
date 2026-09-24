@@ -5,15 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsup src/index.ts --format esm --clean",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@periscopio/shared": "workspace:*",
     "@aws-sdk/client-s3": "^3.658.0",
+    "@periscopio/shared": "workspace:*",
     "better-auth": "^1.0.0",
     "bullmq": "^5.12.0",
     "drizzle-orm": "^0.36.0",
@@ -27,6 +27,7 @@
     "@types/node": "^22.7.0",
     "@types/pg": "^8.11.10",
     "drizzle-kit": "^0.26.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }

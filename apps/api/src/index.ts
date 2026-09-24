@@ -1,9 +1,11 @@
 import Fastify from "fastify";
 import { healthRoutes } from "./routes/health";
+import { triagemRoutes } from "./routes/triagem.routes";
 
 const app = Fastify({ logger: true });
 
 app.register(healthRoutes);
+app.register(triagemRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 
