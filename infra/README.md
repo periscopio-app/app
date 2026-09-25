@@ -61,8 +61,63 @@ O repositório inclui um arquivo [`render.yaml`](../render.yaml) na raiz pronto 
 
 ---
 
-## 4. Serviços Auxiliares
+## 4. Autenticação: Neon Auth + Google OAuth
+
+O Periscópio Saúde utiliza o **Neon Auth** (motor Better Auth gerenciado e integrado ao Postgres no Neon):
+
+- **Neon Auth URL**: `https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth`
+- **JWKS (Chaves Públicas)**: `https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth/.well-known/jwks.json`
+
+### Configuração do Google Cloud Console (OAuth 2.0)
+No [Google Cloud Console](https://console.cloud.google.com/) > **APIs & Services > Credentials** > **OAuth 2.0 Client IDs**:
+
+1. **Origens JavaScript autorizadas**:
+   - `http://localhost:3000`
+   - `http://localhost:3001`
+   - `https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech`
+   - Seu domínio Vercel (ex: `https://periscopio.vercel.app` ou `https://app.projetoperiscopio.com.br`)
+   - Seu domínio Render (ex: `https://periscopio-api.onrender.com` ou `https://api.projetoperiscopio.com.br`)
+2. **URIs de redirecionamento autorizados**:
+   - `https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth/callback/google`
+   - `http://localhost:3001/api/auth/callback/google` (se usar callback local da API)
+3. Copie o **Client ID** e o **Client Secret** e cadastre no console do Neon Auth (ou nas variáveis `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no Render).
+
+---
+
+## 5. Apontamento de Domínios na Cloudflare
+
+Para usar seus domínios personalizados (ex: `projetoperiscopio.com.br`) com proteção DDoS e CDN da Cloudflare:
+
+| Tipo | Nome (Subdomínio) | Destino (Target) | Proxy Cloudflare (Nuvem Laranja) |
+|---|---|---|---|
+| CNAME | `app` | `cname.vercel-dns.com` | **Ativado (Proxied)** |
+| CNAME | `api` | `periscopio-api.onrender.com` | **Ativado (Proxied)** |
+
+### Configurações essenciais no painel Cloudflare:
+1. **SSL/TLS**: Selecione o modo **Full (Strict)**.
+2. **WebSockets**: Habilitado em *Network > WebSockets*.
+3. **CORS & Headers**: A API Fastify já repassa os headers de IP real (`CF-Connecting-IP` e `X-Forwarded-For`).
+
+---
+
+## 6. Testes com Postman
+
+O repositório inclui a coleção completa pronta para importação no Postman ou Insomnia:
+- Arquivo: [`periscopio-auth.postman_collection.json`](../periscopio-auth.postman_collection.json)
+
+### Como testar no Postman:
+1. Abra o Postman e clique em **Import**.
+2. Selecione o arquivo `periscopio-auth.postman_collection.json`.
+3. A coleção já vem com as seguintes pastas:
+   - **1. Diagnóstico & Health**: testa `/health`, `/health/db` (conexão real com Neon) e JWKS.
+   - **2. Neon Auth (Autenticação)**: Cadastro por e-mail, Login com token salvo automaticamente, Login com Google e Consulta de sessão.
+   - **3. API Autenticada**: Validação de sessão `/api/auth/me` e listagem de triagens com token Bearer.
+
+---
+
+## 7. Serviços Auxiliares
 
 - **Cloudflare R2**: Bucket `periscopio-uploads` para arquivos e anexos médicos/escolares com credenciais S3-compatíveis.
 - **Resend**: Envio de notificações e convites por e-mail (`RESEND_API_KEY`).
+
 

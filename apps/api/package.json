@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
+    "@fastify/cors": "^11.3.0",
     "@periscopio/shared": "workspace:*",
     "better-auth": "^1.0.0",
     "bullmq": "^5.12.0",

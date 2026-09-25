@@ -1,0 +1,270 @@
+{
+  "info": {
+    "_postman_id": "periscopio-auth-v1",
+    "name": "Periscópio Saúde — Autenticação & API (Neon Auth)",
+    "description": "Coleção de testes de autenticação (Neon Auth / Better Auth) e rotas da API do Projeto Periscópio Saúde.\n\nInclui:\n- Health checks da API e do banco Neon\n- Login e Cadastro por E-mail/Senha via Neon Auth\n- Iniciação de Login com Google OAuth\n- Consulta de sessão e JWKS\n- Rotas autenticadas da API (Triagem FOGAP)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "neon_auth_url",
+      "value": "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth",
+      "type": "string"
+    },
+    {
+      "key": "api_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "web_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "user_email",
+      "value": "gestor.educacao@municipio.gov.br",
+      "type": "string"
+    },
+    {
+      "key": "user_password",
+      "value": "Periscopio@2026",
+      "type": "string"
+    },
+    {
+      "key": "session_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Diagnóstico & Health",
+      "item": [
+        {
+          "name": "Health Check Geral",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/health",
+              "host": ["{{api_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check Banco de Dados (Neon)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/health/db",
+              "host": ["{{api_url}}"],
+              "path": ["health", "db"]
+            }
+          }
+        },
+        {
+          "name": "Configuração Pública Auth (API)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/api/auth/config",
+              "host": ["{{api_url}}"],
+              "path": ["api", "auth", "config"]
+            }
+          }
+        },
+        {
+          "name": "JWKS Chaves Públicas (Neon Auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{neon_auth_url}}/.well-known/jwks.json",
+              "host": ["{{neon_auth_url}}"],
+              "path": [".well-known", "jwks.json"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Neon Auth (Autenticação)",
+      "item": [
+        {
+          "name": "Cadastrar Usuário (Sign Up)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{web_url}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\",\n  \"name\": \"Dra. Juliana Gestora\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
+            },
+            "url": {
+              "raw": "{{neon_auth_url}}/sign-up/email",
+              "host": ["{{neon_auth_url}}"],
+              "path": ["sign-up", "email"]
+            }
+          }
+        },
+        {
+          "name": "Login com E-mail e Senha (Sign In)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "    pm.collectionVariables.set('session_token', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{web_url}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
+            },
+            "url": {
+              "raw": "{{neon_auth_url}}/sign-in/email",
+              "host": ["{{neon_auth_url}}"],
+              "path": ["sign-in", "email"]
+            }
+          }
+        },
+        {
+          "name": "Login com Google OAuth (Init)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{web_url}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
+            },
+            "url": {
+              "raw": "{{neon_auth_url}}/sign-in/social",
+              "host": ["{{neon_auth_url}}"],
+              "path": ["sign-in", "social"]
+            }
+          }
+        },
+        {
+          "name": "Consultar Sessão Atual (Get Session)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{session_token}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{web_url}}"
+              }
+            ],
+            "url": {
+              "raw": "{{neon_auth_url}}/get-session",
+              "host": ["{{neon_auth_url}}"],
+              "path": ["get-session"]
+            }
+          }
+        },
+        {
+          "name": "Logout (Sign Out)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{session_token}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{web_url}}"
+              }
+            ],
+            "url": {
+              "raw": "{{neon_auth_url}}/sign-out",
+              "host": ["{{neon_auth_url}}"],
+              "path": ["sign-out"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. API Autenticada (Periscópio)",
+      "item": [
+        {
+          "name": "Validar Perfil e Sessão Atual (/api/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/api/auth/me",
+              "host": ["{{api_url}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Listar Triagens Pendentes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/triagem/pendentes",
+              "host": ["{{api_url}}"],
+              "path": ["triagem", "pendentes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
