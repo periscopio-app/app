@@ -18,5 +18,19 @@
       "mcp__render__trigger_deploy"
     ],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/brunobisogni/periscopio/app && git add -A && git diff --cached --quiet || git commit -m \"chore: auto-save $(date +%H:%M)\" --no-verify 2>/dev/null || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }
