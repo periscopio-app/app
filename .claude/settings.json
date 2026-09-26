@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter * typecheck)",
+      "Bash(pnpm --filter * build)",
+      "Bash(pnpm install --frozen-lockfile)",
+      "Bash(pnpm --filter * exec drizzle-kit generate)",
+      "Bash(pnpm --filter * exec drizzle-kit push)",
+      "Bash(curl -s https://api.resend.com/*)",
+      "Bash(curl -s https://api.cloudflare.com/*)",
+      "Bash(git push origin *)",
+      "Bash(git commit *)",
+      "Bash(gh pr *)",
+      "mcp__render__list_deploys",
+      "mcp__render__list_services",
+      "mcp__render__get_service",
+      "mcp__render__get_deploy",
+      "mcp__render__trigger_deploy"
+    ],
+    "deny": []
+  }
+}
