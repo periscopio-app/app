@@ -11,6 +11,8 @@ import cors from "@fastify/cors";
 import { healthRoutes } from "./routes/health";
 import { triagemRoutes } from "./routes/triagem.routes";
 import { authRoutes } from "./routes/auth.routes";
+import { onboardingRoutes } from "./routes/onboarding.routes";
+import { casesRoutes } from "./routes/cases.routes";
 
 const app = Fastify({ logger: true });
 
@@ -24,6 +26,8 @@ await app.register(cors, {
 app.register(healthRoutes);
 app.register(triagemRoutes);
 app.register(authRoutes);
+app.register(onboardingRoutes);
+app.register(casesRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 

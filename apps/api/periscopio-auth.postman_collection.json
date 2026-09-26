@@ -1,16 +1,11 @@
 {
   "info": {
-    "_postman_id": "periscopio-auth-v1",
-    "name": "Periscópio Saúde — Autenticação & API (Neon Auth)",
-    "description": "Coleção de testes de autenticação (Neon Auth / Better Auth) e rotas da API do Projeto Periscópio Saúde.\n\nInclui:\n- Health checks da API e do banco Neon\n- Login e Cadastro por E-mail/Senha via Neon Auth\n- Iniciação de Login com Google OAuth\n- Consulta de sessão e JWKS\n- Rotas autenticadas da API (Triagem FOGAP)",
+    "_postman_id": "periscopio-onboarding-v2",
+    "name": "Periscópio Saúde — Onboarding White Label & Prontuário Multidisciplinar",
+    "description": "Coleção completa para o fluxo de Onboarding White Label (com slug personalizada da escola), Cadastro de Profissionais, e Delegação de Prontuário por Especialidade do Projeto Periscópio Saúde.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "neon_auth_url",
-      "value": "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth",
-      "type": "string"
-    },
     {
       "key": "api_url",
       "value": "http://localhost:3001",
@@ -22,18 +17,38 @@
       "type": "string"
     },
     {
-      "key": "user_email",
-      "value": "gestor.educacao@municipio.gov.br",
+      "key": "school_slug",
+      "value": "colegio-santos-dumont",
       "type": "string"
     },
     {
-      "key": "user_password",
-      "value": "Periscopio@2026",
-      "type": "string"
-    },
-    {
-      "key": "session_token",
+      "key": "school_id",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invite_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "student_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "case_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "section_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "professional_email",
+      "value": "larissa.fono@escola.gov.br",
       "type": "string"
     }
   ],
@@ -45,90 +60,36 @@
           "name": "Health Check Geral",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{api_url}}/health",
-              "host": ["{{api_url}}"],
-              "path": ["health"]
-            }
+            "url": "{{api_url}}/health"
           }
         },
         {
-          "name": "Health Check Banco de Dados (Neon)",
+          "name": "Health Check Neon PostgreSQL",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{api_url}}/health/db",
-              "host": ["{{api_url}}"],
-              "path": ["health", "db"]
-            }
-          }
-        },
-        {
-          "name": "Configuração Pública Auth (API)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{api_url}}/api/auth/config",
-              "host": ["{{api_url}}"],
-              "path": ["api", "auth", "config"]
-            }
-          }
-        },
-        {
-          "name": "JWKS Chaves Públicas (Neon Auth)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{neon_auth_url}}/.well-known/jwks.json",
-              "host": ["{{neon_auth_url}}"],
-              "path": [".well-known", "jwks.json"]
-            }
+            "url": "{{api_url}}/health/db"
           }
         }
       ]
     },
     {
-      "name": "2. Neon Auth (Autenticação)",
+      "name": "2. SysAdmin — Setup de Instância da Escola",
       "item": [
         {
-          "name": "Cadastrar Usuário (Sign Up)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Origin",
-                "value": "{{web_url}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\",\n  \"name\": \"Dra. Juliana Gestora\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
-            },
-            "url": {
-              "raw": "{{neon_auth_url}}/sign-up/email",
-              "host": ["{{neon_auth_url}}"],
-              "path": ["sign-up", "email"]
-            }
-          }
-        },
-        {
-          "name": "Login com E-mail e Senha (Sign In)",
+          "name": "1. Provisionar Nova Escola (Gera Slug & Magic Link)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.token) {",
-                  "    pm.collectionVariables.set('session_token', json.token);",
+                  "if (json.school) {",
+                  "    pm.collectionVariables.set('school_id', json.school.id);",
+                  "    pm.collectionVariables.set('school_slug', json.school.slug);",
+                  "}",
+                  "if (json.magicLink) {",
+                  "    const match = json.magicLink.match(/token=([a-f0-9]+)/);",
+                  "    if (match) pm.collectionVariables.set('invite_token', match[1]);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -137,131 +98,171 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Origin",
-                "value": "{{web_url}}"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
+              "raw": "{\n  \"nomeEscola\": \"Colégio Municipal Santos Dumont\",\n  \"cnpj\": \"12.345.678/0001-90\",\n  \"slug\": \"santos-dumont\",\n  \"responsavelNome\": \"Prof. Roberto Alencar (Diretor)\",\n  \"responsavelEmail\": \"roberto.alencar@escola.gov.br\",\n  \"responsavelTelefone\": \"(11) 98765-4321\"\n}"
             },
-            "url": {
-              "raw": "{{neon_auth_url}}/sign-in/email",
-              "host": ["{{neon_auth_url}}"],
-              "path": ["sign-in", "email"]
-            }
+            "url": "{{api_url}}/api/admin/instances"
           }
         },
         {
-          "name": "Login com Google OAuth (Init)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Origin",
-                "value": "{{web_url}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"provider\": \"google\",\n  \"callbackURL\": \"{{web_url}}/dashboard\"\n}"
-            },
-            "url": {
-              "raw": "{{neon_auth_url}}/sign-in/social",
-              "host": ["{{neon_auth_url}}"],
-              "path": ["sign-in", "social"]
-            }
-          }
-        },
-        {
-          "name": "Consultar Sessão Atual (Get Session)",
+          "name": "2. Consultar Escola por Slug (Pública White Label)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{session_token}}"
-              },
-              {
-                "key": "Origin",
-                "value": "{{web_url}}"
-              }
-            ],
-            "url": {
-              "raw": "{{neon_auth_url}}/get-session",
-              "host": ["{{neon_auth_url}}"],
-              "path": ["get-session"]
-            }
-          }
-        },
-        {
-          "name": "Logout (Sign Out)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{session_token}}"
-              },
-              {
-                "key": "Origin",
-                "value": "{{web_url}}"
-              }
-            ],
-            "url": {
-              "raw": "{{neon_auth_url}}/sign-out",
-              "host": ["{{neon_auth_url}}"],
-              "path": ["sign-out"]
-            }
+            "url": "{{api_url}}/api/schools/by-slug/{{school_slug}}"
           }
         }
       ]
     },
     {
-      "name": "3. API Autenticada (Periscópio)",
+      "name": "3. Onboarding da Escola (Responsável Escolar)",
       "item": [
         {
-          "name": "Validar Perfil e Sessão Atual (/api/auth/me)",
+          "name": "1. Validar Magic Link de Convite",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{session_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/api/auth/me",
-              "host": ["{{api_url}}"],
-              "path": ["api", "auth", "me"]
-            }
+            "url": "{{api_url}}/api/onboarding/validate-invite?token={{invite_token}}&slug={{school_slug}}"
           }
         },
         {
-          "name": "Listar Triagens Pendentes",
+          "name": "2. Concluir Onboarding & Cadastrar Equipe Multiprofissional",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{invite_token}}\",\n  \"professionals\": [\n    {\n      \"name\": \"Dra. Juliana Psicopedagoga\",\n      \"email\": \"juliana.ppi@escola.gov.br\",\n      \"phone\": \"(11) 98888-1111\",\n      \"cpf\": \"111.222.333-44\",\n      \"classCode\": \"ABPp 1234\",\n      \"specialty\": \"psicopedagogia\"\n    },\n    {\n      \"name\": \"Dra. Larissa Fonoaudióloga\",\n      \"email\": \"{{professional_email}}\",\n      \"phone\": \"(11) 97777-2222\",\n      \"cpf\": \"222.333.444-55\",\n      \"classCode\": \"CRFa 5678\",\n      \"specialty\": \"fonoaudiologia\"\n    },\n    {\n      \"name\": \"Dr. Marcos Médico Triador\",\n      \"email\": \"marcos.md1@escola.gov.br\",\n      \"phone\": \"(11) 96666-3333\",\n      \"cpf\": \"333.444.555-66\",\n      \"classCode\": \"CRM 99887\",\n      \"specialty\": \"medicina\"\n    }\n  ]\n}"
+            },
+            "url": "{{api_url}}/api/onboarding/complete-school"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Psicopedagogo (PpI) — Alunos & Prontuários",
+      "item": [
+        {
+          "name": "1. Listar Profissionais da Escola",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{session_token}}"
+            "url": "{{api_url}}/api/schools/{{school_id}}/professionals"
+          }
+        },
+        {
+          "name": "2. Cadastrar Aluno (Pseudonimizado LGPD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.student) {",
+                  "    pm.collectionVariables.set('student_id', json.student.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
               }
-            ],
-            "url": {
-              "raw": "{{api_url}}/triagem/pendentes",
-              "host": ["{{api_url}}"],
-              "path": ["triagem", "pendentes"]
             }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{school_id}}\",\n  \"birthYear\": 2016\n}"
+            },
+            "url": "{{api_url}}/api/students"
+          }
+        },
+        {
+          "name": "3. Listar Alunos da Escola",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/api/schools/{{school_id}}/students"
+          }
+        },
+        {
+          "name": "4. Abrir Caso / Prontuário para Aluno",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.case) {",
+                  "    pm.collectionVariables.set('case_id', json.case.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{student_id}}\"\n}"
+            },
+            "url": "{{api_url}}/api/cases"
+          }
+        },
+        {
+          "name": "5. Delegar Seção do Prontuário para Especialista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.sections && json.sections.length > 0) {",
+                  "    pm.collectionVariables.set('section_id', json.sections[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delegations\": [\n    {\n      \"specialty\": \"fonoaudiologia\",\n      \"professionalId\": \"{{professional_id}}\",\n      \"notes\": \"Avaliar compreensão verbal e articulação\"\n    }\n  ]\n}"
+            },
+            "url": "{{api_url}}/api/cases/{{case_id}}/delegate"
+          }
+        },
+        {
+          "name": "6. Ver Prontuário Multidisciplinar Consolidado (Visão PpI)",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/api/cases/{{case_id}}/full-summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Especialista — Sumarização Exclusiva de sua Parte",
+      "item": [
+        {
+          "name": "1. Consultar APENAS as Seções Delegadas a Mim",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/api/cases/my-delegated-sections?email={{professional_email}}"
+          }
+        },
+        {
+          "name": "2. Salvar Parecer / Sumarização da Especialidade",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": {\n    \"clinicalNotes\": \"Aluno demonstra dificuldade no processamento auditivo central e trocas fonológicas.\",\n    \"intervencoesIndicadas\": \"Exercícios de discriminação auditiva na sala de recursos.\"\n  },\n  \"notes\": \"Reavaliação sugerida em 60 dias\",\n  \"markAsCompleted\": true\n}"
+            },
+            "url": "{{api_url}}/api/cases/sections/{{section_id}}"
           }
         }
       ]
