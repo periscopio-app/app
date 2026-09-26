@@ -7,6 +7,7 @@ import {
   jsonb,
   boolean,
   integer,
+  date,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -25,6 +26,13 @@ export const schools = pgTable("schools", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
   name: text("name").notNull(),
+  slug: varchar("slug", { length: 80 }).unique(),
+  cnpj: varchar("cnpj", { length: 20 }),
+  responsavelNome: text("responsavel_nome"),
+  responsavelEmail: varchar("responsavel_email", { length: 255 }),
+  responsavelTelefone: varchar("responsavel_telefone", { length: 30 }),
+  status: varchar("status", { length: 30 }).default("pending_onboarding"),
+  branding: jsonb("branding"), // { logoUrl, primaryColor, theme }
   isControlGroup: boolean("is_control_group").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -39,10 +47,15 @@ export const teams = pgTable("teams", {
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").references(() => schools.id),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: text("name").notNull(),
+  phone: varchar("phone", { length: 30 }),
+  cpf: varchar("cpf", { length: 20 }),
+  classCode: varchar("class_code", { length: 50 }), // Conselho de classe: CRM, CRP, etc.
+  specialty: varchar("specialty", { length: 50 }), // psicopedagogia | medicina | fonoaudiologia | psicologia | psicomotricidade | servico_social
   role: varchar("role", { length: 40 }).notNull(),
-  // admin_platform | municipal_manager | school_manager | teacher | ppi | md1 | board | researcher
+  // admin_platform | municipal_manager | school_manager | teacher | ppi | md1 | board | researcher | specialist
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -64,6 +77,8 @@ export const teacherObservations = pgTable("teacher_observations", {
   kind: varchar("kind", { length: 20 }).notNull(), // flash | full
   domain: varchar("domain", { length: 20 }), // social | crisis | neuro | mental_learning
   payload: jsonb("payload").notNull(),
+  marcosDesenvolvimento: jsonb("marcos_desenvolvimento"),
+  statusCalculado: varchar("status_calculado", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -86,6 +101,7 @@ export const cases = pgTable("cases", {
   status: varchar("status", { length: 30 }).notNull(),
   // triagem | sisreg | investigacao | reabilitacao
   assignedToId: uuid("assigned_to_id").references(() => users.id),
+  dataInicioIntervencao: date("data_inicio_intervencao"),
   slaDueAt: timestamp("sla_due_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -157,6 +173,16 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/** Captação de interesse no piloto — landing page. */
+export const leads = pgTable("leads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  escola: text("escola").notNull(),
+  cargo: varchar("cargo", { length: 60 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 /** DSAR — pedidos de titular sob a LGPD. */
 export const lgpdRequests = pgTable("lgpd_requests", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -167,3 +193,40 @@ export const lgpdRequests = pgTable("lgpd_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
 });
+
+/** Magic Links para onboarding da escola e profissionais. */
+export const onboardingInvites = pgTable("onboarding_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").notNull().references(() => schools.id),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 120 }).notNull().unique(),
+  type: varchar("type", { length: 30 }).notNull(), // school_manager | professional
+  role: varchar("role", { length: 40 }),
+  specialty: varchar("specialty", { length: 50 }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Seções do Prontuário Multidisciplinar delegadas por especialidade.
+ * Cada especialista acessa e sumariza apenas a sua especialidade.
+ */
+export const caseSummaries = pgTable("case_summaries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").references(() => schools.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  specialty: varchar("specialty", { length: 50 }).notNull(),
+  // fonoaudiologia | medicina | psicologia | psicopedagogia | psicomotricidade | servico_social
+  assignedProfessionalId: uuid("assigned_professional_id").references(() => users.id),
+  status: varchar("status", { length: 30 }).default("pendente").notNull(),
+  // pendente | em_andamento | concluido
+  summary: jsonb("summary"),
+  notes: text("notes"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+

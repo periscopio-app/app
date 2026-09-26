@@ -29,6 +29,12 @@ services:
         sync: false
       - key: BETTER_AUTH_URL
         sync: false
+      - key: BETTER_AUTH_JWKS_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
 
   - type: keyvalue
     name: periscopio-redis
