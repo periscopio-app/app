@@ -173,6 +173,16 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/** Captação de interesse no piloto — landing page. */
+export const leads = pgTable("leads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  escola: text("escola").notNull(),
+  cargo: varchar("cargo", { length: 60 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 /** DSAR — pedidos de titular sob a LGPD. */
 export const lgpdRequests = pgTable("lgpd_requests", {
   id: uuid("id").primaryKey().defaultRandom(),
