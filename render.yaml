@@ -31,6 +31,10 @@ services:
         sync: false
       - key: BETTER_AUTH_JWKS_URL
         sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
