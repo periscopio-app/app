@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { db } from "../db/client";
 import { tenants, schools, users, onboardingInvites } from "@periscopio/shared";
 import { sendEmail } from "../email";
+import { requireActor } from "../security/actor";
 
 export async function onboardingRoutes(app: FastifyInstance) {
   /**
@@ -17,10 +18,8 @@ export async function onboardingRoutes(app: FastifyInstance) {
         id: schools.id,
         name: schools.name,
         slug: schools.slug,
-        cnpj: schools.cnpj,
         status: schools.status,
         branding: schools.branding,
-        tenantId: schools.tenantId,
       })
       .from(schools)
       .where(eq(schools.slug, slug))
@@ -40,6 +39,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
    * Cria: tenant e school, gera Magic Link de onboarding e envia via Resend.
    */
   app.post("/api/admin/instances", async (request, reply) => {
+    const actor = await requireActor(request, reply, ["admin_platform"]);
+    if (!actor) return;
+
     const body = request.body as {
       nomeEscola: string;
       cnpj: string;
@@ -126,7 +128,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
     });
 
     // 4. Monta a URL personalizada do Magic Link (White Label)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.APP_URL || "http://localhost:3000";
     const magicLink = `${baseUrl}/${normalizedSlug}/onboarding?token=${inviteToken}`;
 
     // 5. Dispara E-mail via Resend
@@ -157,8 +159,8 @@ export async function onboardingRoutes(app: FastifyInstance) {
         </div>
         `
       );
-    } catch (e: any) {
-      emailStatus = `failed: ${e.message}`;
+    } catch {
+      emailStatus = "failed";
     }
 
     return {
@@ -217,11 +219,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
       return { valid: false, error: "Este convite não pertence a esta escola." };
     }
 
-    return {
-      valid: true,
-      invite,
-      school,
-    };
+    return { valid: true, school: school ? { name: school.name, slug: school.slug, branding: school.branding } : null };
   });
 
   /**

@@ -1,61 +1,26 @@
 import type { FastifyInstance } from "fastify";
+import { requireActor } from "../security/actor";
 
 export async function authRoutes(app: FastifyInstance) {
-  /**
-   * Endpoint de configuração e metadados de autenticação
-   */
-  app.get("/api/auth/config", async () => {
-    const neonAuthUrl =
-      process.env.BETTER_AUTH_URL ||
-      "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth";
-
-    return {
-      authProvider: "neon-auth",
-      neonAuthUrl,
-      googleAuthEnabled: true,
-      jwksUrl: process.env.BETTER_AUTH_JWKS_URL,
-    };
+  app.get("/api/auth/config", async (_request, reply) => {
+    if (!process.env.BETTER_AUTH_URL) {
+      return reply.status(503).send({ error: "Autenticação ainda não foi configurada" });
+    }
+    return { authProvider: "neon-auth", googleAuthEnabled: Boolean(process.env.GOOGLE_CLIENT_ID) };
   });
 
-  /**
-   * Validação de sessão do usuário (Proxy/Validador de token com Neon Auth)
-   */
   app.get("/api/auth/me", async (request, reply) => {
-    const authHeader = request.headers.authorization;
-    const cookieHeader = request.headers.cookie;
-
-    if (!authHeader && !cookieHeader) {
-      reply.status(401);
-      return { authenticated: false, message: "Token ou cookie de sessão ausente" };
-    }
-
-    const neonAuthUrl =
-      process.env.BETTER_AUTH_URL ||
-      "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth";
-
-    try {
-      const headers: Record<string, string> = {};
-      if (cookieHeader) headers["cookie"] = cookieHeader;
-      if (authHeader) headers["authorization"] = authHeader;
-
-      const res = await fetch(`${neonAuthUrl}/get-session`, {
-        method: "GET",
-        headers,
-      });
-
-      if (!res.ok) {
-        reply.status(res.status);
-        return { authenticated: false, message: "Sessão inválida ou expirada" };
-      }
-
-      const sessionData = await res.json();
-      return {
-        authenticated: !!sessionData?.user,
-        session: sessionData,
-      };
-    } catch (err: any) {
-      reply.status(500);
-      return { authenticated: false, error: err.message };
-    }
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+    return {
+      authenticated: true,
+      user: {
+        id: actor.id,
+        email: actor.email,
+        tenantId: actor.tenantId,
+        schoolId: actor.schoolId,
+        role: actor.role,
+      },
+    };
   });
 }
