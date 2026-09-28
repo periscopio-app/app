@@ -4,9 +4,10 @@ services:
     runtime: node
     plan: starter
     rootDir: apps/api
+    healthCheckPath: /health
     # Render sets NODE_ENV=production before the build. Keep runtime packages
     # production-only, but install build tooling such as tsup for this phase.
-    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
     startCommand: pnpm start
     envVars:
       - key: NODE_ENV

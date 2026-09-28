@@ -23,7 +23,23 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
 
 await app.register(cors, {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    const isAllowed = allowedOrigins.some((pattern) => {
+      if (pattern.startsWith("*.")) {
+        const domain = pattern.slice(2);
+        try {
+          const parsed = new URL(origin);
+          return parsed.hostname.endsWith(domain) || parsed.hostname === domain;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
+    if (isAllowed) return callback(null, true);
     return callback(null, false);
   },
   credentials: true,

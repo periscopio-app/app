@@ -2,6 +2,7 @@
   "name": "@periscopio/api",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "pnpm@9.12.0",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
