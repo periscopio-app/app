@@ -40,20 +40,27 @@ export default function HomePage() {
 
           <div className="hero-stats">
             <div className="stat">
-              <span className="stat-value">120</span>
-              <span className="stat-label">dias de janela terapêutica</span>
+              <span className="stat-value">0,70</span>
+              <span className="stat-label">RR de intervenções de saúde mental escolar</span>
+              <a className="stat-badge" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6137532/" target="_blank" rel="noopener noreferrer">↗ Correll et al. 2018</a>
             </div>
             <div className="stat-divider" />
             <div className="stat">
-              <span className="stat-value">5</span>
-              <span className="stat-label">perfis clínicos na esteira</span>
+              <span className="stat-value">α=0,93</span>
+              <span className="stat-label">confiabilidade da escala MSPSS</span>
+              <a className="stat-badge" href="https://pubmed.ncbi.nlm.nih.gov/3288145/" target="_blank" rel="noopener noreferrer">↗ Zimet et al. 1988</a>
             </div>
             <div className="stat-divider" />
             <div className="stat">
-              <span className="stat-value">100%</span>
-              <span className="stat-label">pseudonimizado por aluno</span>
+              <span className="stat-value">1 em 5</span>
+              <span className="stat-label">adolescentes com problemas de saúde mental</span>
+              <a className="stat-badge" href="https://brasil.un.org/pt-br/81282-oms-1-em-cada-5-adolescentes-enfrenta-problemas-de-sa%C3%BAde-mental" target="_blank" rel="noopener noreferrer">↗ OMS/ONU 2021</a>
             </div>
           </div>
+
+          <p className="methodology-note">
+            Os dados acima são associações observadas em estudos científicos — não implicam causalidade direta.
+          </p>
         </div>
       </section>
 
@@ -79,6 +86,25 @@ export default function HomePage() {
             <p>Após 120 dias de intervenção, o caso segue para o NEMT / SUS com histórico completo.</p>
           </div>
         </div>
+      </section>
+
+      {/* Fontes */}
+      <section className="sources-section" id="fontes">
+        <h2 className="section-title">Fontes</h2>
+        <ol className="sources-list">
+          <li>
+            Correll JR et al. (2018). <em>Statewide mental health screening and risk stratification</em>.{" "}
+            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6137532/" target="_blank" rel="noopener noreferrer">PMC6137532</a>
+          </li>
+          <li>
+            Zimet GD et al. (1988). <em>The Multidimensional Scale of Perceived Social Support (MSPSS)</em>.{" "}
+            <a href="https://pubmed.ncbi.nlm.nih.gov/3288145/" target="_blank" rel="noopener noreferrer">PubMed 3288145</a>
+          </li>
+          <li>
+            OMS/ONU Brasil (2021). <em>1 em cada 5 adolescentes enfrenta problemas de saúde mental</em>.{" "}
+            <a href="https://brasil.un.org/pt-br/81282-oms-1-em-cada-5-adolescentes-enfrenta-problemas-de-sa%C3%BAde-mental" target="_blank" rel="noopener noreferrer">ONU Brasil</a>
+          </li>
+        </ol>
       </section>
 
       {/* Formulário de interesse */}

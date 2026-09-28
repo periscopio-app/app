@@ -547,6 +547,70 @@ body {
   flex-shrink: 0;
 }
 
+.stat-badge {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-top: 2px;
+  transition: color 0.2s ease;
+}
+
+.stat-badge:hover {
+  color: #60a5fa;
+}
+
+.methodology-note {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* Sources section */
+.sources-section {
+  padding: 60px 24px;
+  border-top: 1px solid var(--bg-card-border);
+  text-align: center;
+}
+
+.sources-list {
+  list-style: none;
+  counter-reset: source;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.sources-list li {
+  counter-increment: source;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  padding-left: 28px;
+  position: relative;
+}
+
+.sources-list li::before {
+  content: counter(source) ".";
+  position: absolute;
+  left: 0;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.sources-list a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.sources-list a:hover {
+  text-decoration: underline;
+}
+
 /* How it works */
 .how-it-works {
   padding: 80px 24px;
