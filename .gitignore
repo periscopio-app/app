@@ -10,3 +10,4 @@ build/
 .turbo/
 coverage/
 *.tsbuildinfo
+.vercel

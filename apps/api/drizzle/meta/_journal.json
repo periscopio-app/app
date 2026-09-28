@@ -15,6 +15,13 @@
       "when": 1790364234769,
       "tag": "0001_flawless_pepper_potts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790611918895,
+      "tag": "0002_far_marvel_boy",
+      "breakpoints": true
     }
   ]
 }
