@@ -1,19 +1,17 @@
 import Link from "next/link";
 import { InterestForm } from "../components/InterestForm";
 
+const recognitions = ["OPAS · prêmio 2017", "OMS · recomendação 2018", "UNIFESP · supervisão científica", "Lei Municipal · nº 1199/2016"];
+
 export default function HomePage() {
   return (
-    <main className="landing">
-
-      {/* Nav */}
-      <nav className="landing-nav">
-        <div className="nav-brand">
-          <span className="pulse" />
-          Periscópio Saúde
+    <main className="public-landing">
+      <nav className="public-nav" aria-label="Navegação principal">
+        <Link href="/" className="public-brand">PERISCÓPIO</Link>
+        <div className="public-nav-links">
+          <a href="#metodo">O método</a><a href="#equipe">Equipe</a><a href="#reconhecimentos">Reconhecimentos</a>
+          <a className="public-nav-cta" href="#contato">Seja parceiro</a>
         </div>
-        <Link href="/login" className="btn-outline-sm">
-          Acessar sistema →
-        </Link>
       </nav>
 
       {/* Hero */}
@@ -62,30 +60,15 @@ export default function HomePage() {
             Os dados acima são associações observadas em estudos científicos — não implicam causalidade direta.
           </p>
         </div>
+        <div className="public-illustration" role="img" aria-label="Educadora conversando com uma criança em uma sala de aula acolhedora"><span /><i /><b /></div>
       </section>
 
-      {/* Como funciona */}
-      <section className="how-it-works">
-        <h2 className="section-title">Como funciona</h2>
-        <div className="steps">
-          <div className="step">
-            <div className="step-number">01</div>
-            <h3>Professor observa</h3>
-            <p>Preenche a ficha FOGAP no app. Dados pseudonimizados desde o primeiro campo.</p>
-          </div>
-          <div className="step-arrow">→</div>
-          <div className="step">
-            <div className="step-number">02</div>
-            <h3>PpI avalia</h3>
-            <p>Aplica SNAP-IV e ABC. O sistema calcula scores e sinaliza indicações de encaminhamento.</p>
-          </div>
-          <div className="step-arrow">→</div>
-          <div className="step">
-            <div className="step-number">03</div>
-            <h3>MD1 encaminha</h3>
-            <p>Após 120 dias de intervenção, o caso segue para o NEMT / SUS com histórico completo.</p>
-          </div>
-        </div>
+      <section id="reconhecimentos" className="public-recognitions">{recognitions.map((item) => <span key={item}>{item}</span>)}</section>
+
+      <section className="public-section public-history">
+        <p className="public-eyebrow">O PROGRAMA</p><h2>Desde 2007 em Tarumã, SP</h2>
+        <p>O Programa Periscópio nasceu como uma experiência intersetorial para apoiar a escola na observação, no cuidado e no encaminhamento responsável.</p>
+        <p className="public-emphasis">Seu propósito é reduzir o sofrimento na infância e fortalecer as redes que cuidam de cada criança.</p>
       </section>
 
       {/* Fontes */}
@@ -129,12 +112,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="landing-footer">
-        <span>© 2026 Periscópio Saúde</span>
-        <span className="footer-lgpd">🔒 LGPD · sa-east-1 · Dados no Brasil</span>
-      </footer>
+      <section id="equipe" className="public-section public-team"><p className="public-eyebrow">SUPERVISÃO CIENTÍFICA</p><h2>Board de Experts Sêniores</h2><p>Uma equipe multidisciplinar orienta a metodologia e a implantação junto às redes parceiras.</p></section>
 
+      <section id="contato" className="public-contact"><div><p className="public-eyebrow">PILOTO 2026–27</p><h2>Buscamos parceiros para o piloto</h2><p>Leve o Periscópio para a sua rede de ensino ou conheça as formas de apoiar o projeto.</p></div><InterestForm /></section>
+      <footer className="public-footer"><span>Periscópio · Programa de Saúde Mental na Escola</span><span>Privacidade e LGPD</span></footer>
     </main>
   );
 }

@@ -1,42 +1,46 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { students, cases, caseSummaries, users, schools } from "@periscopio/shared";
+import { caseSummaries, cases, schools, students, users } from "@periscopio/shared";
+import { requireActor, type Actor } from "../security/actor";
+import { canAccessSchool } from "../security/tenancy";
+
+const schoolRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi"] as const;
+const specialistRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "md1", "specialist"] as const;
+
+async function schoolVisibleTo(actor: Actor, schoolId: string) {
+  const [school] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
+  if (!school || !canAccessSchool(actor, school.tenantId, school.id)) return null;
+  return school;
+}
+
+async function studentVisibleTo(actor: Actor, studentId: string) {
+  const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
+  if (!student || !canAccessSchool(actor, student.tenantId, student.schoolId)) return null;
+  return student;
+}
+
+async function caseVisibleTo(actor: Actor, caseId: string) {
+  const [caseItem] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+  if (!caseItem) return null;
+  const student = await studentVisibleTo(actor, caseItem.studentId);
+  return student ? { caseItem, student } : null;
+}
 
 export async function casesRoutes(app: FastifyInstance) {
-  /**
-   * 1. Cadastro de Alunos pelo Psicopedagogo (PpI)
-   * LGPD: Não armazena CPF de alunos. Gera código pseudonimizado (studentCode).
-   */
   app.post("/api/students", async (request, reply) => {
-    const body = request.body as {
-      schoolId: string;
-      tenantId?: string;
-      birthYear?: number;
-      turma?: string;
-    };
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
 
-    if (!body.schoolId) {
-      reply.status(400);
-      return { error: "ID da escola é obrigatório." };
-    }
+    const body = request.body as { schoolId?: string; birthYear?: number };
+    if (!body.schoolId) return reply.status(400).send({ error: "ID da escola é obrigatório" });
 
-    const [school] = await db
-      .select()
-      .from(schools)
-      .where(eq(schools.id, body.schoolId))
-      .limit(1);
+    const school = await schoolVisibleTo(actor, body.schoolId);
+    if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
 
-    if (!school) {
-      reply.status(404);
-      return { error: "Escola não encontrada." };
-    }
-
-    // Gera student_code pseudonimizado com base na slug da escola e hash único
     const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
     const studentCode = `${school.slug?.substring(0, 4).toUpperCase() || "ESC"}-${new Date().getFullYear()}-${randomSuffix}`;
-
-    const [newStudent] = await db
+    const [student] = await db
       .insert(students)
       .values({
         tenantId: school.tenantId,
@@ -46,76 +50,56 @@ export async function casesRoutes(app: FastifyInstance) {
       })
       .returning();
 
-    return {
-      success: true,
-      student: newStudent,
-      message: `Aluno cadastrado com sucesso sob o código pseudonimizado ${studentCode}`,
-    };
+    return reply.status(201).send({ success: true, student });
   });
 
-  /**
-   * 2. Lista alunos de uma escola
-   */
   app.get("/api/schools/:schoolId/students", async (request, reply) => {
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
+
     const { schoolId } = request.params as { schoolId: string };
+    const school = await schoolVisibleTo(actor, schoolId);
+    if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
 
     const studentList = await db
       .select()
       .from(students)
-      .where(eq(students.schoolId, schoolId));
-
+      .where(and(eq(students.schoolId, school.id), eq(students.tenantId, school.tenantId)));
     return { students: studentList };
   });
 
-  /**
-   * 3. Lista profissionais de uma escola (para que o PpI possa delegar seções)
-   */
   app.get("/api/schools/:schoolId/professionals", async (request, reply) => {
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
+
     const { schoolId } = request.params as { schoolId: string };
+    const school = await schoolVisibleTo(actor, schoolId);
+    if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
 
     const professionalList = await db
       .select({
         id: users.id,
         name: users.name,
-        email: users.email,
-        phone: users.phone,
         specialty: users.specialty,
         role: users.role,
         classCode: users.classCode,
       })
       .from(users)
-      .where(eq(users.schoolId, schoolId));
-
+      .where(and(eq(users.schoolId, school.id), eq(users.tenantId, school.tenantId)));
     return { professionals: professionalList };
   });
 
-  /**
-   * 4. Abertura de Caso / Prontuário Clínico para um aluno
-   */
   app.post("/api/cases", async (request, reply) => {
-    const body = request.body as {
-      studentId: string;
-      status?: string;
-      dataInicioIntervencao?: string;
-    };
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
 
-    if (!body.studentId) {
-      reply.status(400);
-      return { error: "ID do aluno é obrigatório." };
-    }
+    const body = request.body as { studentId?: string; status?: string; dataInicioIntervencao?: string };
+    if (!body.studentId) return reply.status(400).send({ error: "ID do aluno é obrigatório" });
 
-    const [student] = await db
-      .select()
-      .from(students)
-      .where(eq(students.id, body.studentId))
-      .limit(1);
+    const student = await studentVisibleTo(actor, body.studentId);
+    if (!student) return reply.status(404).send({ error: "Aluno não encontrado" });
 
-    if (!student) {
-      reply.status(404);
-      return { error: "Aluno não encontrado." };
-    }
-
-    const [newCase] = await db
+    const [caseItem] = await db
       .insert(cases)
       .values({
         tenantId: student.tenantId,
@@ -124,96 +108,49 @@ export async function casesRoutes(app: FastifyInstance) {
         dataInicioIntervencao: body.dataInicioIntervencao || new Date().toISOString().split("T")[0],
       })
       .returning();
-
-    return {
-      success: true,
-      case: newCase,
-      message: "Caso aberto com sucesso.",
-    };
+    return reply.status(201).send({ success: true, case: caseItem });
   });
 
-  /**
-   * 5. Delegação de seções do Prontuário pelo Psicopedagogo
-   * Ex: Delega seção FONO para o fonoaudiólogo, secao MEDICA para o MD1, etc.
-   */
   app.post("/api/cases/:caseId/delegate", async (request, reply) => {
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
+
     const { caseId } = request.params as { caseId: string };
-    const body = request.body as {
-      delegations: Array<{
-        specialty: string; // fonoaudiologia | medicina | psicologia | psicopedagogia | psicomotricidade | servico_social
-        professionalId: string;
-        notes?: string;
-      }>;
-    };
+    const body = request.body as { delegations?: Array<{ specialty: string; professionalId: string; notes?: string }> };
+    if (!body.delegations?.length) return reply.status(400).send({ error: "Informe ao menos uma delegação" });
 
-    const [currentCase] = await db
-      .select()
-      .from(cases)
-      .where(eq(cases.id, caseId))
-      .limit(1);
-
-    if (!currentCase) {
-      reply.status(404);
-      return { error: "Caso não encontrado." };
-    }
-
-    const [student] = await db
-      .select()
-      .from(students)
-      .where(eq(students.id, currentCase.studentId))
-      .limit(1);
+    const visibleCase = await caseVisibleTo(actor, caseId);
+    if (!visibleCase) return reply.status(404).send({ error: "Caso não encontrado" });
 
     const createdSections = [];
+    for (const delegation of body.delegations) {
+      const [professional] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, delegation.professionalId), eq(users.tenantId, visibleCase.caseItem.tenantId)))
+        .limit(1);
+      if (!professional) return reply.status(400).send({ error: "Profissional não pertence ao município do caso" });
 
-    for (const item of body.delegations) {
       const [section] = await db
         .insert(caseSummaries)
         .values({
-          caseId: currentCase.id,
-          tenantId: currentCase.tenantId,
-          schoolId: student.schoolId,
-          specialty: item.specialty,
-          assignedProfessionalId: item.professionalId,
+          caseId: visibleCase.caseItem.id,
+          tenantId: visibleCase.caseItem.tenantId,
+          schoolId: visibleCase.student.schoolId,
+          specialty: delegation.specialty,
+          assignedProfessionalId: professional.id,
           status: "pendente",
-          notes: item.notes,
+          notes: delegation.notes,
         })
         .returning();
-
       createdSections.push(section);
     }
-
-    return {
-      success: true,
-      message: `${createdSections.length} seções do prontuário delegadas com sucesso!`,
-      sections: createdSections,
-    };
+    return reply.status(201).send({ success: true, sections: createdSections });
   });
 
-  /**
-   * 6. Visão do Especialista: Lista APENAS as seções delegadas para ele
-   * Garante isolamento estrito — cada profissional só vê sua parte!
-   */
   app.get("/api/cases/my-delegated-sections", async (request, reply) => {
-    const { professionalId, email } = request.query as {
-      professionalId?: string;
-      email?: string;
-    };
-
-    let targetProfId = professionalId;
-
-    if (!targetProfId && email) {
-      const [user] = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
-      targetProfId = user?.id;
-    }
-
-    if (!targetProfId) {
-      reply.status(400);
-      return { error: "Identificação do profissional (professionalId ou email) é obrigatória." };
-    }
+    const actor = await requireActor(request, reply, specialistRoles);
+    if (!actor) return;
 
     const sections = await db
       .select({
@@ -230,74 +167,46 @@ export async function casesRoutes(app: FastifyInstance) {
       .from(caseSummaries)
       .innerJoin(cases, eq(caseSummaries.caseId, cases.id))
       .innerJoin(students, eq(cases.studentId, students.id))
-      .where(eq(caseSummaries.assignedProfessionalId, targetProfId));
-
-    return {
-      professionalId: targetProfId,
-      assignedSections: sections,
-    };
+      .where(and(eq(caseSummaries.assignedProfessionalId, actor.id), eq(caseSummaries.tenantId, actor.tenantId)));
+    return { assignedSections: sections };
   });
 
-  /**
-   * 7. O Especialista salva a sumarização da sua seção
-   */
   app.patch("/api/cases/sections/:sectionId", async (request, reply) => {
-    const { sectionId } = request.params as { sectionId: string };
-    const body = request.body as {
-      summary: Record<string, any>;
-      notes?: string;
-      markAsCompleted?: boolean;
-    };
+    const actor = await requireActor(request, reply, specialistRoles);
+    if (!actor) return;
 
-    const status = body.markAsCompleted ? "concluido" : "em_andamento";
-    const completedAt = body.markAsCompleted ? new Date() : null;
+    const { sectionId } = request.params as { sectionId: string };
+    const body = request.body as { summary?: Record<string, unknown>; notes?: string; markAsCompleted?: boolean };
+    const [section] = await db
+      .select()
+      .from(caseSummaries)
+      .where(and(eq(caseSummaries.id, sectionId), eq(caseSummaries.tenantId, actor.tenantId)))
+      .limit(1);
+    if (!section || (actor.role !== "admin_platform" && section.assignedProfessionalId !== actor.id)) {
+      return reply.status(404).send({ error: "Seção de prontuário não encontrada" });
+    }
 
     const [updated] = await db
       .update(caseSummaries)
       .set({
         summary: body.summary,
         notes: body.notes,
-        status,
-        completedAt,
+        status: body.markAsCompleted ? "concluido" : "em_andamento",
+        completedAt: body.markAsCompleted ? new Date() : null,
         updatedAt: new Date(),
       })
-      .where(eq(caseSummaries.id, sectionId))
+      .where(eq(caseSummaries.id, section.id))
       .returning();
-
-    if (!updated) {
-      reply.status(404);
-      return { error: "Seção de prontuário não encontrada." };
-    }
-
-    return {
-      success: true,
-      message: "Sumarização da especialidade salva com sucesso!",
-      section: updated,
-    };
+    return { success: true, section: updated };
   });
 
-  /**
-   * 8. Visão Consolidada do Caso / Prontuário para o Psicopedagogo (PpI)
-   */
   app.get("/api/cases/:caseId/full-summary", async (request, reply) => {
+    const actor = await requireActor(request, reply, schoolRoles);
+    if (!actor) return;
+
     const { caseId } = request.params as { caseId: string };
-
-    const [caseItem] = await db
-      .select()
-      .from(cases)
-      .where(eq(cases.id, caseId))
-      .limit(1);
-
-    if (!caseItem) {
-      reply.status(404);
-      return { error: "Caso não encontrado." };
-    }
-
-    const [student] = await db
-      .select()
-      .from(students)
-      .where(eq(students.id, caseItem.studentId))
-      .limit(1);
+    const visibleCase = await caseVisibleTo(actor, caseId);
+    if (!visibleCase) return reply.status(404).send({ error: "Caso não encontrado" });
 
     const sections = await db
       .select({
@@ -313,12 +222,7 @@ export async function casesRoutes(app: FastifyInstance) {
       })
       .from(caseSummaries)
       .leftJoin(users, eq(caseSummaries.assignedProfessionalId, users.id))
-      .where(eq(caseSummaries.caseId, caseId));
-
-    return {
-      case: caseItem,
-      student,
-      sections,
-    };
+      .where(and(eq(caseSummaries.caseId, visibleCase.caseItem.id), eq(caseSummaries.tenantId, visibleCase.caseItem.tenantId)));
+    return { case: visibleCase.caseItem, student: visibleCase.student, sections };
   });
 }

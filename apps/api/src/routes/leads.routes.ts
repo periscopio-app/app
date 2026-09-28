@@ -20,6 +20,16 @@ const CARGOMAP: Record<string, string> = {
   outro: "Outro",
 };
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
+}
+
 export async function leadsRoutes(app: FastifyInstance) {
   app.post<{ Body: LeadBody }>("/api/leads", async (request, reply) => {
     const { nome, email, escola, cargo, rede } = request.body ?? {};
@@ -39,7 +49,7 @@ export async function leadsRoutes(app: FastifyInstance) {
 
     await db.insert(leads).values({ nome, email, escola, cargo, rede });
 
-    app.log.info({ email, escola }, "novo lead capturado");
+    app.log.info("novo lead capturado");
 
     // Notificação interna — não bloqueia a resposta
     sendEmail(

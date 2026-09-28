@@ -16,10 +16,16 @@ import { casesRoutes } from "./routes/cases.routes";
 import { leadsRoutes } from "./routes/leads.routes";
 
 const app = Fastify({ logger: true });
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-// CORS configurado para Vercel, Cloudflare e ambiente local
 await app.register(cors, {
-  origin: true,
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 });
