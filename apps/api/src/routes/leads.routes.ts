@@ -8,6 +8,7 @@ interface LeadBody {
   email: string;
   escola: string;
   cargo: string;
+  rede: "publica" | "privada";
 }
 
 const CARGOMAP: Record<string, string> = {
@@ -31,10 +32,14 @@ function escapeHtml(value: string) {
 
 export async function leadsRoutes(app: FastifyInstance) {
   app.post<{ Body: LeadBody }>("/api/leads", async (request, reply) => {
-    const { nome, email, escola, cargo } = request.body ?? {};
+    const { nome, email, escola, cargo, rede } = request.body ?? {};
 
-    if (!nome || !email || !escola || !cargo) {
+    if (!nome || !email || !escola || !cargo || !rede) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios" });
+    }
+
+    if (rede !== "publica" && rede !== "privada") {
+      return reply.status(400).send({ error: "Valor inválido para rede" });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,7 +47,7 @@ export async function leadsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: "E-mail inválido" });
     }
 
-    await db.insert(leads).values({ nome, email, escola, cargo });
+    await db.insert(leads).values({ nome, email, escola, cargo, rede });
 
     app.log.info("novo lead capturado");
 
@@ -54,10 +59,11 @@ export async function leadsRoutes(app: FastifyInstance) {
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px">
           <h2 style="margin:0 0 24px;color:#0f172a">Novo interesse no piloto 🎯</h2>
           <table style="width:100%;border-collapse:collapse">
-            <tr><td style="padding:8px 0;color:#64748b;width:120px">Nome</td><td style="padding:8px 0;font-weight:600">${escapeHtml(nome)}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">E-mail</td><td style="padding:8px 0"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">Escola</td><td style="padding:8px 0">${escapeHtml(escola)}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">Cargo</td><td style="padding:8px 0">${escapeHtml(CARGOMAP[cargo] ?? cargo)}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;width:120px">Nome</td><td style="padding:8px 0;font-weight:600">${nome}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">E-mail</td><td style="padding:8px 0"><a href="mailto:${email}">${email}</a></td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Escola</td><td style="padding:8px 0">${escola}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Cargo</td><td style="padding:8px 0">${CARGOMAP[cargo] ?? cargo}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Rede</td><td style="padding:8px 0">${rede === "publica" ? "Pública" : "Privada"}</td></tr>
           </table>
           <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">Periscópio Saúde · Lead capturado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
         </div>

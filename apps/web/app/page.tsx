@@ -14,12 +14,51 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <section className="public-hero">
-        <div>
-          <p className="public-eyebrow">SAÚDE MENTAL NA ESCOLA</p>
-          <h1>Enxergar cedo para cuidar a tempo de mudar o destino da criança.</h1>
-          <p className="public-lead">O Periscópio ajuda escolas a perceber, ainda na infância, sinais de sofrimento e a encaminhar cada criança para o cuidado certo, unindo educação, saúde e assistência social.</p>
-          <div className="public-actions"><a className="public-button" href="#metodo">Conheça o método</a><a className="public-button secondary" href="#contato">Fale conosco</a></div>
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-badge">Piloto 2026 · Protocolo NEMT</div>
+          <h1 className="hero-title">
+            Da observação do professor ao<br />
+            <span className="hero-highlight">encaminhamento responsável</span>
+          </h1>
+          <p className="hero-sub">
+            Periscópio digitaliza a esteira completa de triagem em saúde mental escolar —
+            escola → PpI → MD1 → SUS — com rastreabilidade, LGPD e janela terapêutica de 120 dias.
+          </p>
+
+          <div className="hero-cta">
+            <Link href="/login" className="btn-primary btn-lg">
+              Acessar plataforma
+            </Link>
+            <a href="#piloto" className="btn-ghost btn-lg">
+              Quero participar do piloto ↓
+            </a>
+          </div>
+
+          <div className="hero-stats">
+            <div className="stat">
+              <span className="stat-value">0,70</span>
+              <span className="stat-label">RR de intervenções de saúde mental escolar</span>
+              <a className="stat-badge" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6137532/" target="_blank" rel="noopener noreferrer">↗ Correll et al. 2018</a>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat">
+              <span className="stat-value">α=0,93</span>
+              <span className="stat-label">confiabilidade da escala MSPSS</span>
+              <a className="stat-badge" href="https://pubmed.ncbi.nlm.nih.gov/3288145/" target="_blank" rel="noopener noreferrer">↗ Zimet et al. 1988</a>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat">
+              <span className="stat-value">1 em 5</span>
+              <span className="stat-label">adolescentes com problemas de saúde mental</span>
+              <a className="stat-badge" href="https://brasil.un.org/pt-br/81282-oms-1-em-cada-5-adolescentes-enfrenta-problemas-de-sa%C3%BAde-mental" target="_blank" rel="noopener noreferrer">↗ OMS/ONU 2021</a>
+            </div>
+          </div>
+
+          <p className="methodology-note">
+            Os dados acima são associações observadas em estudos científicos — não implicam causalidade direta.
+          </p>
         </div>
         <div className="public-illustration" role="img" aria-label="Educadora conversando com uma criança em uma sala de aula acolhedora"><span /><i /><b /></div>
       </section>
@@ -32,8 +71,45 @@ export default function HomePage() {
         <p className="public-emphasis">Seu propósito é reduzir o sofrimento na infância e fortalecer as redes que cuidam de cada criança.</p>
       </section>
 
-      <section id="metodo" className="public-section public-method"><p className="public-eyebrow">COMO FUNCIONA</p><h2>Uma rede que organiza o cuidado</h2>
-        <div className="public-steps"><article><strong>01</strong><h3>Escola</h3><p>Professor e equipe escolar registram observações e acompanham a resposta às intervenções.</p></article><article><strong>02</strong><h3>Plataforma digital</h3><p>O fluxo integra escola, saúde, assistência e família com rastreabilidade e respeito à LGPD.</p></article><article><strong>03</strong><h3>Piloto</h3><p>Implementação assistida, com supervisão técnica e indicadores para a rede.</p></article></div>
+      {/* Fontes */}
+      <section className="sources-section" id="fontes">
+        <h2 className="section-title">Fontes</h2>
+        <ol className="sources-list">
+          <li>
+            Correll JR et al. (2018). <em>Statewide mental health screening and risk stratification</em>.{" "}
+            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6137532/" target="_blank" rel="noopener noreferrer">PMC6137532</a>
+          </li>
+          <li>
+            Zimet GD et al. (1988). <em>The Multidimensional Scale of Perceived Social Support (MSPSS)</em>.{" "}
+            <a href="https://pubmed.ncbi.nlm.nih.gov/3288145/" target="_blank" rel="noopener noreferrer">PubMed 3288145</a>
+          </li>
+          <li>
+            OMS/ONU Brasil (2021). <em>1 em cada 5 adolescentes enfrenta problemas de saúde mental</em>.{" "}
+            <a href="https://brasil.un.org/pt-br/81282-oms-1-em-cada-5-adolescentes-enfrenta-problemas-de-sa%C3%BAde-mental" target="_blank" rel="noopener noreferrer">ONU Brasil</a>
+          </li>
+        </ol>
+      </section>
+
+      {/* Formulário de interesse */}
+      <section className="pilot-section" id="piloto">
+        <div className="pilot-inner">
+          <div className="pilot-text">
+            <h2>Sua escola pode ser parte do piloto</h2>
+            <p>
+              Estamos selecionando escolas municipais para a primeira fase. Participantes recebem
+              acesso antecipado, suporte direto e impacto real na vida dos alunos.
+            </p>
+            <ul className="pilot-benefits">
+              <li>✓ Acesso gratuito durante o piloto</li>
+              <li>✓ Treinamento para professores e equipe clínica</li>
+              <li>✓ Suporte direto da equipe Periscópio</li>
+              <li>✓ Relatório de impacto ao final</li>
+            </ul>
+          </div>
+          <div className="pilot-form-wrap">
+            <InterestForm />
+          </div>
+        </div>
       </section>
 
       <section id="equipe" className="public-section public-team"><p className="public-eyebrow">SUPERVISÃO CIENTÍFICA</p><h2>Board de Experts Sêniores</h2><p>Uma equipe multidisciplinar orienta a metodologia e a implantação junto às redes parceiras.</p></section>
