@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "pnpm install --frozen-lockfile && pnpm build",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "buildCommand": "pnpm install && pnpm build",
+  "installCommand": "pnpm install"
 }
