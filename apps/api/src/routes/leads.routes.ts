@@ -8,6 +8,7 @@ interface LeadBody {
   email: string;
   escola: string;
   cargo: string;
+  rede: "publica" | "privada";
 }
 
 const CARGOMAP: Record<string, string> = {
@@ -21,10 +22,14 @@ const CARGOMAP: Record<string, string> = {
 
 export async function leadsRoutes(app: FastifyInstance) {
   app.post<{ Body: LeadBody }>("/api/leads", async (request, reply) => {
-    const { nome, email, escola, cargo } = request.body ?? {};
+    const { nome, email, escola, cargo, rede } = request.body ?? {};
 
-    if (!nome || !email || !escola || !cargo) {
+    if (!nome || !email || !escola || !cargo || !rede) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios" });
+    }
+
+    if (rede !== "publica" && rede !== "privada") {
+      return reply.status(400).send({ error: "Valor inválido para rede" });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,7 +37,7 @@ export async function leadsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: "E-mail inválido" });
     }
 
-    await db.insert(leads).values({ nome, email, escola, cargo });
+    await db.insert(leads).values({ nome, email, escola, cargo, rede });
 
     app.log.info({ email, escola }, "novo lead capturado");
 
@@ -48,6 +53,7 @@ export async function leadsRoutes(app: FastifyInstance) {
             <tr><td style="padding:8px 0;color:#64748b">E-mail</td><td style="padding:8px 0"><a href="mailto:${email}">${email}</a></td></tr>
             <tr><td style="padding:8px 0;color:#64748b">Escola</td><td style="padding:8px 0">${escola}</td></tr>
             <tr><td style="padding:8px 0;color:#64748b">Cargo</td><td style="padding:8px 0">${CARGOMAP[cargo] ?? cargo}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Rede</td><td style="padding:8px 0">${rede === "publica" ? "Pública" : "Privada"}</td></tr>
           </table>
           <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">Periscópio Saúde · Lead capturado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
         </div>

@@ -180,6 +180,7 @@ export const leads = pgTable("leads", {
   email: varchar("email", { length: 255 }).notNull(),
   escola: text("escola").notNull(),
   cargo: varchar("cargo", { length: 60 }).notNull(),
+  rede: varchar("rede", { length: 30 }).notNull().default("privada"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -15,11 +15,16 @@ export function InterestForm() {
     setState({ status: "loading", message: "" });
 
     const form = e.currentTarget;
+    const rede = (form.elements.namedItem("rede") as HTMLInputElement).checked
+      ? "publica"
+      : "privada";
+
     const data = {
       nome: (form.elements.namedItem("nome") as HTMLInputElement).value,
       email: (form.elements.namedItem("email") as HTMLInputElement).value,
       escola: (form.elements.namedItem("escola") as HTMLInputElement).value,
       cargo: (form.elements.namedItem("cargo") as HTMLSelectElement).value,
+      rede,
     };
 
     try {
@@ -78,6 +83,13 @@ export function InterestForm() {
             <option value="outro">Outro</option>
           </select>
         </div>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="rede" className="checkbox-label">
+          <input id="rede" name="rede" type="checkbox" />
+          <span>Escola pública</span>
+        </label>
       </div>
 
       {state.status === "success" && (
