@@ -9,6 +9,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"
   },
-  "dependencies": {},
+  "dependencies": {
+    "next": "^15.0.0"
+  },
   "devDependencies": {}
 }
