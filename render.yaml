@@ -16,15 +16,15 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
-      - key: R2_ACCOUNT_ID
+      - key: SUPABASE_URL
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: SUPABASE_PROJECT_REF
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
+      - key: SUPABASE_ANON_KEY
         sync: false
-      - key: R2_BUCKET
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: R2_PUBLIC_URL
+      - key: SUPABASE_BUCKET
         sync: false
       - key: RESEND_API_KEY
         sync: false
