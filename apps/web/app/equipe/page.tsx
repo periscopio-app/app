@@ -30,7 +30,7 @@ export default function Equipe() {
             <img
               src={m.fotoSm ?? m.foto ?? "/equipe/logo.webp"}
               alt={`Foto de ${m.n}`}
-              className="mb-6 h-40 w-40 rounded-full object-cover object-top"
+              className="mb-6 h-40 w-40 rounded-full bg-ceu-100 object-cover object-top ring-4 ring-roxo-100"
             />
             <h2 className="font-display text-2xl text-foreground">{m.n}</h2>
             <p className="mt-1 font-medium text-roxo">{m.r}</p>
@@ -67,7 +67,7 @@ export default function Equipe() {
                   <img
                     src={a.foto}
                     alt={`Foto de ${a.n}`}
-                    className="mb-4 h-24 w-24 rounded-full object-cover object-top"
+                    className="mb-4 h-24 w-24 rounded-full bg-ceu-100 object-cover object-top ring-4 ring-roxo-100"
                   />
                 )}
                 <h3 className="font-semibold text-secondary-foreground">{a.n}</h3>
@@ -94,6 +94,13 @@ export default function Equipe() {
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             {tecnologia.map((t) => (
               <article key={t.n} className="rounded-2xl border border-border bg-card p-6">
+                {t.foto && (
+                  <img
+                    src={t.foto}
+                    alt={`Foto de ${t.n}`}
+                    className="mb-4 h-24 w-24 rounded-full bg-ceu-100 object-cover object-top ring-4 ring-roxo-100"
+                  />
+                )}
                 <h3 className="font-semibold text-foreground">{t.n}</h3>
                 <p className="mt-1 text-sm font-medium text-roxo">{t.r}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{t.d.join(" ")}</p>

@@ -44,7 +44,7 @@ export default function MetodoPage() {
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-8">
-            <span className="text-sm font-bold text-emerald-400">ETAPA 3</span>
+            <span className="text-sm font-bold text-sucesso">ETAPA 3</span>
             <h2 className="mt-3 font-display text-xl font-bold text-foreground">Encaminhamento SUS Responsável</h2>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
               Casos com indicação clínica são encaminhados com dossiê estruturado para a rede pública (UBS, CAPSij, CRAS),

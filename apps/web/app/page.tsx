@@ -22,7 +22,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-5 pt-12 pb-16 text-center md:pt-20">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-sucesso/30 bg-sucesso/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sucesso">
             Piloto 2026 · Protocolo NEMT
           </div>
 
@@ -168,7 +168,7 @@ export default function HomePage() {
             </article>
 
             <article className="rounded-3xl border border-border bg-card p-8">
-              <span className="text-sm font-bold text-emerald-400">03 · CUIDADO</span>
+              <span className="text-sm font-bold text-sucesso">03 · CUIDADO</span>
               <h3 className="mt-3 font-display text-xl font-semibold text-foreground">Encaminhamento Responsável</h3>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 Integração transparente com a rede SUS (CAPSij, UBS, CRAS) dentro da janela terapêutica de 120 dias, com
@@ -239,19 +239,19 @@ export default function HomePage() {
 
               <div className="mt-8 space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400">✓</div>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sucesso/15 text-xs font-bold text-sucesso">✓</div>
                   <p className="text-sm text-foreground">Acesso gratuito durante a fase piloto</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400">✓</div>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sucesso/15 text-xs font-bold text-sucesso">✓</div>
                   <p className="text-sm text-foreground">Treinamento para professores e equipe clínica</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400">✓</div>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sucesso/15 text-xs font-bold text-sucesso">✓</div>
                   <p className="text-sm text-foreground">Supervisão direta com os especialistas do Board</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-400">✓</div>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sucesso/15 text-xs font-bold text-sucesso">✓</div>
                   <p className="text-sm text-foreground">Relatório e mensuração de impacto na saúde escolar</p>
                 </div>
               </div>
