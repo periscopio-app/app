@@ -39,3 +39,7 @@
 .piloto .person .role{color:var(--accent);font-weight:600;font-size:.92rem;margin-top:2px}
 .piloto .person ul{margin:10px 0 0;padding-left:18px;color:var(--fg2);font-size:.92rem;display:grid;gap:6px}
 .piloto .person .lattes{display:inline-block;margin-top:10px;font-size:.88rem;font-weight:600}
+
+/* Logo oficial tem texto escuro: no tema escuro fica sobre fundo claro */
+@media (prefers-color-scheme: dark){.piloto:not([data-theme="light"]) header img,.piloto:not([data-theme="light"]) footer img{background:#fff;border-radius:12px;padding:4px 8px}}
+.piloto[data-theme="dark"] header img,.piloto[data-theme="dark"] footer img{background:#fff;border-radius:12px;padding:4px 8px}
