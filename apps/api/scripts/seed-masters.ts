@@ -26,7 +26,7 @@ const MASTERS = [
     email: "bruno@oceanoazul.dev.br",
     name: "Bruno Bisogni",
     role: "admin_platform",
-    password: process.env.MASTER_PASSWORD || "Periscopio@Master2026!",
+    password: "Amor121314@#$",
   },
   {
     email: "admin@projetoperiscopio.com.br",
