@@ -11,3 +11,5 @@ build/
 coverage/
 *.tsbuildinfo
 .vercel
+/docs
+/src/

@@ -19,7 +19,7 @@ interface SessionResponse {
 }
 
 async function sessionEmail(request: FastifyRequest): Promise<string | null> {
-  const authUrl = process.env.BETTER_AUTH_URL;
+  const authUrl = process.env.BETTER_AUTH_URL || process.env.NEON_AUTH_URL;
   if (!authUrl) return null;
 
   const headers: Record<string, string> = {};
