@@ -58,21 +58,29 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <a
-            href="/#contato"
-            className="rounded-full bg-primary px-4 py-2 font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            Seja parceiro
-          </a>
-          <button
-            type="button"
-            className="text-primary md:hidden"
-            aria-label={open ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? <X /> : <Menu />}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+            >
+              Acessar
+            </Link>
+            <a
+              href="/#contato"
+              className="rounded-full bg-primary px-4 py-2 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Seja parceiro
+            </a>
+            <button
+              type="button"
+              className="text-primary md:hidden"
+              aria-label={open ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={open}
+              onClick={() => setOpen(!open)}
+            >
+              {open ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
         {open && (
           <nav className="flex flex-col gap-1 border-t border-border px-5 py-4 md:hidden">
@@ -91,6 +99,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 {l.label}
               </Link>
             ))}
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="py-2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Acessar plataforma
+            </Link>
             <a
               href="/#contato"
               onClick={() => setOpen(false)}
