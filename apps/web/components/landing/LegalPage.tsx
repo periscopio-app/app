@@ -19,9 +19,6 @@ export default function LegalPage({
       </div>
       <main className="legal-doc">
         <h1>{titulo}</h1>
-        <p className="legal-aviso">
-          Versão provisória, publicada enquanto a validação jurídica e clínica do programa não termina.
-        </p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="legal-foot">
           <a href="/privacidade">Política de Privacidade</a>
