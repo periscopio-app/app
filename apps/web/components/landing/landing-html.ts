@@ -28,20 +28,9 @@ export const LANDING_HTML = `<header>
    </div>
   </div>
 
-  <aside class="case" aria-label="Exemplo ilustrativo de um caso na plataforma">
-   <div class="case-head">
-    <div><span class="small">Exemplo ilustrativo</span><br><b>Caso ALU-0427</b></div>
-    <span class="tag rev">Com o médico</span>
-   </div>
-   <ol class="steps">
-    <li class="d"><span class="dot" aria-hidden="true">✓</span><div><b>Professor registra o que observou</b><span class="s">Ficha de observação enviada à escola</span></div><span class="tag done">Feito</span></li>
-    <li class="d"><span class="dot" aria-hidden="true">✓</span><div><b>Equipe da escola completa e envia</b><span class="s">Depois do envio, só consulta</span></div><span class="tag done">Enviado</span></li>
-    <li class="n"><span class="dot" aria-hidden="true"></span><div><b>Médico lê o resumo e escolhe os especialistas</b><span class="s">Decisão sempre do profissional de saúde</span></div><span class="tag rev">Agora</span></li>
-    <li><span class="dot" aria-hidden="true"></span><div><b>Especialistas preenchem só a sua parte</b><span class="s">Cada um devolve um resumo ao médico</span></div><span class="tag wait">Depois</span></li>
-    <li><span class="dot" aria-hidden="true"></span><div><b>Médico reúne tudo e conversa com a família</b><span class="s">Encaminhamento, acompanhamento ou encerramento</span></div><span class="tag wait">Depois</span></li>
-   </ol>
-   <p class="case-foot">O aluno aparece por um código, sem nome. Dados fictícios, só para mostrar o fluxo.</p>
-  </aside>
+  <div class="hero-illustration-wrap" style="position:relative;border-radius:28px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--surface);">
+   <img src="/hero-escola.png" alt="Saúde Mental na Escola — Enxergar cedo para cuidar a tempo de mudar o destino da criança" style="width:100%;height:auto;display:block;" loading="eager" />
+  </div>
  </div>
 </section>
 
@@ -269,7 +258,7 @@ __EQUIPE__
 <footer>
  <div class="wrap foot">
   <div class="brand"><img src="/landing-logo.webp" alt="Periscópio"><span class="small">Programa Periscópio Saúde Mental na Escola</span></div>
-  <p class="small"><a href="/privacidade">Política de Privacidade</a> · <a href="/termos">Termos de Serviço e Uso</a> · Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda, CNPJ 62.402.533/0001-57</p>
+  <p class="small"><a href="/privacidade">Política de Privacidade</a> · <a href="/termos">Termos de Serviço e Uso</a></p>
   <p class="legal">O Periscópio organiza informações, documentos e encaminhamentos entre escola e equipe de saúde. A decisão é sempre de um profissional de saúde. Não realiza diagnóstico, não prescreve e não substitui profissionais habilitados. As estimativas citadas vêm das fontes indicadas em cada número e podem variar conforme o estudo e a região.</p>
  </div>
 </footer>

@@ -21,6 +21,30 @@ export default function LandingClient({ html }: { html: string }) {
     btn?.addEventListener("click", onTheme);
     cleanups.push(() => btn?.removeEventListener("click", onTheme));
 
+    const toggleRawBtn = root.querySelector<HTMLButtonElement>("#toggle-pro-raw");
+    const visualView = root.querySelector<HTMLElement>("#team-visual-view");
+    const rawView = root.querySelector<HTMLElement>("#team-raw-view");
+    const labelRaw = root.querySelector<HTMLElement>("#label-raw");
+    const labelCards = root.querySelector<HTMLElement>("#label-cards");
+
+    const onToggleRaw = () => {
+      if (!visualView || !rawView) return;
+      const isRaw = rawView.style.display !== "none";
+      if (isRaw) {
+        rawView.style.display = "none";
+        visualView.style.display = "block";
+        if (labelRaw) labelRaw.style.display = "inline";
+        if (labelCards) labelCards.style.display = "none";
+      } else {
+        rawView.style.display = "block";
+        visualView.style.display = "none";
+        if (labelRaw) labelRaw.style.display = "none";
+        if (labelCards) labelCards.style.display = "inline";
+      }
+    };
+    toggleRawBtn?.addEventListener("click", onToggleRaw);
+    cleanups.push(() => toggleRawBtn?.removeEventListener("click", onToggleRaw));
+
     root.querySelectorAll<HTMLElement>("[data-perfil]").forEach((a) => {
       const h = () => { if (tipo) tipo.value = a.getAttribute("data-perfil") ?? ""; };
       a.addEventListener("click", h);

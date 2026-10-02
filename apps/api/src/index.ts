@@ -14,6 +14,7 @@ import { authRoutes } from "./routes/auth.routes";
 import { onboardingRoutes } from "./routes/onboarding.routes";
 import { casesRoutes } from "./routes/cases.routes";
 import { leadsRoutes } from "./routes/leads.routes";
+import { usersRoutes } from "./routes/users.routes";
 
 const app = Fastify({ logger: true });
 const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
@@ -52,6 +53,7 @@ app.register(authRoutes);
 app.register(onboardingRoutes);
 app.register(casesRoutes);
 app.register(leadsRoutes);
+app.register(usersRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 
