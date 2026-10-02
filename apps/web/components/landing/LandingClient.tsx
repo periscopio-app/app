@@ -51,17 +51,73 @@ export default function LandingClient({ html }: { html: string }) {
       cleanups.push(() => a.removeEventListener("click", h));
     });
 
-    const onSubmit = (e: Event) => {
+    const onSubmit = async (e: Event) => {
       e.preventDefault();
-      const bad = ["nome", "email", "org"].some((id) => {
-        const el = root.querySelector<HTMLInputElement>("#" + id);
-        return !el || !el.value.trim();
-      });
-      if (!ok) return;
-      ok.textContent = bad
-        ? "Preencha nome, e-mail e instituição para enviar."
-        : "Protótipo: no site publicado, este botão envia o seu pedido para a equipe do Periscópio.";
-      ok.className = "ok on";
+      const nomeInput = root.querySelector<HTMLInputElement>("#nome");
+      const emailInput = root.querySelector<HTMLInputElement>("#email");
+      const orgInput = root.querySelector<HTMLInputElement>("#org");
+      const tipoSelect = root.querySelector<HTMLSelectElement>("#tipo");
+      const msgTextarea = root.querySelector<HTMLTextAreaElement>("#msg");
+      const submitBtn = root.querySelector<HTMLButtonElement>("button[type='submit']");
+
+      const nome = nomeInput?.value.trim() ?? "";
+      const email = emailInput?.value.trim() ?? "";
+      const org = orgInput?.value.trim() ?? "";
+      const tipoVal = tipoSelect?.value.trim() ?? "";
+      const msg = msgTextarea?.value.trim() ?? "";
+
+      if (!nome || !email || !org) {
+        if (!ok) return;
+        ok.textContent = "Por favor, preencha nome, e-mail e instituição para enviar.";
+        ok.className = "ok on";
+        ok.style.background = "var(--gold-soft)";
+        ok.style.color = "var(--gold-ink)";
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Enviando...";
+      }
+
+      try {
+        const res = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome,
+            email,
+            instituicao: org,
+            tipo: tipoVal,
+            msg,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Erro ao processar envio.");
+        }
+
+        if (ok) {
+          ok.textContent = "✅ Candidatura recebida com sucesso! A equipe do Periscópio entrará em contato em breve.";
+          ok.className = "ok on";
+          ok.style.background = "var(--ok-soft)";
+          ok.style.color = "var(--ok-ink)";
+        }
+        form?.reset();
+      } catch (err: any) {
+        if (ok) {
+          ok.textContent = err?.message || "Ocorreu um erro ao enviar. Tente novamente mais tarde.";
+          ok.className = "ok on";
+          ok.style.background = "#fee2e2";
+          ok.style.color = "#991b1b";
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Enviar candidatura";
+        }
+      }
     };
     form?.addEventListener("submit", onSubmit);
     cleanups.push(() => form?.removeEventListener("submit", onSubmit));
