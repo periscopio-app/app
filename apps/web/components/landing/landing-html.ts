@@ -269,6 +269,7 @@ __EQUIPE__
 <footer>
  <div class="wrap foot">
   <div class="brand"><img src="/landing-logo.webp" alt="Periscópio"><span class="small">Programa Periscópio Saúde Mental na Escola</span></div>
+  <p class="small"><a href="/privacidade">Política de Privacidade</a> · <a href="/termos">Termos de Serviço e Uso</a> · Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda, CNPJ 62.402.533/0001-57</p>
   <p class="legal">O Periscópio organiza informações, documentos e encaminhamentos entre escola e equipe de saúde. A decisão é sempre de um profissional de saúde. Não realiza diagnóstico, não prescreve e não substitui profissionais habilitados. As estimativas citadas vêm das fontes indicadas em cada número e podem variar conforme o estudo e a região.</p>
  </div>
 </footer>

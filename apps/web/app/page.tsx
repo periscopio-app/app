@@ -47,7 +47,7 @@ function equipeHtml() {
   <div class="sec-head"><span class="eyebrow">Quem está por trás</span>
   <h2>Profissionais que cuidam do método e da plataforma</h2>
   <p class="lead">Psiquiatras, neuropsicóloga, fonoaudióloga e psicopedagoga supervisionam o método, discutem os casos mais difíceis e acompanham o piloto.</p></div>
-  <h3 class="grp">Board de especialistas</h3><div class="people">${board}</div>
+  <h3 class="grp">Board de especialistas</h3><div class="people board">${board}</div>
   <h3 class="grp">Pesquisa</h3><div class="people">${apoio}</div>
   <h3 class="grp">Tecnologia</h3><div class="people">${tec}</div>
   </div></section>`;
