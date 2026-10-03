@@ -10,29 +10,8 @@ export const LANDING_HTML = `<header>
 </header>
 
 <main id="topo">
-<!-- HERO -->
-<section class="hero">
- <div class="wrap hero-grid">
-  <div>
-   <span class="pill"><i></i>Piloto aberto para novos parceiros</span>
-   <h1>A escola percebe primeiro. O Periscópio mostra o caminho do cuidado.</h1>
-   <p class="lead">Uma plataforma que reúne escola, saúde e assistência social em um só fluxo. O professor registra o que observou, o profissional certo avalia e a história da criança não se perde no meio do caminho.</p>
-   <div class="cta-row">
-    <a class="btn btn-primary" href="#contato">Candidatar minha instituição ao piloto</a>
-    <a class="btn btn-ghost" href="#como">Ver como funciona</a>
-   </div>
-   <p class="small" style="margin-top:12px">Uma conversa para entender o seu caso. Sem compromisso.</p>
-   <div class="seek">
-    <strong>Estamos procurando parceiros para o piloto:</strong>
-    <div class="chips"><span class="chip">Prefeituras e secretarias</span><span class="chip">Escolas públicas e privadas</span><span class="chip">Instituições sem fins lucrativos</span></div>
-   </div>
-  </div>
+<!-- HERO COMPONENT MOUNT POINT -->
 
-  <div class="hero-illustration-wrap" style="position:relative;border-radius:28px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--surface);">
-   <img src="/hero-escola.png" alt="Saúde Mental na Escola — Enxergar cedo para cuidar a tempo de mudar o destino da criança" style="width:100%;height:auto;display:block;" loading="eager" />
-  </div>
- </div>
-</section>
 
 <!-- PROBLEMA -->
 <section class="problem" id="problema">

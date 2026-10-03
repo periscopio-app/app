@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import NotionTasksWidget from "@/components/admin/NotionTasksWidget";
 
 export default function SysAdminSetupPage() {
   const [nomeEscola, setNomeEscola] = useState("");
@@ -76,8 +77,8 @@ export default function SysAdminSetupPage() {
   };
 
   return (
-    <div className="auth-container" style={{ padding: "40px 16px" }}>
-      <div className="auth-card" style={{ maxWidth: "640px" }}>
+    <div className="auth-container flex-col gap-6" style={{ padding: "40px 16px" }}>
+      <div className="auth-card" style={{ maxWidth: "720px" }}>
         <div className="brand-header">
           <div className="brand-badge">
             <span className="pulse"></span>
@@ -273,6 +274,11 @@ export default function SysAdminSetupPage() {
             ← Voltar para o Início
           </Link>
         </div>
+      </div>
+
+      {/* Notion System Tasks Sync Widget */}
+      <div className="w-full max-w-[720px]">
+        <NotionTasksWidget />
       </div>
     </div>
   );

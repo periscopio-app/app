@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Hero from "./Hero";
 import "./landing.css";
 
 export default function LandingClient({ html }: { html: string }) {
@@ -125,12 +126,16 @@ export default function LandingClient({ html }: { html: string }) {
     return () => cleanups.forEach((fn) => fn());
   }, []);
 
+  const [topHtml, bottomHtml] = html.includes("<!-- HERO COMPONENT MOUNT POINT -->")
+    ? html.split("<!-- HERO COMPONENT MOUNT POINT -->")
+    : ["", html];
+
   return (
-    <div
-      id="piloto-root"
-      className="piloto"
-      // Conteúdo estático escrito pela equipe; não recebe entrada de usuário.
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div id="piloto-root" className="piloto">
+      {topHtml && <div dangerouslySetInnerHTML={{ __html: topHtml }} />}
+      <Hero />
+      {bottomHtml && <div dangerouslySetInnerHTML={{ __html: bottomHtml }} />}
+    </div>
   );
 }
+
