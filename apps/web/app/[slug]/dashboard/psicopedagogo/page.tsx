@@ -2,6 +2,8 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import ClinicalScalesForm from "@/components/evaluations/ClinicalScalesForm";
+import CourseCatalog from "@/components/lms/CourseCatalog";
 
 interface Student {
   id: string;
@@ -47,18 +49,15 @@ export default function PsicopedagogoDashboardPage({
   useEffect(() => {
     async function loadData() {
       try {
-        // 1. Busca dados da escola
         const schoolRes = await fetch(`${apiUrl}/api/schools/by-slug/${encodeURIComponent(slug)}`);
         const schoolData = await schoolRes.json();
         if (schoolRes.ok && schoolData.school) {
           setSchool(schoolData.school);
 
-          // 2. Busca alunos da escola
           const studentsRes = await fetch(`${apiUrl}/api/schools/${schoolData.school.id}/students`);
           const sData = await studentsRes.json();
           if (studentsRes.ok) setStudentsList(sData.students || []);
 
-          // 3. Busca profissionais da escola
           const profsRes = await fetch(`${apiUrl}/api/schools/${schoolData.school.id}/professionals`);
           const pData = await profsRes.json();
           if (profsRes.ok) setProfessionalsList(pData.professionals || []);
@@ -105,7 +104,6 @@ export default function PsicopedagogoDashboardPage({
     setDelegationSuccess(null);
 
     try {
-      // 1. Abre o Caso
       const caseRes = await fetch(`${apiUrl}/api/cases`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +118,6 @@ export default function PsicopedagogoDashboardPage({
         return;
       }
 
-      // 2. Delega as seções preenchidas
       const delegationList = Object.entries(delegations)
         .filter(([_, profId]) => Boolean(profId))
         .map(([specialty, professionalId]) => ({
@@ -275,7 +272,6 @@ export default function PsicopedagogoDashboardPage({
               Delegação de Seções por Especialidade:
             </h4>
 
-            {/* Delegações */}
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {[
                 { id: "fonoaudiologia", label: "Fonoaudiologia" },
@@ -305,7 +301,6 @@ export default function PsicopedagogoDashboardPage({
                           {p.name} ({p.specialty || p.role})
                         </option>
                       ))}
-                    {/* Fallback de todos os profissionais caso especialidade não coincida exatamente */}
                     {professionalsList.map((p) => (
                       <option key={`all-${p.id}`} value={p.id}>
                         {p.name} ({p.specialty})
@@ -321,6 +316,12 @@ export default function PsicopedagogoDashboardPage({
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Seções Adicionais: 1. Escalas Clínicas | 2. LMS Catálogo */}
+      <div className="space-y-6">
+        <ClinicalScalesForm studentId={selectedStudentId} />
+        <CourseCatalog />
       </div>
     </div>
   );

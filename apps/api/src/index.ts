@@ -15,6 +15,9 @@ import { onboardingRoutes } from "./routes/onboarding.routes";
 import { casesRoutes } from "./routes/cases.routes";
 import { leadsRoutes } from "./routes/leads.routes";
 import { usersRoutes } from "./routes/users.routes";
+import { notionRoutes } from "./routes/notion.routes";
+import { evaluationsRoutes } from "./routes/evaluations.routes";
+import { coursesRoutes } from "./routes/courses.routes";
 
 const app = Fastify({ logger: true });
 const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
@@ -54,6 +57,9 @@ app.register(onboardingRoutes);
 app.register(casesRoutes);
 app.register(leadsRoutes);
 app.register(usersRoutes);
+app.register(notionRoutes);
+app.register(evaluationsRoutes);
+app.register(coursesRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 
