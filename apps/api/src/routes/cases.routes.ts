@@ -4,9 +4,10 @@ import { db } from "../db/client";
 import { caseSummaries, cases, schools, students, users } from "@periscopio/shared";
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
+import { SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 
-const schoolRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi"] as const;
-const specialistRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "md1", "specialist"] as const;
+const schoolManagementRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi"] as const;
+const clinicalSummaryRoles = ["ppi", "md1", "specialist", "board"] as const;
 
 async function schoolVisibleTo(actor: Actor, schoolId: string) {
   const [school] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
@@ -29,7 +30,7 @@ async function caseVisibleTo(actor: Actor, caseId: string) {
 
 export async function casesRoutes(app: FastifyInstance) {
   app.post("/api/students", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, schoolManagementRoles);
     if (!actor) return;
 
     const body = request.body as { schoolId?: string; birthYear?: number };
@@ -54,7 +55,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/schools/:schoolId/students", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, schoolManagementRoles);
     if (!actor) return;
 
     const { schoolId } = request.params as { schoolId: string };
@@ -69,7 +70,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/schools/:schoolId/professionals", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, schoolManagementRoles);
     if (!actor) return;
 
     const { schoolId } = request.params as { schoolId: string };
@@ -90,7 +91,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, schoolManagementRoles);
     if (!actor) return;
 
     const body = request.body as { studentId?: string; status?: string; dataInicioIntervencao?: string };
@@ -112,7 +113,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases/:caseId/delegate", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, ["ppi"]);
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -148,8 +149,9 @@ export async function casesRoutes(app: FastifyInstance) {
     return reply.status(201).send({ success: true, sections: createdSections });
   });
 
+  // Endpoints estritamente clínicos — Apenas especialistas e papéis clínicos autorizados
   app.get("/api/cases/my-delegated-sections", async (request, reply) => {
-    const actor = await requireActor(request, reply, specialistRoles);
+    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
     if (!actor) return;
 
     const sections = await db
@@ -172,7 +174,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.patch("/api/cases/sections/:sectionId", async (request, reply) => {
-    const actor = await requireActor(request, reply, specialistRoles);
+    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
     if (!actor) return;
 
     const { sectionId } = request.params as { sectionId: string };
@@ -182,8 +184,9 @@ export async function casesRoutes(app: FastifyInstance) {
       .from(caseSummaries)
       .where(and(eq(caseSummaries.id, sectionId), eq(caseSummaries.tenantId, actor.tenantId)))
       .limit(1);
-    if (!section || (actor.role !== "admin_platform" && section.assignedProfessionalId !== actor.id)) {
-      return reply.status(404).send({ error: "Seção de prontuário não encontrada" });
+
+    if (!section || section.assignedProfessionalId !== actor.id) {
+      return reply.status(403).send({ error: "Acesso negado: você só pode editar seções atribuídas diretamente ao seu perfil profissional" });
     }
 
     const [updated] = await db
@@ -201,7 +204,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/cases/:caseId/full-summary", async (request, reply) => {
-    const actor = await requireActor(request, reply, schoolRoles);
+    const actor = await requireActor(request, reply, clinicalSummaryRoles);
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };

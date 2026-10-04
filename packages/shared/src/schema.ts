@@ -59,6 +59,16 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/** Vínculos explícitos entre usuários, escolas e papéis no escopo. */
+export const userSchoolAssignments = pgTable("user_school_assignments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  schoolId: uuid("school_id").notNull().references(() => schools.id),
+  role: varchar("role", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 /** Pseudonimizado — nunca guardar nome direto do aluno aqui. */
 export const students = pgTable("students", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -66,7 +76,24 @@ export const students = pgTable("students", {
   schoolId: uuid("school_id").notNull().references(() => schools.id),
   studentCode: varchar("student_code", { length: 64 }).notNull().unique(),
   birthYear: integer("birth_year"),
+  ageBracket: varchar("age_bracket", { length: 20 }), // ex: "04-06", "07-10"
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Cofre de Identidade do Aluno — Acesso Estritamente Restrito e Auditado.
+ * NUNCA consultado por BI ou perfis administrativos.
+ */
+export const studentIdentityVault = pgTable("student_identity_vault", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  studentId: uuid("student_id").notNull().references(() => students.id).unique(),
+  encryptedFullName: text("encrypted_full_name").notNull(),
+  encryptedDocument: text("encrypted_document"),
+  encryptedContact: text("encrypted_contact"),
+  lastAccessReason: text("last_access_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const teacherObservations = pgTable("teacher_observations", {
@@ -107,13 +134,17 @@ export const cases = pgTable("cases", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-/** Histórico imutável — apenas insert, nunca update/delete. */
+/** Histórico imutável — apenas insert, nunca update/delete. Rastreável por eventId UUID. */
 export const caseTimeline = pgTable("case_timeline", {
   id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").defaultRandom().notNull(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
   caseId: uuid("case_id").notNull().references(() => cases.id),
   actorId: uuid("actor_id").references(() => users.id),
   event: varchar("event", { length: 60 }).notNull(),
+  version: integer("version").default(1).notNull(),
+  previousVersionId: uuid("previous_version_id"),
+  correlationId: varchar("correlation_id", { length: 120 }),
   payload: jsonb("payload"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -161,14 +192,17 @@ export const enrollments = pgTable("enrollments", {
   completedAt: timestamp("completed_at"),
 });
 
-/** LGPD — retenção mínima de 5 anos. */
+/** LGPD — Rastreamento auditável imutável por eventId (Retenção mínima de 5 anos). */
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").defaultRandom().notNull(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
   actorId: uuid("actor_id").references(() => users.id),
   action: varchar("action", { length: 60 }).notNull(),
   entity: varchar("entity", { length: 60 }).notNull(),
   entityId: uuid("entity_id"),
+  correlationId: varchar("correlation_id", { length: 120 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -4,15 +4,14 @@ import { cases, students } from "@periscopio/shared";
 import { db } from "../db/client";
 import { requireActor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
+import { CLINICAL_ROLES, TRIAGEM_ROLES } from "../security/roles";
 import { canProceedToMedical, calculateAbcScore, calculateSnapIvScore } from "../services/triagem.service";
-
-const clinicalRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "md1"] as const;
 
 export async function triagemRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { isCrisisBypass?: boolean } }>(
     "/api/cases/:id/forward",
     async (request, reply) => {
-      const actor = await requireActor(request, reply, clinicalRoles);
+      const actor = await requireActor(request, reply, TRIAGEM_ROLES);
       if (!actor) return;
 
       const [caseItem] = await db
@@ -35,7 +34,7 @@ export async function triagemRoutes(app: FastifyInstance) {
   );
 
   app.post<{ Body: { respostas?: number[] } }>("/api/scoring/snap-iv", async (request, reply) => {
-    const actor = await requireActor(request, reply, clinicalRoles);
+    const actor = await requireActor(request, reply, CLINICAL_ROLES);
     if (!actor) return;
     if (!Array.isArray(request.body?.respostas) || request.body.respostas.length !== 18) {
       return reply.status(400).send({ error: "Informe as 18 respostas da escala" });
@@ -44,7 +43,7 @@ export async function triagemRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: { totalScore?: number } }>("/api/scoring/abc", async (request, reply) => {
-    const actor = await requireActor(request, reply, clinicalRoles);
+    const actor = await requireActor(request, reply, CLINICAL_ROLES);
     if (!actor) return;
     const totalScore = request.body?.totalScore;
     if (typeof totalScore !== "number" || !Number.isFinite(totalScore)) {
