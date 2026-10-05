@@ -15,10 +15,6 @@ const nextConfig = {
 
     return [
       {
-        source: "/api/auth/:path*",
-        destination: `${neonAuthUrl.replace(/\/$/, "")}/:path*`,
-      },
-      {
         source: "/api/:path*",
         destination: `${apiUrl.replace(/\/$/, "")}/api/:path*`,
       },
