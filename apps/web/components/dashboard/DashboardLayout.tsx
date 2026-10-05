@@ -109,6 +109,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       group: "Administração & RBAC",
       items: [
         {
+          label: "Gestão Municipal & SLA",
+          href: "/admin/municipal",
+          icon: Building2,
+          badge: "Rede",
+          exact: false,
+        },
+        {
           label: "Usuários & Privilégios",
           href: "/admin/users",
           icon: ShieldCheck,

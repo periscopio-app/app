@@ -172,7 +172,27 @@ export default function DashboardHubPage() {
             </Link>
           </div>
 
-          {/* Card 4: Provisionar Escola */}
+          {/* Card 4: Gestão Municipal & SLA */}
+          <div className="p-6 rounded-2xl bg-white border border-[#E1E9ED] flex flex-col justify-between hover:shadow-md hover:border-[#682880]/30 transition group">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-[#682880]/10 text-[#682880] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-[#14202B] mb-2">Gestão Municipal & SLA da Rede</h3>
+              <p className="text-xs text-[#5B6B78] leading-relaxed mb-4">
+                Visão agregada para gestores de saúde e educação acompanharem taxas de triagem precoce por escola, cumprimento do SLA de 120d e encaminhamentos ao SUS.
+              </p>
+            </div>
+            <Link
+              href="/admin/municipal"
+              className="inline-flex items-center justify-between pt-4 border-t border-[#E1E9ED] text-xs font-bold text-[#682880] hover:text-[#52206A] transition"
+            >
+              <span>Ver Dashboard Municipal</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Card 5: Provisionar Escola */}
           <div className="p-6 rounded-2xl bg-white border border-[#E1E9ED] flex flex-col justify-between hover:shadow-md hover:border-amber-300 transition group">
             <div>
               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
