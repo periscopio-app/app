@@ -7,23 +7,17 @@ import { createAuthClient } from "better-auth/react";
  * APP_URL/VERCEL_URL no servidor (build/prerender).
  */
 function resolveBaseURL(): string {
-  const configured =
-    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
-    (process.env.NEXT_PUBLIC_API_URL
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/auth`
-      : "http://localhost:3001/api/auth");
+  const neonAuthUrl =
+    process.env.NEXT_PUBLIC_NEON_AUTH_URL ||
+    process.env.NEON_AUTH_URL ||
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL;
 
-  if (/^https?:\/\//i.test(configured)) return configured;
+  if (neonAuthUrl && /^https?:\/\//i.test(neonAuthUrl) && !neonAuthUrl.includes("/api/auth")) {
+    return neonAuthUrl.replace(/\/$/, "");
+  }
 
-  const origin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : process.env.APP_URL ||
-        (process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : "http://localhost:3000");
-
-  return new URL(configured, origin).toString().replace(/\/$/, "");
+  // Neon Auth endpoint oficial gerenciado
+  return "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth";
 }
 
 export const authClient = createAuthClient({
