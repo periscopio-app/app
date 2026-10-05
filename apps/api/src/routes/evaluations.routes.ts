@@ -3,11 +3,12 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../db/client";
 import { evaluations } from "@periscopio/shared";
 import { requireActor } from "../security/actor";
+import { CLINICAL_ROLES } from "../security/roles";
 
 export async function evaluationsRoutes(app: FastifyInstance) {
-  // Submeter avaliação de escala clínica (M-CHAT, FOGAP, SRQ-20)
+  // Submeter avaliação de escala clínica (M-CHAT, FOGAP, SRQ-20) - Exige papel clínico
   app.post("/api/evaluations", async (request, reply) => {
-    const actor = await requireActor(request, reply);
+    const actor = await requireActor(request, reply, CLINICAL_ROLES);
     if (!actor) return;
 
     const body = request.body as {
@@ -38,9 +39,9 @@ export async function evaluationsRoutes(app: FastifyInstance) {
     });
   });
 
-  // Listar avaliações clínicas por aluno ou escala
+  // Listar avaliações clínicas por aluno ou escala - Exige papel clínico
   app.get("/api/evaluations", async (request, reply) => {
-    const actor = await requireActor(request, reply);
+    const actor = await requireActor(request, reply, CLINICAL_ROLES);
     if (!actor) return;
 
     const { studentId, scale } = request.query as { studentId?: string; scale?: string };

@@ -8,12 +8,16 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/components/AuthProvider";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <ServiceWorkerRegister />
+        </AuthProvider>
       </body>
     </html>
   );
