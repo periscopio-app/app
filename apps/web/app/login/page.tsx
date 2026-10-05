@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [showAutoSignUpPrompt, setShowAutoSignUpPrompt] = useState(false);
 
   const handleGoogleLogin = async () => {
     try {
@@ -28,25 +29,67 @@ export default function LoginPage() {
     }
   };
 
+  const handleQuickMasterLogin = async (masterEmail: string, masterPass: string) => {
+    setEmail(masterEmail);
+    setPassword(masterPass);
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    setShowAutoSignUpPrompt(false);
+
+    try {
+      const res = await authClient.signIn.email({
+        email: masterEmail,
+        password: masterPass,
+        callbackURL: "/dashboard",
+      });
+
+      if (res.error) {
+        // Fallback: Tenta criar a conta master se ela não existir no ambiente
+        const signUpRes = await authClient.signUp.email({
+          email: masterEmail,
+          password: masterPass,
+          name: masterEmail.includes("bruno") ? "Bruno Bisogni" : "Administrador Master",
+          callbackURL: "/dashboard",
+        });
+
+        if (signUpRes.error) {
+          setError(signUpRes.error.message || "Erro ao conectar conta master.");
+        } else {
+          setSuccessMsg("Conta Master configurada e autenticada! Redirecionando...");
+          setTimeout(() => router.push("/dashboard"), 1000);
+        }
+      } else {
+        setSuccessMsg("Autenticado com sucesso! Redirecionando...");
+        setTimeout(() => router.push("/dashboard"), 500);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Erro ao autenticar com conta Master.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
     setLoading(true);
+    setShowAutoSignUpPrompt(false);
 
     try {
       if (isSignUp) {
         const res = await authClient.signUp.email({
           email,
           password,
-          name,
+          name: name || email.split("@")[0],
           callbackURL: "/dashboard",
         });
         if (res.error) {
           setError(res.error.message || "Erro ao criar conta.");
         } else {
           setSuccessMsg("Conta criada com sucesso! Redirecionando...");
-          setTimeout(() => router.push("/dashboard"), 1200);
+          setTimeout(() => router.push("/dashboard"), 1000);
         }
       } else {
         const res = await authClient.signIn.email({
@@ -55,13 +98,42 @@ export default function LoginPage() {
           callbackURL: "/dashboard",
         });
         if (res.error) {
-          setError(res.error.message || "Credenciais inválidas. Verifique seu e-mail e senha.");
+          setError("Credenciais não encontradas ou senha incorreta.");
+          setShowAutoSignUpPrompt(true);
         } else {
-          router.push("/dashboard");
+          setSuccessMsg("Conectado com sucesso!");
+          setTimeout(() => router.push("/dashboard"), 500);
         }
       }
     } catch (err: any) {
       setError(err?.message || "Ocorreu um erro na autenticação.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAutoCreateAccount = async () => {
+    if (!email || !password) {
+      setIsSignUp(true);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await authClient.signUp.email({
+        email,
+        password,
+        name: name || email.split("@")[0],
+        callbackURL: "/dashboard",
+      });
+      if (res.error) {
+        setError(res.error.message || "Erro ao criar conta.");
+      } else {
+        setSuccessMsg("Sua conta foi criada e autenticada! Redirecionando...");
+        setTimeout(() => router.push("/dashboard"), 1000);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Erro ao criar conta.");
     } finally {
       setLoading(false);
     }
@@ -80,9 +152,20 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="alert-box alert-error">
-            <span>⚠️</span>
-            <span>{error}</span>
+          <div className="alert-box alert-error flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+            {showAutoSignUpPrompt && (
+              <button
+                type="button"
+                onClick={handleAutoCreateAccount}
+                className="mt-2 w-full py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition"
+              >
+                ➔ Criar esta conta agora com este e-mail
+              </button>
+            )}
           </div>
         )}
 
@@ -183,6 +266,33 @@ export default function LoginPage() {
             {loading ? "Processando..." : isSignUp ? "Cadastrar" : "Acessar Plataforma"}
           </button>
         </form>
+
+        {/* Atalhos Rápidos para Acesso Master / Demo */}
+        <div className="mt-4 pt-4 border-t border-[#E1E9ED]">
+          <p className="text-[11px] font-bold text-[#5B6B78] uppercase tracking-wider mb-2 text-center">
+            Acesso Rápido Master (1-Clique):
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                handleQuickMasterLogin("admin@projetoperiscopio.com.br", "Periscopio@Master2026!")
+              }
+              className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#682880] flex items-center justify-center gap-2 transition"
+            >
+              <span>🔑 Entrar como Admin Master</span>
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickMasterLogin("bruno@oceanoazul.dev.br", "Amor121314@#$")}
+              className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#14202B] flex items-center justify-center gap-2 transition"
+            >
+              <span>🔑 Entrar como Bruno Bisogni</span>
+            </button>
+          </div>
+        </div>
 
         <div className="auth-footer">
           {isSignUp ? (
