@@ -44,6 +44,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [pathname]);
 
+  // Handle ESC key press to close mobile menu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Prevent background scrolling when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+  }, [mobileMenuOpen]);
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -115,48 +133,65 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#F6F9FB] text-[#14202B] flex flex-col md:flex-row font-sans">
-      {/* Mobile Header Bar */}
+      {/* Mobile First Sticky Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E1E9ED] sticky top-0 z-40 shadow-sm">
-        <Link href="/" aria-label="Periscópio — início">
+        <Link href="/" aria-label="Periscópio — início" className="flex items-center gap-2">
           <img src="/equipe/logo.webp" alt="Logo do Periscópio" className="h-9 w-auto" />
         </Link>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-[#5B6B78] hover:text-[#14202B] rounded-lg hover:bg-[#F0F9FC] transition"
-          aria-label="Alternar Menu de Navegação"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-[#682880] bg-[#682880]/10 px-2 py-0.5 rounded-full border border-[#682880]/20">
+            NEMT
+          </span>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2.5 text-[#14202B] hover:text-[#682880] rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] transition active:scale-95"
+            aria-label={mobileMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </header>
 
-      {/* Overlay Backdrop for Mobile */}
+      {/* Overlay Backdrop for Mobile Menu */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
           onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation Drawer (Mobile First) */}
       <aside
         className={`
           fixed md:static inset-y-0 left-0 z-50
-          w-72 bg-white border-r border-[#E1E9ED]
-          flex flex-col justify-between shadow-sm
+          w-72 max-w-[85vw] md:max-w-none md:w-72 bg-white border-r border-[#E1E9ED]
+          flex flex-col justify-between shadow-2xl md:shadow-sm
           transform transition-transform duration-300 ease-in-out
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
         <div className="flex flex-col h-full overflow-y-auto">
-          {/* Logo no Canto Superior + Status do Sistema */}
+          {/* Logo no Canto Superior + Botão Fechar no Mobile */}
           <div className="p-5 border-b border-[#E1E9ED]">
-            <Link href="/" aria-label="Periscópio — início" className="block">
-              <img
-                src="/equipe/logo.webp"
-                alt="Logo do Periscópio Saúde"
-                className="h-11 w-auto object-contain hover:opacity-90 transition-opacity"
-              />
-            </Link>
+            <div className="flex items-center justify-between">
+              <Link href="/" aria-label="Periscópio — início" className="block">
+                <img
+                  src="/equipe/logo.webp"
+                  alt="Logo do Periscópio Saúde"
+                  className="h-10 w-auto object-contain hover:opacity-90 transition-opacity"
+                />
+              </Link>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="md:hidden p-1.5 rounded-lg text-[#5B6B78] hover:text-[#14202B] hover:bg-[#F0F9FC]"
+                aria-label="Fechar menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             <div className="mt-3 flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#682880] bg-[#682880]/10 px-2.5 py-1 rounded-full border border-[#682880]/20">
@@ -194,7 +229,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`
-                          flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group
+                          flex items-center justify-between px-3.5 py-3 md:py-2.5 rounded-xl text-sm font-semibold transition-all group
                           ${
                             active
                               ? "bg-[#682880] text-white shadow-sm"
@@ -204,7 +239,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       >
                         <div className="flex items-center gap-3">
                           <Icon
-                            className={`w-4 h-4 transition-colors ${
+                            className={`w-5 h-5 md:w-4 md:h-4 transition-colors ${
                               active ? "text-white" : "text-[#5B6B78] group-hover:text-[#682880]"
                             }`}
                           />
@@ -272,7 +307,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content Container */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Utility Header */}
+        {/* Top Utility Header (Desktop) */}
         <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/90 backdrop-blur-md border-b border-[#E1E9ED] sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-3 w-96 bg-[#F6F9FB] border border-[#E1E9ED] rounded-xl px-3 py-2 text-xs text-[#14202B]">
             <Search className="w-4 h-4 text-[#5B6B78]" />
@@ -303,7 +338,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Page Content */}
-        <div className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">{children}</div>
+        <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">{children}</div>
       </main>
     </div>
   );
