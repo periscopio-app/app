@@ -5,5 +5,9 @@ export default defineConfig({
   format: ["esm"],
   platform: "node",
   clean: true,
+  shims: true,
+  banner: {
+    js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+  },
   noExternal: ["@periscopio/shared"],
 });
