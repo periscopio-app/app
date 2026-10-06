@@ -106,10 +106,12 @@ export default function AdminUsersPage() {
   const [novoNome, setNovoNome] = useState("");
   const [novoEmail, setNovoEmail] = useState("");
   const [novoRole, setNovoRole] = useState("school_manager");
-  const [novaSenha, setNovaSenha] = useState("Periscopio@2026!");
+  const [novaSenha, setNovaSenha] = useState("");
   const [novoTelefone, setNovoTelefone] = useState("");
   const [novoConselho, setNovoConselho] = useState("");
   const [novaEspecialidade, setNovaEspecialidade] = useState("");
+  const [novaEscola, setNovaEscola] = useState("");
+  const [schoolsList, setSchoolsList] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
@@ -118,6 +120,8 @@ export default function AdminUsersPage() {
   const [editRole, setEditRole] = useState("");
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+  const ROLES_WITH_SCHOOL = ["ppi", "specialist", "school_manager", "teacher"];
 
   const fetchUsers = async () => {
     try {
@@ -138,8 +142,19 @@ export default function AdminUsersPage() {
     }
   };
 
+  const fetchSchools = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/schools`, { credentials: "include" });
+      const data = await res.json();
+      if (res.ok) setSchoolsList(data.schools || []);
+    } catch {
+      // não bloqueia o carregamento da página
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSchools();
   }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -157,10 +172,11 @@ export default function AdminUsersPage() {
           name: novoNome,
           email: novoEmail,
           role: novoRole,
-          password: novaSenha,
+          password: novaSenha || undefined,
           phone: novoTelefone || undefined,
           classCode: novoConselho || undefined,
           specialty: novaEspecialidade || undefined,
+          schoolId: novaEscola || undefined,
         }),
       });
 
@@ -173,9 +189,11 @@ export default function AdminUsersPage() {
       setModalOpen(false);
       setNovoNome("");
       setNovoEmail("");
+      setNovaSenha("");
       setNovoTelefone("");
       setNovoConselho("");
       setNovaEspecialidade("");
+      setNovaEscola("");
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -472,14 +490,37 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
 
+                {ROLES_WITH_SCHOOL.includes(novoRole) && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Escola / Unidade <span className="text-rose-400">*</span>
+                    </label>
+                    <select
+                      value={novaEscola}
+                      onChange={(e) => setNovaEscola(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione a escola...</option>
+                      {schoolsList.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Senha Inicial</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Senha Inicial
+                      <span className="ml-1 text-slate-500 font-normal">(deixe vazio para gerar)</span>
+                    </label>
                     <input
-                      type="text"
+                      type="password"
                       value={novaSenha}
                       onChange={(e) => setNovaSenha(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                      placeholder="••••••••••••"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>

@@ -16,8 +16,9 @@ function resolveBaseURL(): string {
     return neonAuthUrl.replace(/\/$/, "");
   }
 
-  // Neon Auth endpoint oficial gerenciado
-  return "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth";
+  // Sem URL configurada: usa proxy local (dev) ou falha em produção
+  if (typeof window !== "undefined") return window.location.origin + "/api/auth";
+  return "http://localhost:3001";
 }
 
 export const authClient = createAuthClient({
