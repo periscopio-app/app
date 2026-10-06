@@ -57,6 +57,13 @@
       "when": 1728234000000,
       "tag": "0007_notifications_event_id_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791318000000,
+      "tag": "0008_auth_views_updatable",
+      "breakpoints": true
     }
   ]
 }
