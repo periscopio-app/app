@@ -13,6 +13,15 @@ async function handler(req: Request) {
   headers.delete("host");
   headers.set("Host", targetUrl.host);
 
+  // Normalização de Origin para aceitar deploys de preview e subdomínios da Vercel
+  const incomingOrigin = headers.get("origin");
+  if (incomingOrigin && (incomingOrigin.includes("vercel.app") || incomingOrigin.includes("localhost"))) {
+    // Se o domínio for da Vercel, garante o origin configurado no Neon Auth
+    if (incomingOrigin.includes("vercel.app") && !incomingOrigin.includes("periscopio.vercel.app")) {
+      headers.set("Origin", "https://periscopio.vercel.app");
+    }
+  }
+
   const res = await fetch(targetUrl.toString(), {
     method: req.method,
     headers,
@@ -20,7 +29,29 @@ async function handler(req: Request) {
     redirect: "manual",
   });
 
-  const responseHeaders = new Headers(res.headers);
+  const responseHeaders = new Headers();
+  res.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "set-cookie") {
+      responseHeaders.set(key, value);
+    }
+  });
+
+  // Preserva múltiplos cookies Set-Cookie sem quebrar formatação
+  const setCookies = (res.headers as any).getSetCookie?.() || [];
+  if (setCookies.length > 0) {
+    for (const cookie of setCookies) {
+      responseHeaders.append("set-cookie", cookie);
+    }
+  } else {
+    const rawCookie = res.headers.get("set-cookie");
+    if (rawCookie) {
+      responseHeaders.set("set-cookie", rawCookie);
+    }
+  }
+
+  // Não armazenar auth em cache
+  responseHeaders.set("cache-control", "no-store, max-age=0");
+
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,

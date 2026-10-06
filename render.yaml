@@ -42,6 +42,18 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      - key: SEED_MASTER_1_EMAIL
+        sync: false
+      - key: SEED_MASTER_1_PASSWORD
+        sync: false
+      - key: SEED_MASTER_1_NAME
+        sync: false
+      - key: SEED_MASTER_2_EMAIL
+        sync: false
+      - key: SEED_MASTER_2_PASSWORD
+        sync: false
+      - key: SEED_MASTER_2_NAME
+        sync: false
 
   - type: keyvalue
     name: periscopio-redis
