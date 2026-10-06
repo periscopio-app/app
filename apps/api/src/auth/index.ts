@@ -7,10 +7,17 @@ import { Pool } from "pg";
  * RBAC próprio do domínio (admin_platform, municipal_manager, school_manager,
  * teacher, ppi, md1, board, researcher) fica em `users.role`, ver packages/shared/src/schema.ts.
  */
-const authSecret =
-  process.env.BETTER_AUTH_SECRET ||
-  process.env.AUTH_SECRET ||
-  "periscopio_secret_key_neon_auth_sa_east_1";
+const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
+const authBaseUrl = process.env.BETTER_AUTH_URL || process.env.NEON_AUTH_URL;
+
+if (process.env.NODE_ENV === "production") {
+  if (!authSecret) {
+    throw new Error("BETTER_AUTH_SECRET é obrigatória em produção.");
+  }
+  if (!authBaseUrl) {
+    throw new Error("BETTER_AUTH_URL é obrigatória em produção.");
+  }
+}
 
 export const auth = betterAuth({
   database: new Pool({
@@ -22,8 +29,8 @@ export const auth = betterAuth({
         ? { rejectUnauthorized: false }
         : undefined,
   }),
-  secret: authSecret,
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEON_AUTH_URL || "https://ep-green-sun-b6elixxo.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth",
+  secret: authSecret ?? "dev_only_secret_replace_in_production",
+  baseURL: authBaseUrl ?? "http://localhost:3001",
   emailAndPassword: {
     enabled: true,
   },

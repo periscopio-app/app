@@ -51,19 +51,25 @@ export async function leadsRoutes(app: FastifyInstance) {
 
     app.log.info("novo lead capturado");
 
+    const safeNome = escapeHtml(nome);
+    const safeEmail = escapeHtml(email);
+    const safeEscola = escapeHtml(escola);
+    const safeCargo = escapeHtml(CARGOMAP[cargo] ?? cargo);
+    const safeRede = rede === "publica" ? "Pública" : "Privada";
+
     // Notificação interna — não bloqueia a resposta
     sendEmail(
       "equipe@projetoperiscopio.com.br",
-      `Novo interesse no piloto: ${escola}`,
+      `Novo interesse no piloto: ${safeEscola}`,
       `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px">
-          <h2 style="margin:0 0 24px;color:#0f172a">Novo interesse no piloto 🎯</h2>
+          <h2 style="margin:0 0 24px;color:#0f172a">Novo interesse no piloto</h2>
           <table style="width:100%;border-collapse:collapse">
-            <tr><td style="padding:8px 0;color:#64748b;width:120px">Nome</td><td style="padding:8px 0;font-weight:600">${nome}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">E-mail</td><td style="padding:8px 0"><a href="mailto:${email}">${email}</a></td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">Escola</td><td style="padding:8px 0">${escola}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">Cargo</td><td style="padding:8px 0">${CARGOMAP[cargo] ?? cargo}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b">Rede</td><td style="padding:8px 0">${rede === "publica" ? "Pública" : "Privada"}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b;width:120px">Nome</td><td style="padding:8px 0;font-weight:600">${safeNome}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">E-mail</td><td style="padding:8px 0"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Escola</td><td style="padding:8px 0">${safeEscola}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Cargo</td><td style="padding:8px 0">${safeCargo}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748b">Rede</td><td style="padding:8px 0">${safeRede}</td></tr>
           </table>
           <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">Periscópio Saúde · Lead capturado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
         </div>
