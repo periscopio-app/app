@@ -254,6 +254,7 @@ export async function usersRoutes(app: FastifyInstance) {
           specialty: body.specialty,
           tenantId,
           schoolId: body.schoolId || null,
+          accessEnabled: true, // criado pelo admin da plataforma (e-mail já marcado como verificado)
         })
         .returning();
 

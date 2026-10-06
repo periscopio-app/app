@@ -5,6 +5,7 @@ import { db } from "../db/client";
 import { tenants, schools, users, onboardingInvites } from "@periscopio/shared";
 import { sendEmail } from "../email";
 import { requireActor } from "../security/actor";
+import { professionalInviteEmail } from "../email/templates";
 
 export async function onboardingRoutes(app: FastifyInstance) {
   /**
@@ -276,6 +277,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
         name: school.responsavelNome || "Gestor Escolar",
         phone: school.responsavelTelefone,
         role: "school_manager",
+        accessEnabled: true, // abriu o link enviado ao e-mail dele
       })
       .onConflictDoNothing();
 
@@ -307,6 +309,34 @@ export async function onboardingRoutes(app: FastifyInstance) {
           .returning();
 
         registeredProfessionals.push(createdProf);
+
+        // Convite por e-mail: o acesso só é liberado quando o profissional confirma.
+        if (createdProf) {
+          const inviteToken = randomBytes(32).toString("hex");
+          await db.insert(onboardingInvites).values({
+            tenantId: school.tenantId,
+            schoolId: school.id,
+            email: createdProf.email,
+            token: inviteToken,
+            type: "professional",
+            role,
+            specialty: prof.specialty,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          });
+
+          const apiPublic = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+          const mail = professionalInviteEmail({
+            name: prof.name,
+            schoolName: school.name,
+            specialty: prof.specialty,
+            confirmUrl: `${apiPublic}/api/onboarding/confirm-professional?token=${inviteToken}`,
+          });
+          try {
+            await sendEmail(createdProf.email, mail.subject, mail.html);
+          } catch (err) {
+            request.log.error({ err }, "falha ao enviar convite de profissional");
+          }
+        }
       }
     }
 
@@ -328,5 +358,41 @@ export async function onboardingRoutes(app: FastifyInstance) {
       professionalsCount: registeredProfessionals.length,
       professionals: registeredProfessionals,
     };
+  });
+
+  /**
+   * 5. Confirmação do e-mail do profissional (link do convite enviado pela escola).
+   * Libera users.access_enabled e redireciona para o login.
+   */
+  app.get("/api/onboarding/confirm-professional", async (request, reply) => {
+    const { token } = request.query as { token?: string };
+    const web = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+
+    if (!token) return reply.redirect(`${web}/login?convite=invalido`, 302);
+
+    const [invite] = await db
+      .select()
+      .from(onboardingInvites)
+      .where(eq(onboardingInvites.token, token))
+      .limit(1);
+
+    if (!invite || invite.type !== "professional") {
+      return reply.redirect(`${web}/login?convite=invalido`, 302);
+    }
+    if (invite.usedAt) return reply.redirect(`${web}/login?convite=confirmado`, 302);
+    if (new Date() > new Date(invite.expiresAt)) {
+      return reply.redirect(`${web}/login?convite=expirado`, 302);
+    }
+
+    await db
+      .update(users)
+      .set({ accessEnabled: true })
+      .where(eq(users.email, invite.email.toLowerCase()));
+    await db
+      .update(onboardingInvites)
+      .set({ usedAt: new Date() })
+      .where(eq(onboardingInvites.id, invite.id));
+
+    return reply.redirect(`${web}/login?convite=confirmado`, 302);
   });
 }

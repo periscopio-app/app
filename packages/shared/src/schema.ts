@@ -57,6 +57,8 @@ export const users = pgTable("users", {
   specialty: varchar("specialty", { length: 50 }), // psicopedagogia | medicina | fonoaudiologia | psicologia | psicomotricidade | servico_social
   role: varchar("role", { length: 40 }).notNull(),
   // admin_platform | municipal_manager | school_manager | teacher | ppi | md1 | board | researcher | specialist
+  // Só vira true quando o profissional confirma o e-mail do convite enviado pela escola.
+  accessEnabled: boolean("access_enabled").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
