@@ -1,0 +1,1 @@
+ALTER TABLE "students" ADD COLUMN "birth_month" integer;

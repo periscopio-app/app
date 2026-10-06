@@ -6,7 +6,9 @@ import { requireActor } from "../security/actor";
 
 export async function coursesRoutes(app: FastifyInstance) {
   // Listar catálogo de cursos disponíveis no LMS Periscópio
-  app.get("/api/courses", async (_request, reply) => {
+  app.get("/api/courses", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
     const list = await db.select().from(courses);
     return reply.send({
       total: list.length,
@@ -32,6 +34,8 @@ export async function coursesRoutes(app: FastifyInstance) {
 
   // Obter detalhes de um curso e suas aulas
   app.get("/api/courses/:id", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
     const { id } = request.params as { id: string };
 
     const [course] = await db

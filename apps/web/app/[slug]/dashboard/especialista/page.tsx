@@ -1,17 +1,14 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api, type CaseSection, type Me } from "@/lib/api";
+import { RoleBanner } from "@/components/ui/RoleBanner";
+import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
 
-interface DelegatedSection {
-  id: string;
-  caseId: string;
-  specialty: string;
-  status: string;
-  notes: string;
-  summary: any;
+interface AssignedSection extends CaseSection {
   studentCode: string;
-  birthYear: number;
+  birthYear: number | null;
 }
 
 export default function EspecialistaDashboardPage({
@@ -20,281 +17,273 @@ export default function EspecialistaDashboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const router = useRouter();
 
-  const [school, setSchool] = useState<any>(null);
-  const [emailInput, setEmailInput] = useState("");
-  const [assignedSections, setAssignedSections] = useState<DelegatedSection[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeSection, setActiveSection] = useState<DelegatedSection | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const [sections, setSections] = useState<AssignedSection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Form de sumarização clínica da especialidade
-  const [summaryText, setSummaryText] = useState("");
+  const [activeSection, setActiveSection] = useState<AssignedSection | null>(null);
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadSchool() {
+    async function boot() {
       try {
-        const res = await fetch(`${apiUrl}/api/schools/by-slug/${encodeURIComponent(slug)}`);
-        const data = await res.json();
-        if (res.ok && data.school) setSchool(data.school);
-      } catch (e) {
-        console.error("Erro ao carregar escola", e);
-      }
-    }
-    loadSchool();
-  }, [slug, apiUrl]);
+        const meData = await api.get<{ user: Me }>("/api/me");
+        setMe(meData.user);
 
-  const handleFetchSections = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!emailInput) return;
-    setLoading(true);
-    setSaveSuccess(null);
-
-    try {
-      const res = await fetch(`${apiUrl}/api/cases/my-delegated-sections?email=${encodeURIComponent(emailInput)}`);
-      const data = await res.json();
-      if (res.ok) {
-        setAssignedSections(data.assignedSections || []);
-        if (data.assignedSections && data.assignedSections.length > 0) {
-          selectSection(data.assignedSections[0]);
-        }
-      } else {
-        alert(data.error || "Profissional não encontrado nesta escola.");
-      }
-    } catch (err) {
-      alert("Erro ao buscar seções.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectSection = (sec: DelegatedSection) => {
-    setActiveSection(sec);
-    setSummaryText(sec.summary?.clinicalNotes || sec.notes || "");
-    setSaveSuccess(null);
-  };
-
-  const handleSaveSummary = async (markAsCompleted = false) => {
-    if (!activeSection) return;
-    setSaving(true);
-    setSaveSuccess(null);
-
-    try {
-      const res = await fetch(`${apiUrl}/api/cases/sections/${activeSection.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          summary: {
-            clinicalNotes: summaryText,
-            specialty: activeSection.specialty,
-            savedAt: new Date().toISOString(),
-          },
-          markAsCompleted,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSaveSuccess(markAsCompleted ? "Sumarização concluída e salva no prontuário!" : "Rascunho salvo com sucesso.");
-        // Atualiza status local
-        setAssignedSections(
-          assignedSections.map((s) =>
-            s.id === activeSection.id
-              ? { ...s, status: markAsCompleted ? "concluido" : "em_andamento" }
-              : s
-          )
+        const data = await api.get<{ assignedSections: AssignedSection[] }>(
+          "/api/cases/my-delegated-sections"
         );
-      } else {
-        alert("Erro ao salvar sumarização.");
+        const secs = data.assignedSections ?? [];
+        setSections(secs);
+        if (secs.length > 0) selectSection(secs[0]);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message.includes("Sessão")) {
+          router.push(`/${slug}/login`);
+        } else {
+          setError("Erro ao carregar seções. Verifique sua sessão e tente novamente.");
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      alert("Erro de rede ao salvar.");
+    }
+    boot();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  function selectSection(sec: AssignedSection) {
+    setActiveSection(sec);
+    setNotes(
+      typeof sec.summary === "object" && sec.summary !== null
+        ? String((sec.summary as Record<string, unknown>).clinicalNotes ?? sec.notes ?? "")
+        : sec.notes ?? ""
+    );
+    setSaveMsg(null);
+  }
+
+  async function handleSave(markAsCompleted: boolean) {
+    if (!activeSection) return;
+    if (activeSection.status === "concluido") return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      await api.patch(`/api/cases/sections/${activeSection.id}`, {
+        notes,
+        summary: {
+          clinicalNotes: notes,
+          specialty: activeSection.specialty,
+          savedAt: new Date().toISOString(),
+        },
+        markAsCompleted,
+      });
+      const updatedStatus = markAsCompleted ? "concluido" : "em_andamento";
+      setSections((prev) =>
+        prev.map((s) => (s.id === activeSection.id ? { ...s, status: updatedStatus } : s))
+      );
+      setActiveSection((prev) => (prev ? { ...prev, status: updatedStatus } : prev));
+      setSaveMsg(
+        markAsCompleted
+          ? "Parecer concluído e registrado no prontuário."
+          : "Rascunho salvo."
+      );
+    } catch (err: unknown) {
+      setSaveMsg(err instanceof Error ? err.message : "Erro ao salvar.");
     } finally {
       setSaving(false);
     }
-  };
+  }
+
+  const isReadOnly = activeSection?.status === "concluido";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-tinta-500 text-sm">
+        Carregando seções delegadas...
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard-container" style={{ maxWidth: "1050px" }}>
-      <header className="dashboard-header">
-        <div>
-          <div className="brand-badge">
-            <span className="pulse"></span>
-            {school?.name} • Portal do Especialista
-          </div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginTop: "6px" }}>
-            Sumarização Clínica por Especialidade
-          </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-            Você tem acesso restrito <strong>apenas às seções delegadas à sua especialidade</strong>.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {me && <RoleBanner me={me} />}
 
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Link href={`/${slug}/dashboard/psicopedagogo`} className="btn-secondary" style={{ textDecoration: "none", fontSize: "0.85rem" }}>
-            ← Painel Psicopedagogo
-          </Link>
-          <Link href={`/${slug}/login`} className="btn-secondary" style={{ textDecoration: "none", fontSize: "0.85rem" }}>
-            Sair
-          </Link>
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-erro">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
-      </header>
+      )}
 
-      {/* Identificação do profissional */}
-      <div className="card" style={{ marginBottom: "24px", padding: "16px 20px" }}>
-        <form onSubmit={handleFetchSections} style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label className="form-label">Digite seu E-mail Cadastrado na Escola</label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="ex: fonoaudiologia@saude.gov.br"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="btn-primary" style={{ width: "auto", padding: "12px 24px", height: "46px" }}>
-            {loading ? "Buscando..." : "Carregar Minhas Seções"}
-          </button>
-        </form>
+      <div>
+        <h1 className="text-2xl font-bold text-tinta-900">Portal do Especialista</h1>
+        <p className="text-sm text-tinta-500 mt-0.5">
+          Você tem acesso apenas às seções delegadas à sua especialidade.
+        </p>
       </div>
 
-      {assignedSections.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px" }}>
-          {/* Coluna Esquerda: Lista de seções atribuídas */}
-          <div className="card" style={{ padding: "18px" }}>
-            <h3 style={{ fontSize: "1rem", marginBottom: "14px" }}>
-              Casos Atribuídos ({assignedSections.length})
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {assignedSections.map((sec) => (
-                <div
+      {sections.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
+          <Stethoscope className="h-10 w-10 text-tinta-500/40 mb-3" />
+          <p className="text-sm font-semibold text-tinta-700">
+            Nenhuma seção delegada no momento
+          </p>
+          <p className="text-xs text-tinta-500 mt-1">
+            O médico responsável pelo caso irá delegar seções para sua especialidade.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Section list */}
+          <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
+            <h2 className="text-sm font-bold text-tinta-900 mb-3 flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 text-roxo" />
+              Seções atribuídas ({sections.length})
+            </h2>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {sections.map((sec) => (
+                <button
                   key={sec.id}
                   onClick={() => selectSection(sec)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    background: activeSection?.id === sec.id ? "rgba(59, 130, 246, 0.2)" : "rgba(0,0,0,0.25)",
-                    border: `1px solid ${activeSection?.id === sec.id ? "var(--primary)" : "rgba(255,255,255,0.06)"}`,
-                    transition: "all 0.2s",
-                  }}
+                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
+                    activeSection?.id === sec.id
+                      ? "border-roxo bg-roxo-100"
+                      : "border-linha hover:bg-fundo"
+                  }`}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <strong style={{ fontSize: "0.95rem" }}>{sec.studentCode}</strong>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-tinta-900">{sec.studentCode}</span>
                     <span
-                      style={{
-                        fontSize: "0.72rem",
-                        padding: "2px 8px",
-                        borderRadius: "99px",
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        background: sec.status === "concluido" ? "rgba(16, 185, 129, 0.2)" : "rgba(234, 179, 8, 0.2)",
-                        color: sec.status === "concluido" ? "#6ee7b7" : "#fde047",
-                      }}
+                      className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                        sec.status === "concluido"
+                          ? "bg-sucesso/10 text-sucesso"
+                          : sec.status === "em_andamento"
+                          ? "bg-ceu-100 text-ceu-800"
+                          : "bg-ouro-100 text-ouro-800"
+                      }`}
                     >
                       {sec.status}
                     </span>
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                    Especialidade: <strong>{sec.specialty.toUpperCase()}</strong>
+                  <div className="text-[11px] text-tinta-500 mt-0.5 capitalize">
+                    {sec.specialty}
+                    {sec.birthYear ? ` · nasc. ${sec.birthYear}` : ""}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Coluna Direita: Editor de Sumarização Clínica */}
-          {activeSection && (
-            <div className="card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-                <div>
-                  <div className="brand-badge" style={{ fontSize: "0.72rem" }}>
-                    Seção: {activeSection.specialty.toUpperCase()}
+          {/* Editor panel */}
+          <div className="lg:col-span-2">
+            {!activeSection ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
+                <Stethoscope className="h-10 w-10 text-tinta-500/40 mb-3" />
+                <p className="text-sm text-tinta-700">Selecione uma seção para redigir o parecer</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white border border-linha p-6 shadow-suave space-y-5">
+                {/* Section header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-roxo-800 bg-roxo-100 rounded-full px-2.5 py-0.5 capitalize">
+                      {activeSection.specialty}
+                    </span>
+                    <h2 className="mt-2 text-lg font-bold text-tinta-900">
+                      Aluno: {activeSection.studentCode}
+                    </h2>
+                    {activeSection.birthYear && (
+                      <p className="text-xs text-tinta-500">
+                        Ano de nascimento: {activeSection.birthYear}
+                      </p>
+                    )}
                   </div>
-                  <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginTop: "4px" }}>
-                    Prontuário do Aluno: {activeSection.studentCode}
-                  </h2>
-                  <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                    Ano de Nascimento: {activeSection.birthYear}
-                  </p>
+                  <span
+                    className={`text-xs font-bold rounded-full px-2.5 py-1 ${
+                      activeSection.status === "concluido"
+                        ? "bg-sucesso/10 text-sucesso"
+                        : activeSection.status === "em_andamento"
+                        ? "bg-ceu-100 text-ceu-800"
+                        : "bg-ouro-100 text-ouro-800"
+                    }`}
+                  >
+                    {activeSection.status}
+                  </span>
                 </div>
 
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    padding: "4px 10px",
-                    borderRadius: "99px",
-                    textTransform: "uppercase",
-                    fontWeight: 700,
-                    background: activeSection.status === "concluido" ? "rgba(16, 185, 129, 0.2)" : "rgba(234, 179, 8, 0.2)",
-                    color: activeSection.status === "concluido" ? "#6ee7b7" : "#fde047",
-                  }}
-                >
-                  {activeSection.status}
-                </span>
-              </div>
+                {isReadOnly && (
+                  <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-sucesso">
+                    <CheckCircle className="h-4 w-4 shrink-0" />
+                    Parecer concluído e registrado no prontuário. Edição bloqueada.
+                  </div>
+                )}
 
-              {saveSuccess && (
-                <div className="alert-box alert-success" style={{ fontSize: "0.85rem" }}>
-                  <span>✓</span>
-                  <span>{saveSuccess}</span>
+                {saveMsg && (
+                  <div
+                    className={`rounded-xl px-4 py-3 text-sm ${
+                      saveMsg.includes("concluído") || saveMsg.includes("salvo")
+                        ? "bg-sucesso/10 text-sucesso"
+                        : "bg-erro/10 text-erro"
+                    }`}
+                  >
+                    {saveMsg}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-tinta-700 mb-1.5">
+                    Parecer clínico — {activeSection.specialty}
+                    {!isReadOnly && <span className="text-erro ml-1">*</span>}
+                  </label>
+                  <textarea
+                    rows={10}
+                    disabled={isReadOnly}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={`Descreva suas observações clínicas, marcos avaliados, evolução e recomendações terapêuticas para ${activeSection.specialty}...`}
+                    className="w-full rounded-xl border border-linha px-3 py-3 text-sm text-tinta-900 resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-tinta-500"
+                  />
                 </div>
-              )}
 
-              <div className="form-group">
-                <label className="form-label">
-                  Sumarização Clínica & Parecer da Especialidade ({activeSection.specialty}) *
-                </label>
-                <textarea
-                  className="form-input"
-                  rows={8}
-                  style={{ resize: "vertical", lineHeight: "1.5" }}
-                  placeholder={`Descreva aqui as observações clínicas, marcos avaliados, evolução e recomendações terapêuticas da ${activeSection.specialty}...`}
-                  value={summaryText}
-                  onChange={(e) => setSummaryText(e.target.value)}
-                />
-              </div>
+                {!isReadOnly && (
+                  <div className="flex items-center justify-between pt-2 border-t border-linha">
+                    <div className="flex items-center gap-1.5 text-[11px] text-tinta-500">
+                      <Lock className="h-3 w-3" />
+                      Ao concluir, o parecer fica imutável no prontuário.
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => handleSave(false)}
+                        className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-tinta-700 hover:bg-fundo transition disabled:opacity-60"
+                      >
+                        Salvar rascunho
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving || !notes.trim()}
+                        onClick={() => handleSave(true)}
+                        className="flex items-center gap-2 rounded-xl bg-roxo px-5 py-2 text-sm font-semibold text-white hover:bg-roxo-800 disabled:opacity-60 transition"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        {saving ? "Salvando..." : "Concluir parecer"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleSaveSummary(false)}
-                  className="btn-secondary"
-                >
-                  {saving ? "Salvando..." : "Salvar Rascunho"}
-                </button>
-                <button
-                  type="button"
-                  disabled={saving || !summaryText}
-                  onClick={() => handleSaveSummary(true)}
-                  className="btn-primary"
-                  style={{ width: "auto", padding: "10px 24px" }}
-                >
-                  {saving ? "Finalizando..." : "Concluir Sumarização"}
-                </button>
+                <p className="text-[11px] text-tinta-500 border-t border-linha pt-3">
+                  🔒 Assegure que nenhum identificador direto não autorizado conste no texto livre.
+                  Este parecer faz parte do Prontuário Multidisciplinar Consolidado.
+                </p>
               </div>
-
-              <div className="lgpd-notice" style={{ marginTop: "20px" }}>
-                🔒 Este parecer fará parte do Prontuário Multidisciplinar Consolidado da escola.
-                Assegure que nenhum identificador direto não autorizado conste no texto livre.
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        emailInput && !loading && (
-          <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-            <p style={{ color: "var(--text-muted)" }}>
-              Nenhuma seção de prontuário delegada para o e-mail informado nesta escola.
-            </p>
+            )}
           </div>
-        )
+        </div>
       )}
     </div>
   );

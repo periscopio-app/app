@@ -303,19 +303,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
             specialty: prof.specialty,
             role,
           })
-          .onConflictDoUpdate({
-            target: users.email,
-            set: {
-              tenantId: school.tenantId,
-              schoolId: school.id,
-              name: prof.name,
-              phone: prof.phone,
-              cpf: prof.cpf,
-              classCode: prof.classCode,
-              specialty: prof.specialty,
-              role,
-            },
-          })
+          .onConflictDoNothing()
           .returning();
 
         registeredProfessionals.push(createdProf);

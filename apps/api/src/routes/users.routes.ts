@@ -100,6 +100,38 @@ export const SYSTEM_ROLES_CATALOG = [
 
 export async function usersRoutes(app: FastifyInstance) {
   /**
+   * 0. Perfil do usuário autenticado (qualquer papel)
+   */
+  app.get("/api/me", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+
+    const [user] = await db
+      .select({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId, schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, actor.id))
+      .limit(1);
+
+    if (!user) { reply.status(404); return { error: "Usuário não encontrado" }; }
+    return { user };
+  });
+
+  /**
+   * 1a. Listar escolas (para dropdown no cadastro de usuário)
+   */
+  app.get("/api/admin/schools", async (request, reply) => {
+    const actor = await requireActor(request, reply, ["admin_platform"]);
+    if (!actor) return;
+
+    const list = await db
+      .select({ id: schools.id, name: schools.name, slug: schools.slug })
+      .from(schools)
+      .orderBy(schools.name);
+
+    return { schools: list };
+  });
+
+  /**
    * 1. Obter catálogo de papéis e regras de privilégios
    */
   app.get("/api/admin/roles", async (request, reply) => {
@@ -186,7 +218,7 @@ export async function usersRoutes(app: FastifyInstance) {
     // Tenant padrão se não informado
     const tenantId = body.tenantId || "00000000-0000-0000-0000-000000000001";
     const userId = crypto.randomUUID();
-    const initialPassword = body.password || "Periscopio@2026!";
+    const initialPassword = body.password || crypto.randomBytes(16).toString("hex");
     const hashedPassword = await hashPassword(initialPassword);
 
     try {
@@ -227,8 +259,8 @@ export async function usersRoutes(app: FastifyInstance) {
 
       return {
         user: newUser,
-        initialPassword,
-        message: "Usuário criado com sucesso com privilégios de " + body.role,
+        message:
+          "Usuário criado com sucesso. Comunique a senha inicial por canal seguro fora do sistema.",
       };
     } catch (err: any) {
       request.log.error(err, "Erro ao criar usuário");

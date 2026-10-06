@@ -1,27 +1,32 @@
 import type { FastifyInstance } from "fastify";
 import { fetchNotionBoardTasks } from "../services/notion.service";
+import { requireActor } from "../security/actor";
 
 export async function notionRoutes(app: FastifyInstance) {
   // Endpoint de sincronização e inventário de tarefas do Notion
-  app.get("/api/notion/sync", async (_request, reply) => {
+  app.get("/api/notion/sync", async (request, reply) => {
+    const actor = await requireActor(request, reply, ["admin_platform"]);
+    if (!actor) return;
     try {
       const summary = await fetchNotionBoardTasks();
       return reply.send({
         success: true,
         summary,
         notionConfigured: Boolean(process.env.NOTION_API_KEY),
-        databaseId: process.env.NOTION_DATABASE_ID || "3de22e9df44c8010a6d3e984b965654a",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "erro desconhecido";
       return reply.status(500).send({
         error: "Falha ao sincronizar com o Notion",
-        details: err?.message,
+        details: message,
       });
     }
   });
 
   // Endpoint para listar tarefas por status
   app.get("/api/notion/tasks", async (request, reply) => {
+    const actor = await requireActor(request, reply, ["admin_platform"]);
+    if (!actor) return;
     const { status } = request.query as { status?: string };
     const summary = await fetchNotionBoardTasks();
 

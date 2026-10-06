@@ -21,18 +21,28 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+const p1 = process.env.SEED_MASTER_1_PASSWORD;
+const p2 = process.env.SEED_MASTER_2_PASSWORD;
+
+if (!p1 || !p2) {
+  console.error(
+    "SEED_MASTER_1_PASSWORD e SEED_MASTER_2_PASSWORD são obrigatórias no ambiente."
+  );
+  process.exit(1);
+}
+
 const MASTERS = [
   {
     email: "bruno@oceanoazul.dev.br",
     name: "Bruno Bisogni",
     role: "admin_platform",
-    password: "Amor121314@#$",
+    password: p1,
   },
   {
     email: "admin@projetoperiscopio.com.br",
     name: "Administrador Master",
     role: "admin_platform",
-    password: process.env.MASTER_PASSWORD || "Periscopio@Master2026!",
+    password: p2,
   },
 ];
 
@@ -123,9 +133,8 @@ async function main() {
     }
 
     console.log("\n✅ Ambos os usuários master foram criados com sucesso!");
-    console.log("Credenciais configuradas:");
     for (const m of MASTERS) {
-      console.log(`- Email: ${m.email} | Perfil: ${m.role} | Senha inicial: ${m.password}`);
+      console.log(`- Email: ${m.email} | Perfil: ${m.role}`);
     }
   } catch (err) {
     console.error("Erro ao rodar seed de masters:", err);

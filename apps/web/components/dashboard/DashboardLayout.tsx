@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 import {
-  LayoutDashboard,
   FileText,
   Stethoscope,
   ShieldCheck,
   Building2,
-  GraduationCap,
   LogOut,
   Menu,
   X,
@@ -19,6 +18,7 @@ import {
   Search,
   ArrowUpRight,
 } from "lucide-react";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -30,6 +30,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get<{ user: { role: string } }>("/api/me")
+      .then(({ user }) => setUserRole(user.role))
+      .catch(() => null);
+  }, []);
 
   // Infer slug from URL if user is in /[slug]/...
   useEffect(() => {
@@ -71,66 +78,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const clinicalItems = [
+    { role: "ppi", label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
+    { role: "school_manager", label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
+    { role: "md1", label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
+    { role: "specialist", label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
+  ];
+
+  const visibleClinical = userRole
+    ? clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false }))
+    : [];
+
+  const visibleAdmin = userRole === "admin_platform"
+    ? [
+        { label: "Usuários & Privilégios", href: "/admin/users", icon: ShieldCheck, badge: "Master", exact: false },
+        { label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup", exact: false },
+      ]
+    : [];
+
   const navItems = [
-    {
-      group: "Módulos Principais",
-      items: [
-        {
-          label: "Visão Geral",
-          href: "/dashboard",
-          icon: LayoutDashboard,
-          badge: null,
-          exact: true,
-        },
-        {
-          label: "Gestão Clínica (PpI)",
-          href: `/${currentSlug}/dashboard/psicopedagogo`,
-          icon: FileText,
-          badge: "NEMT",
-          exact: false,
-        },
-        {
-          label: "Portal do Especialista",
-          href: `/${currentSlug}/dashboard/especialista`,
-          icon: Stethoscope,
-          badge: "Parecer",
-          exact: false,
-        },
-        {
-          label: "Capacitação & LMS",
-          href: `/${currentSlug}/dashboard/psicopedagogo#lms`,
-          icon: GraduationCap,
-          badge: "Cursos",
-          exact: false,
-        },
-      ],
-    },
-    {
-      group: "Administração & RBAC",
-      items: [
-        {
-          label: "Gestão Municipal & SLA",
-          href: "/admin/municipal",
-          icon: Building2,
-          badge: "Rede",
-          exact: false,
-        },
-        {
-          label: "Usuários & Privilégios",
-          href: "/admin/users",
-          icon: ShieldCheck,
-          badge: "Master",
-          exact: false,
-        },
-        {
-          label: "Provisionar Escola",
-          href: "/admin/setup",
-          icon: Building2,
-          badge: "Setup",
-          exact: false,
-        },
-      ],
-    },
+    ...(visibleClinical.length > 0 ? [{ group: "Fluxo Clínico", items: visibleClinical }] : []),
+    ...(visibleAdmin.length > 0 ? [{ group: "Administração", items: visibleAdmin }] : []),
   ];
 
   const isActive = (href: string, exact: boolean) => {
@@ -325,9 +293,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             />
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <NotificationCenter />
             <Link
-              href={`/${currentSlug}/dashboard/psicopedagogo`}
+              href={`/${currentSlug}/dashboard/re`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#682880] hover:bg-[#52206A] text-white shadow-sm transition"
             >
               <span>+ Novo Prontuário</span>
@@ -338,7 +307,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-[#14202B] border border-[#E1E9ED] transition"
             >
-              <span>Suporte Técnico</span>
+              <span>Suporte</span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[#5B6B78]" />
             </a>
           </div>

@@ -8,6 +8,7 @@ import {
   boolean,
   integer,
   date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -76,6 +77,7 @@ export const students = pgTable("students", {
   schoolId: uuid("school_id").notNull().references(() => schools.id),
   studentCode: varchar("student_code", { length: 64 }).notNull().unique(),
   birthYear: integer("birth_year"),
+  birthMonth: integer("birth_month"), // 1–12; null = não informado
   ageBracket: varchar("age_bracket", { length: 20 }), // ex: "04-06", "07-10"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -126,7 +128,9 @@ export const cases = pgTable("cases", {
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
   studentId: uuid("student_id").notNull().references(() => students.id),
   status: varchar("status", { length: 30 }).notNull(),
-  // triagem | sisreg | investigacao | reabilitacao
+  // triagem | sisreg | investigacao | reabilitacao (legado, mantido por compatibilidade)
+  journeyState: varchar("journey_state", { length: 30 }).notNull().default("rascunho"),
+  // rascunho | enviado_re | revisao_medica | delegado | retornado | encerrado
   assignedToId: uuid("assigned_to_id").references(() => users.id),
   dataInicioIntervencao: date("data_inicio_intervencao"),
   slaDueAt: timestamp("sla_due_at"),
@@ -245,6 +249,43 @@ export const onboardingInvites = pgTable("onboarding_invites", {
 });
 
 /**
+ * Histórico de transições de estado do caso — append-only.
+ * Toda mudança de journeyState deve passar por esta tabela na mesma transação.
+ */
+export const caseTransitions = pgTable("case_transitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  fromState: varchar("from_state", { length: 30 }),
+  toState: varchar("to_state", { length: 30 }).notNull(),
+  actorId: uuid("actor_id").references(() => users.id),
+  actorRole: varchar("actor_role", { length: 40 }).notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * Avaliação do RE (FOGAP + avaliação institucional).
+ * Após status = 'enviado', o payload é imutável (trigger no banco).
+ * Reabertura só por devolução formal do médico (status → 'devolvido').
+ */
+export const reAssessments = pgTable("re_assessments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  formCode: varchar("form_code", { length: 60 }).notNull(),
+  formVersion: varchar("form_version", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("rascunho"),
+  // rascunho | enviado | devolvido
+  payload: jsonb("payload").notNull().default({}),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: uuid("submitted_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
  * Seções do Prontuário Multidisciplinar delegadas por especialidade.
  * Cada especialista acessa e sumariza apenas a sua especialidade.
  */
@@ -265,3 +306,28 @@ export const caseSummaries = pgTable("case_summaries", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+
+/**
+ * Central de notificações in-app.
+ * Toast é aviso transitório; persistente fica até leitura.
+ * Sem e-mail, push ou WhatsApp por padrão (fora do Anexo I, item 9.1 iv).
+ * event_id garante idempotência: mesmo evento entregue duas vezes gera 1 aviso.
+ */
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  eventId: text("event_id").notNull(), // idempotency key: e.g. "protocolo.enviado:re_assessment_id:recipient_id"
+  eventType: varchar("event_type", { length: 60 }).notNull(),
+  recipientId: uuid("recipient_id").notNull().references(() => users.id),
+  caseId: uuid("case_id").references(() => cases.id),
+  instrument: varchar("instrument", { length: 30 }),
+  specialty: varchar("specialty", { length: 50 }),
+  docType: varchar("doc_type", { length: 80 }),
+  studentCode: varchar("student_code", { length: 64 }),
+  transient: boolean("transient").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  dismissedAt: timestamp("dismissed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("notifications_event_id_unique").on(t.eventId),
+]);

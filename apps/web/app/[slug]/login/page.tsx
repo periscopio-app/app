@@ -48,7 +48,7 @@ export default function SchoolLoginPage({
       setError(null);
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: `/${slug}/dashboard/psicopedagogo`,
+        callbackURL: `/${slug}/dashboard`,
       });
     } catch (err: any) {
       setError(err?.message || "Erro ao conectar com Google.");
@@ -65,13 +65,13 @@ export default function SchoolLoginPage({
       const res = await authClient.signIn.email({
         email,
         password,
-        callbackURL: `/${slug}/dashboard/psicopedagogo`,
+        callbackURL: `/${slug}/dashboard`,
       });
 
       if (res.error) {
         setError(res.error.message || "Credenciais inválidas.");
       } else {
-        router.push(`/${slug}/dashboard/psicopedagogo`);
+        router.push(`/${slug}/dashboard`);
       }
     } catch (err: any) {
       setError(err?.message || "Falha na autenticação.");

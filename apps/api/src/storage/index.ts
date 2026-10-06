@@ -8,7 +8,11 @@ const supabaseUrl =
   process.env.SUPABASE_URL ||
   (process.env.SUPABASE_PROJECT_REF
     ? `https://${process.env.SUPABASE_PROJECT_REF}.supabase.co`
-    : "https://rnaivkktezcjttjmtznn.supabase.co");
+    : undefined);
+
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL ou SUPABASE_PROJECT_REF é obrigatória.");
+}
 
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -16,31 +20,29 @@ const supabaseKey =
   process.env.SUPABASE_KEY ||
   "";
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl!, supabaseKey);
 
 const BUCKET = process.env.SUPABASE_BUCKET ?? "periscopio-uploads";
+
+const SIGNED_URL_EXPIRY = 600; // segundos
 
 export async function uploadObject(
   key: string,
   body: Buffer | Uint8Array,
   contentType: string
 ) {
-  const { data, error } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(key, body, {
       contentType,
       upsert: true,
     });
 
-  if (error) {
-    throw new Error(`Falha no upload para o Supabase Storage: ${error.message}`);
+  if (uploadError) {
+    throw new Error(`Falha no upload para o Supabase Storage: ${uploadError.message}`);
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from(BUCKET)
-    .getPublicUrl(key);
-
-  return publicUrlData.publicUrl;
+  return createSignedUrl(key, SIGNED_URL_EXPIRY);
 }
 
 export async function getObject(key: string) {

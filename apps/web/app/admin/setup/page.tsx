@@ -47,6 +47,7 @@ export default function SysAdminSetupPage() {
     try {
       const res = await fetch(`${apiUrl}/api/admin/instances`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nomeEscola,
