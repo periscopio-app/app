@@ -31,6 +31,11 @@ export const auth = betterAuth({
   }),
   secret: authSecret ?? "dev_only_secret_replace_in_production",
   baseURL: authBaseUrl ?? "http://localhost:3001",
+  // As tabelas de auth (neon_auth.*) usam colunas uuid; o Better Auth gera ids
+  // alfanumericos por padrao, o que quebra o INSERT.
+  advanced: {
+    database: { generateId: "uuid" },
+  },
   emailAndPassword: {
     enabled: true,
   },
@@ -41,7 +46,7 @@ export const auth = betterAuth({
       enabled: Boolean(process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
     },
   },
-  trustedOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web.vercel.app")
+  trustedOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
