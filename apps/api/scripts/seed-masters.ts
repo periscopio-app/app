@@ -21,30 +21,38 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+const e1 = process.env.SEED_MASTER_1_EMAIL;
 const p1 = process.env.SEED_MASTER_1_PASSWORD;
-const p2 = process.env.SEED_MASTER_2_PASSWORD;
+const n1 = process.env.SEED_MASTER_1_NAME || "Administrador Master 1";
 
-if (!p1 || !p2) {
+const e2 = process.env.SEED_MASTER_2_EMAIL;
+const p2 = process.env.SEED_MASTER_2_PASSWORD;
+const n2 = process.env.SEED_MASTER_2_NAME || "Administrador Master 2";
+
+if (!e1 || !p1) {
   console.error(
-    "SEED_MASTER_1_PASSWORD e SEED_MASTER_2_PASSWORD são obrigatórias no ambiente."
+    "Erro: SEED_MASTER_1_EMAIL e SEED_MASTER_1_PASSWORD são obrigatórias no ambiente para executar o seed."
   );
   process.exit(1);
 }
 
-const MASTERS = [
+const MASTERS: Array<{ email: string; name: string; role: string; password: string }> = [
   {
-    email: "bruno@oceanoazul.dev.br",
-    name: "Bruno Bisogni",
+    email: e1,
+    name: n1,
     role: "admin_platform",
     password: p1,
   },
-  {
-    email: "admin@projetoperiscopio.com.br",
-    name: "Administrador Master",
+];
+
+if (e2 && p2) {
+  MASTERS.push({
+    email: e2,
+    name: n2,
     role: "admin_platform",
     password: p2,
-  },
-];
+  });
+}
 
 async function main() {
   const client = await pool.connect();

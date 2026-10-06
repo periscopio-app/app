@@ -8,12 +8,16 @@ const nextConfig = {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:3001";
 
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl.replace(/\/$/, "")}/api/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${apiUrl.replace(/\/$/, "")}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 

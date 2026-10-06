@@ -93,10 +93,10 @@ export default function ThreeBackground() {
     window.addEventListener("resize", onResize);
 
     let animationFrameId: number;
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
-      const elapsedTime = clock.getElapsedTime();
+      const elapsedTime = (performance.now() - startTime) / 1000;
 
       particles.rotation.y = elapsedTime * 0.05 + mouseX * 0.15;
       particles.rotation.x = elapsedTime * 0.03 + mouseY * 0.15;

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/**/*.test.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "seed:masters": "tsx scripts/seed-masters.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",

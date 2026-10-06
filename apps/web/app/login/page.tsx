@@ -29,7 +29,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickMasterLogin = async (masterEmail: string, masterPass: string) => {
+  const handleQuickMasterLogin = async (
+    masterEmail: string,
+    masterPass: string,
+    masterName?: string
+  ) => {
     setEmail(masterEmail);
     setPassword(masterPass);
     setError(null);
@@ -49,7 +53,7 @@ export default function LoginPage() {
         const signUpRes = await authClient.signUp.email({
           email: masterEmail,
           password: masterPass,
-          name: masterEmail.includes("bruno") ? "Bruno Bisogni" : "Administrador Master",
+          name: masterName || masterEmail.split("@")[0],
           callbackURL: "/dashboard",
         });
 
@@ -267,32 +271,49 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Atalhos Rápidos para Acesso Master / Demo */}
-        <div className="mt-4 pt-4 border-t border-[#E1E9ED]">
-          <p className="text-[11px] font-bold text-[#5B6B78] uppercase tracking-wider mb-2 text-center">
-            Acesso Rápido Master (1-Clique):
-          </p>
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() =>
-                handleQuickMasterLogin("admin@projetoperiscopio.com.br", "Periscopio@Master2026!")
-              }
-              className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#682880] flex items-center justify-center gap-2 transition"
-            >
-              <span>🔑 Entrar como Admin Master</span>
-            </button>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleQuickMasterLogin("bruno@oceanoazul.dev.br", "Amor121314@#$")}
-              className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#14202B] flex items-center justify-center gap-2 transition"
-            >
-              <span>🔑 Entrar como Bruno Bisogni</span>
-            </button>
-          </div>
-        </div>
+        {/* Atalhos Rápidos para Acesso Master / Demo (Apenas se configurado via Variáveis de Ambiente) */}
+        {(() => {
+          const m1Email = process.env.NEXT_PUBLIC_MASTER_1_EMAIL;
+          const m1Pass = process.env.NEXT_PUBLIC_MASTER_1_PASSWORD;
+          const m1Name = process.env.NEXT_PUBLIC_MASTER_1_NAME || "Administrador Master 1";
+          const m2Email = process.env.NEXT_PUBLIC_MASTER_2_EMAIL;
+          const m2Pass = process.env.NEXT_PUBLIC_MASTER_2_PASSWORD;
+          const m2Name = process.env.NEXT_PUBLIC_MASTER_2_NAME || "Administrador Master 2";
+
+          if ((!m1Email || !m1Pass) && (!m2Email || !m2Pass)) {
+            return null;
+          }
+
+          return (
+            <div className="mt-4 pt-4 border-t border-[#E1E9ED]">
+              <p className="text-[11px] font-bold text-[#5B6B78] uppercase tracking-wider mb-2 text-center">
+                Acesso Rápido Master:
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {m1Email && m1Pass && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleQuickMasterLogin(m1Email, m1Pass, m1Name)}
+                    className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#682880] flex items-center justify-center gap-2 transition"
+                  >
+                    <span>🔑 Entrar como {m1Name}</span>
+                  </button>
+                )}
+                {m2Email && m2Pass && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleQuickMasterLogin(m2Email, m2Pass, m2Name)}
+                    className="w-full py-2 px-3 rounded-xl bg-[#F0F9FC] hover:bg-[#E1E9ED] border border-[#E1E9ED] text-xs font-bold text-[#14202B] flex items-center justify-center gap-2 transition"
+                  >
+                    <span>🔑 Entrar como {m2Name}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="auth-footer">
           {isSignUp ? (
