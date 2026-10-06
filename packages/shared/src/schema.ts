@@ -8,6 +8,7 @@ import {
   boolean,
   integer,
   date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -315,7 +316,7 @@ export const caseSummaries = pgTable("case_summaries", {
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
-  eventId: text("event_id").notNull(), // idempotency key: e.g. "protocolo.enviado:re_assessment_id"
+  eventId: text("event_id").notNull(), // idempotency key: e.g. "protocolo.enviado:re_assessment_id:recipient_id"
   eventType: varchar("event_type", { length: 60 }).notNull(),
   recipientId: uuid("recipient_id").notNull().references(() => users.id),
   caseId: uuid("case_id").references(() => cases.id),
@@ -327,4 +328,6 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("read_at"),
   dismissedAt: timestamp("dismissed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [
+  uniqueIndex("notifications_event_id_unique").on(t.eventId),
+]);

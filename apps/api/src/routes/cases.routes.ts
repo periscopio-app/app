@@ -625,6 +625,8 @@ export async function casesRoutes(app: FastifyInstance) {
     const { summary, notes, markAsCompleted } = parse.data;
     const newStatus = markAsCompleted ? "concluido" : "em_andamento";
 
+    let allDone = false;
+
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
 
@@ -648,8 +650,8 @@ export async function casesRoutes(app: FastifyInstance) {
       });
 
       if (markAsCompleted) {
-        const done = await allSectionsDone(txDb, section.caseId, actor.tenantId);
-        if (done) {
+        allDone = await allSectionsDone(txDb, section.caseId, actor.tenantId);
+        if (allDone) {
           await applyTransitionInTx(
             txDb,
             section.caseId,
@@ -660,6 +662,43 @@ export async function casesRoutes(app: FastifyInstance) {
         }
       }
     });
+
+    // Notifica médico(s) quando especialista conclui seção
+    if (markAsCompleted) {
+      const [caseRow] = await db
+        .select({ studentId: cases.studentId })
+        .from(cases)
+        .where(and(eq(cases.id, section.caseId), eq(cases.tenantId, actor.tenantId)))
+        .limit(1);
+
+      let studentCode: string | undefined;
+      if (caseRow?.studentId) {
+        const [stu] = await db
+          .select({ studentCode: students.studentCode })
+          .from(students)
+          .where(eq(students.id, caseRow.studentId))
+          .limit(1);
+        studentCode = stu?.studentCode ?? undefined;
+      }
+
+      const medicos = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.tenantId, actor.tenantId), eq(users.role, "md1")));
+
+      const eventType = allDone ? "delegacao.todas_devolvidas" : "delegacao.devolvida";
+      for (const medico of medicos) {
+        await notificar({
+          tenantId: actor.tenantId,
+          eventId: `${eventType}:${section.caseId}:${section.specialty}:${medico.id}`,
+          eventType,
+          recipientId: medico.id,
+          caseId: section.caseId,
+          specialty: section.specialty,
+          studentCode,
+        });
+      }
+    }
 
     return { success: true, newStatus };
   });

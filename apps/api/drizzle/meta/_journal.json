@@ -50,6 +50,13 @@
       "when": 1791306334115,
       "tag": "0006_jittery_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1728234000000,
+      "tag": "0007_notifications_event_id_unique",
+      "breakpoints": true
     }
   ]
 }
