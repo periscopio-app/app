@@ -21,7 +21,7 @@ export default function SchoolLoginPage({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiUrl = "";
 
   useEffect(() => {
     async function loadSchool() {

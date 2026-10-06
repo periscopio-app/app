@@ -24,7 +24,7 @@ export default function PsicopedagogoDashboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiUrl = "";
 
   const [school, setSchool] = useState<any>(null);
   const [studentsList, setStudentsList] = useState<Student[]>([]);

@@ -129,7 +129,7 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
     setError(null);
     setSuccess(null);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const apiUrl = "";
 
     try {
       const res = await fetch(`${apiUrl}/api/evaluations`, {

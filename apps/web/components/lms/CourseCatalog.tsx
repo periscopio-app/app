@@ -129,7 +129,7 @@ export default function CourseCatalog() {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiUrl = "";
 
   useEffect(() => {
     async function loadCourses() {
