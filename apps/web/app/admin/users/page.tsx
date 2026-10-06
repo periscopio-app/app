@@ -119,7 +119,7 @@ export default function AdminUsersPage() {
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [editRole, setEditRole] = useState("");
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiUrl = "";
 
   const ROLES_WITH_SCHOOL = ["ppi", "specialist", "school_manager", "teacher"];
 

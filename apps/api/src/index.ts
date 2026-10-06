@@ -21,7 +21,7 @@ import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
 import { notificationsRoutes } from "./routes/notifications.routes";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, trustProxy: true });
 const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
   .split(",")
   .map((origin) => origin.trim())

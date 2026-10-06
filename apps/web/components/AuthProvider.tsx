@@ -1,13 +1,9 @@
 "use client";
 
-import { NeonAuthUIProvider } from "@neondatabase/neon-js/auth/react";
-import "@neondatabase/neon-js/ui/css";
-import { neon } from "@/lib/neon";
-
+/**
+ * A sessão vive no Better Auth da API (ver lib/auth-client.ts). O provider do
+ * Neon Auth foi removido: ele criava uma sessão paralela que a API não reconhece.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <NeonAuthUIProvider authClient={neon.auth}>
-      {children}
-    </NeonAuthUIProvider>
-  );
+  return <>{children}</>;
 }

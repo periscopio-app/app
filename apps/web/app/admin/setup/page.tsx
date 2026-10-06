@@ -42,7 +42,7 @@ export default function SysAdminSetupPage() {
     setError(null);
     setLoading(true);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const apiUrl = "";
 
     try {
       const res = await fetch(`${apiUrl}/api/admin/instances`, {
