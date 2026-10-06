@@ -1,5 +1,7 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import { sendEmail } from "../email/index";
+import { resetPasswordEmail, verificationEmail } from "../email/templates";
 
 /**
  * Better Auth com Postgres (Neon) como storage de sessão/usuário.
@@ -16,6 +18,26 @@ if (process.env.NODE_ENV === "production") {
   }
   if (!authBaseUrl) {
     throw new Error("BETTER_AUTH_URL é obrigatória em produção.");
+  }
+}
+
+const emailEnabled = Boolean(process.env.RESEND_API_KEY);
+
+/**
+ * O Better Auth monta os links com a URL da API (Render). Trocamos pela origem do
+ * site (APP_URL): o Next repassa /api/* para a API, e o cookie fica first-party.
+ */
+function toWebUrl(url: string): string {
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) return url;
+  try {
+    const u = new URL(url);
+    const web = new URL(appUrl);
+    u.protocol = web.protocol;
+    u.host = web.host;
+    return u.toString();
+  } catch {
+    return url;
   }
 }
 
@@ -38,6 +60,27 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // Só exigir confirmação quando o envio de e-mail estiver configurado E a flag ligada;
+    // caso contrário ninguém conseguiria entrar.
+    requireEmailVerification: emailEnabled && process.env.AUTH_REQUIRE_EMAIL_VERIFICATION === "true",
+    sendResetPassword: async ({ user, url }) => {
+      if (!emailEnabled) return;
+      const mail = resetPasswordEmail(user.name || user.email, toWebUrl(url));
+      await sendEmail(user.email, mail.subject, mail.html).catch((err) =>
+        console.error("[auth] falha ao enviar e-mail de redefinição:", err?.message ?? err),
+      );
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: emailEnabled,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      if (!emailEnabled) return;
+      const mail = verificationEmail(user.name || user.email, toWebUrl(url));
+      await sendEmail(user.email, mail.subject, mail.html).catch((err) =>
+        console.error("[auth] falha ao enviar e-mail de confirmação:", err?.message ?? err),
+      );
+    },
   },
   socialProviders: {
     google: {
