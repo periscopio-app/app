@@ -6,6 +6,7 @@ import { tenants, schools, users, onboardingInvites } from "@periscopio/shared";
 import { sendEmail } from "../email";
 import { requireActor } from "../security/actor";
 import { professionalInviteEmail } from "../email/templates";
+import { upsertCredential } from "../auth/credentials";
 
 export async function onboardingRoutes(app: FastifyInstance) {
   /**
@@ -220,7 +221,13 @@ export async function onboardingRoutes(app: FastifyInstance) {
       return { valid: false, error: "Este convite não pertence a esta escola." };
     }
 
-    return { valid: true, school: school ? { name: school.name, slug: school.slug, branding: school.branding } : null };
+    return {
+      valid: true,
+      type: invite.type,
+      email: invite.email,
+      specialty: invite.specialty,
+      school: school ? { name: school.name, slug: school.slug, branding: school.branding } : null,
+    };
   });
 
   /**
@@ -281,6 +288,18 @@ export async function onboardingRoutes(app: FastifyInstance) {
       })
       .onConflictDoNothing();
 
+    if (body.responsavelPassword) {
+      if (body.responsavelPassword.length < 8) {
+        reply.status(400);
+        return { error: "A senha deve ter pelo menos 8 caracteres." };
+      }
+      await upsertCredential({
+        email: school.responsavelEmail || invite.email,
+        name: school.responsavelNome || "Gestor Escolar",
+        password: body.responsavelPassword,
+      });
+    }
+
     // 2. Cadastra os profissionais da equipe multiprofissional
     const registeredProfessionals = [];
     if (body.professionals && Array.isArray(body.professionals)) {
@@ -329,7 +348,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
             name: prof.name,
             schoolName: school.name,
             specialty: prof.specialty,
-            confirmUrl: `${apiPublic}/api/onboarding/confirm-professional?token=${inviteToken}`,
+            confirmUrl: `${apiPublic}/convite?token=${inviteToken}`,
           });
           try {
             await sendEmail(createdProf.email, mail.subject, mail.html);
@@ -361,14 +380,20 @@ export async function onboardingRoutes(app: FastifyInstance) {
   });
 
   /**
-   * 5. Confirmação do e-mail do profissional (link do convite enviado pela escola).
-   * Libera users.access_enabled e redireciona para o login.
+   * 5. Aceite do convite do profissional: o link enviado ao e-mail prova a posse do endereço;
+   * aqui ele define a senha e o acesso (users.access_enabled) é liberado.
    */
-  app.get("/api/onboarding/confirm-professional", async (request, reply) => {
-    const { token } = request.query as { token?: string };
-    const web = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  app.post("/api/onboarding/accept-invite", async (request, reply) => {
+    const { token, password } = request.body as { token?: string; password?: string };
 
-    if (!token) return reply.redirect(`${web}/login?convite=invalido`, 302);
+    if (!token || !password) {
+      reply.status(400);
+      return { error: "Informe o convite e a senha." };
+    }
+    if (password.length < 8) {
+      reply.status(400);
+      return { error: "A senha deve ter pelo menos 8 caracteres." };
+    }
 
     const [invite] = await db
       .select()
@@ -377,22 +402,32 @@ export async function onboardingRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!invite || invite.type !== "professional") {
-      return reply.redirect(`${web}/login?convite=invalido`, 302);
+      reply.status(404);
+      return { error: "Convite não encontrado ou inválido." };
     }
-    if (invite.usedAt) return reply.redirect(`${web}/login?convite=confirmado`, 302);
+    if (invite.usedAt) {
+      reply.status(400);
+      return { error: "Este convite já foi utilizado. Entre com o seu e-mail e senha." };
+    }
     if (new Date() > new Date(invite.expiresAt)) {
-      return reply.redirect(`${web}/login?convite=expirado`, 302);
+      reply.status(400);
+      return { error: "Este convite expirou. Peça um novo à sua escola." };
     }
 
-    await db
-      .update(users)
-      .set({ accessEnabled: true })
-      .where(eq(users.email, invite.email.toLowerCase()));
+    const email = invite.email.toLowerCase();
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (!user) {
+      reply.status(404);
+      return { error: "Cadastro do profissional não encontrado." };
+    }
+
+    await upsertCredential({ email, name: user.name, password });
+    await db.update(users).set({ accessEnabled: true }).where(eq(users.id, user.id));
     await db
       .update(onboardingInvites)
       .set({ usedAt: new Date() })
       .where(eq(onboardingInvites.id, invite.id));
 
-    return reply.redirect(`${web}/login?convite=confirmado`, 302);
+    return { success: true };
   });
 }

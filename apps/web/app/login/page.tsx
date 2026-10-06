@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [showAutoSignUpPrompt, setShowAutoSignUpPrompt] = useState(false);
+
+  useEffect(() => {
+    const convite = new URLSearchParams(window.location.search).get("convite");
+    if (convite === "confirmado") {
+      setSuccessMsg("Senha criada! Entre com o seu e-mail e a nova senha.");
+    }
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
@@ -34,65 +38,21 @@ export default function LoginPage() {
     setError(null);
     setSuccessMsg(null);
     setLoading(true);
-    setShowAutoSignUpPrompt(false);
 
     try {
-      if (isSignUp) {
-        const res = await authClient.signUp.email({
-          email,
-          password,
-          name: name || email.split("@")[0],
-          callbackURL: "/dashboard",
-        });
-        if (res.error) {
-          setError(res.error.message || "Erro ao criar conta.");
-        } else {
-          setSuccessMsg("Conta criada com sucesso! Redirecionando...");
-          setTimeout(() => router.push("/dashboard"), 1000);
-        }
-      } else {
-        const res = await authClient.signIn.email({
-          email,
-          password,
-          callbackURL: "/dashboard",
-        });
-        if (res.error) {
-          setError("Credenciais não encontradas ou senha incorreta.");
-          setShowAutoSignUpPrompt(true);
-        } else {
-          setSuccessMsg("Conectado com sucesso!");
-          setTimeout(() => router.push("/dashboard"), 500);
-        }
-      }
-    } catch (err: any) {
-      setError(err?.message || "Ocorreu um erro na autenticação.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAutoCreateAccount = async () => {
-    if (!email || !password) {
-      setIsSignUp(true);
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await authClient.signUp.email({
+      const res = await authClient.signIn.email({
         email,
         password,
-        name: name || email.split("@")[0],
         callbackURL: "/dashboard",
       });
       if (res.error) {
-        setError(res.error.message || "Erro ao criar conta.");
+        setError("E-mail ou senha incorretos, ou acesso ainda não liberado.");
       } else {
-        setSuccessMsg("Sua conta foi criada e autenticada! Redirecionando...");
-        setTimeout(() => router.push("/dashboard"), 1000);
+        setSuccessMsg("Conectado com sucesso!");
+        setTimeout(() => router.push("/dashboard"), 500);
       }
     } catch (err: any) {
-      setError(err?.message || "Erro ao criar conta.");
+      setError(err?.message || "Ocorreu um erro na autenticação.");
     } finally {
       setLoading(false);
     }
@@ -106,7 +66,7 @@ export default function LoginPage() {
             <span className="pulse"></span>
             Periscópio Saúde
           </div>
-          <h1>{isSignUp ? "Criar Acesso" : "Entrar no Sistema"}</h1>
+          <h1>Entrar no Sistema</h1>
           <p>Plataforma de Saúde Mental Escolar (NEMT)</p>
         </div>
 
@@ -116,15 +76,6 @@ export default function LoginPage() {
               <span>⚠️</span>
               <span>{error}</span>
             </div>
-            {showAutoSignUpPrompt && (
-              <button
-                type="button"
-                onClick={handleAutoCreateAccount}
-                className="mt-2 w-full py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition"
-              >
-                ➔ Criar esta conta agora com este e-mail
-              </button>
-            )}
           </div>
         )}
 
@@ -168,23 +119,6 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleEmailAuth}>
-          {isSignUp && (
-            <div className="form-group">
-              <label className="form-label" htmlFor="name">
-                Nome Completo
-              </label>
-              <input
-                id="name"
-                type="text"
-                className="form-input"
-                placeholder="Ex: Dra. Juliana Silva"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required={isSignUp}
-              />
-            </div>
-          )}
-
           <div className="form-group">
             <label className="form-label" htmlFor="email">
               E-mail Institucional
@@ -222,26 +156,15 @@ export default function LoginPage() {
             className="btn-primary"
             id="btn-submit-auth"
           >
-            {loading ? "Processando..." : isSignUp ? "Cadastrar" : "Acessar Plataforma"}
+            {loading ? "Processando..." : "Acessar Plataforma"}
           </button>
         </form>
 
         <div className="auth-footer">
-          {isSignUp ? (
-            <p>
-              Já possui uma conta?{" "}
-              <button type="button" onClick={() => setIsSignUp(false)}>
-                Entrar
-              </button>
-            </p>
-          ) : (
-            <p>
-              Novo profissional ou gestor?{" "}
-              <button type="button" onClick={() => setIsSignUp(true)}>
-                Criar conta
-              </button>
-            </p>
-          )}
+          <p>
+            Acesso por convite. Se a sua escola já cadastrou você, use o link
+            enviado ao seu e-mail para criar a senha.
+          </p>
         </div>
 
         <div className="lgpd-notice">

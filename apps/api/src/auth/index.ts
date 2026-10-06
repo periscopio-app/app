@@ -60,6 +60,8 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // Sem cadastro público: credenciais só nascem pelo convite (ver auth/credentials.ts).
+    disableSignUp: true,
     // Só exigir confirmação quando o envio de e-mail estiver configurado E a flag ligada;
     // caso contrário ninguém conseguiria entrar.
     requireEmailVerification: emailEnabled && process.env.AUTH_REQUIRE_EMAIL_VERIFICATION === "true",
@@ -87,6 +89,7 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       enabled: Boolean(process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
+      disableImplicitSignUp: true,
     },
   },
   trustedOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")

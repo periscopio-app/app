@@ -129,8 +129,8 @@ export function professionalInviteEmail(opts: {
       title: "Você foi cadastrado(a) no Periscópio",
       bodyHtml: `<p style="margin:0 0 12px;line-height:1.5;">Olá, <strong>${escapeHtml(opts.name)}</strong>.</p>
           <p style="margin:0 0 12px;line-height:1.5;">A escola <strong>${escapeHtml(opts.schoolName)}</strong> cadastrou você na equipe multiprofissional do Periscópio Saúde, na especialidade <strong>${escapeHtml(area)}</strong>.</p>
-          <p style="margin:0;line-height:1.5;">Para liberar o seu acesso, confirme que este e-mail é seu. Depois da confirmação, entre na plataforma e crie a sua senha.</p>`,
-      ctaLabel: "Confirmar e liberar meu acesso",
+          <p style="margin:0;line-height:1.5;">Para liberar o seu acesso, clique no botão abaixo e crie a sua senha. Este link é pessoal e só funciona para este e-mail.</p>`,
+      ctaLabel: "Criar minha senha e liberar o acesso",
       ctaUrl: opts.confirmUrl,
       footnote: "O link vale por 7 dias. Se você não reconhece este cadastro, ignore este e-mail: o acesso não será liberado.",
     }),
