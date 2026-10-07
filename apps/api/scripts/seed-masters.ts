@@ -104,8 +104,8 @@ async function main() {
 
       if (existingAccount.rows.length > 0) {
         await client.query(
-          `UPDATE neon_auth.account SET password = $1, "updatedAt" = NOW() WHERE id = $2`,
-          [hashedPassword, existingAccount.rows[0].id]
+          `UPDATE neon_auth.account SET password = $1, "accountId" = $3::text, "updatedAt" = NOW() WHERE id = $2`,
+          [hashedPassword, existingAccount.rows[0].id, userId]
         );
         console.log(`Senha atualizada no neon_auth.account para ${email}`);
       } else {
@@ -113,7 +113,7 @@ async function main() {
         await client.query(
           `INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
            VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())`,
-          [accountId, email, userId, hashedPassword]
+          [accountId, userId, userId, hashedPassword]
         );
         console.log(`Conta com senha criada no neon_auth.account para ${email}`);
       }

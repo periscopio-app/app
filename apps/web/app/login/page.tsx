@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,9 +96,8 @@ export default function LoginPage() {
             <label className="form-label" htmlFor="password">
               Senha
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               className="form-input"
               placeholder="••••••••"
               value={password}

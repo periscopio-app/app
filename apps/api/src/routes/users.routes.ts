@@ -236,7 +236,7 @@ export async function usersRoutes(app: FastifyInstance) {
         await client.query(
           `INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
            VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())`,
-          [accountId, email, userId, hashedPassword]
+          [accountId, userId, userId, hashedPassword]
         );
       }
 

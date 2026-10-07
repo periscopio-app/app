@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -120,9 +121,8 @@ export default function SchoolLoginPage({
             <label className="form-label" htmlFor="password">
               Senha
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               className="form-input"
               placeholder="••••••••"
               value={password}
