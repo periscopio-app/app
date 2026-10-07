@@ -17,6 +17,7 @@ import {
   Sparkles,
   Search,
   ArrowUpRight,
+  CalendarClock,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -85,8 +86,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { role: "specialist", label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
   ];
 
+  const agendaItem = { label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board", exact: false };
+  const agendaRoles = ["ppi", "school_manager", "md1", "board"];
+
   const visibleClinical = userRole
-    ? clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false }))
+    ? [
+        ...clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false })),
+        ...(agendaRoles.includes(userRole) ? [agendaItem] : []),
+      ]
     : [];
 
   const visibleAdmin = userRole === "admin_platform"
