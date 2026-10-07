@@ -71,6 +71,13 @@
       "when": 1791320000000,
       "tag": "0009_users_access_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791325000000,
+      "tag": "0010_expert_board_agenda",
+      "breakpoints": true
     }
   ]
 }

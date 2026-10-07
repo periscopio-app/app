@@ -10,6 +10,7 @@ import {
   date,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Núcleo multi-tenant. Toda tabela de domínio carrega tenant_id (RLS no Postgres).
@@ -332,4 +333,49 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("notifications_event_id_unique").on(t.eventId),
+]);
+
+/**
+ * Agenda do Board de experts: horários liberados pela coordenação científica (papel `board`),
+ * pedidos de reunião feitos pela escola e configuração da sala fixa (Google Meet).
+ */
+export const expertBoardSettings = pgTable("expert_board_settings", {
+  tenantId: uuid("tenant_id").primaryKey().references(() => tenants.id),
+  meetUrl: text("meet_url"), // sala fixa, mesma URL em todas as reuniões
+  notifyEmail: varchar("notify_email", { length: 255 }),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const expertSlots = pgTable("expert_slots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  status: varchar("status", { length: 20 }).default("available").notNull(), // available | booked | cancelled
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("expert_slots_tenant_start_unique").on(t.tenantId, t.startsAt),
+]);
+
+export const expertMeetingRequests = pgTable("expert_meeting_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").references(() => schools.id),
+  slotId: uuid("slot_id").notNull().references(() => expertSlots.id),
+  requesterId: uuid("requester_id").notNull().references(() => users.id),
+  professionalName: text("professional_name").notNull(),
+  topic: text("topic").notNull(), // breve descrição do problema; sem dados identificáveis do aluno
+  studentCode: varchar("student_code", { length: 64 }),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending | confirmed | declined | cancelled
+  meetUrl: text("meet_url"), // preenchido na confirmação
+  decisionNote: text("decision_note"),
+  decidedBy: uuid("decided_by").references(() => users.id),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("expert_meeting_requests_active_slot_unique")
+    .on(t.slotId)
+    .where(sql`${t.status} in ('pending','confirmed')`),
 ]);
