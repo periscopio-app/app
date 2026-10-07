@@ -1,3 +1,4 @@
+import { validateProfessionalsInput } from "../services/onboarding-guard";
 import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -247,9 +248,14 @@ export async function onboardingRoutes(app: FastifyInstance) {
       }>;
     };
 
-    if (!body.token) {
+    if (!body?.token || typeof body.token !== "string") {
       reply.status(400);
       return { error: "Token de convite obrigatório." };
+    }
+    const guard = validateProfessionalsInput(body.professionals);
+    if (!guard.ok) {
+      reply.status(400);
+      return { error: guard.error };
     }
 
     const [invite] = await db

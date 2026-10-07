@@ -19,6 +19,13 @@ if (process.env.NODE_ENV === "production") {
   if (!authBaseUrl) {
     throw new Error("BETTER_AUTH_URL é obrigatória em produção.");
   }
+  if (authSecret === "dev_only_secret_replace_in_production") {
+    throw new Error("BETTER_AUTH_SECRET não pode ser o valor de desenvolvimento.");
+  }
+  if (authSecret.length < 32) {
+    // Aviso (não derruba a API): segredo curto enfraquece a assinatura das sessões.
+    console.warn("[auth] BETTER_AUTH_SECRET tem menos de 32 caracteres; troque por um segredo longo.");
+  }
 }
 
 const emailEnabled = Boolean(process.env.RESEND_API_KEY);
