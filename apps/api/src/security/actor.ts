@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/client";
 import { users } from "@periscopio/shared";
+import { auth } from "../auth";
 import { hasRole, isRole, type Role } from "./roles";
 
 export type { Role } from "./roles";
@@ -14,26 +15,19 @@ export interface Actor {
   role: Role;
 }
 
-interface SessionResponse {
-  user?: { email?: string | null };
-}
-
+/**
+ * Valida a sessão dentro do próprio processo (Better Auth), sem chamada HTTP.
+ * Antes, buscava `${BETTER_AUTH_URL}/get-session`; se a variável apontasse para a raiz
+ * da API (e não para .../api/auth), a resposta era 404 e todo usuário logado recebia 401.
+ */
 async function sessionEmail(request: FastifyRequest): Promise<string | null> {
-  const authUrl = process.env.BETTER_AUTH_URL || process.env.NEON_AUTH_URL;
-  if (!authUrl) return null;
+  const headers = new Headers();
+  if (request.headers.authorization) headers.set("authorization", String(request.headers.authorization));
+  if (request.headers.cookie) headers.set("cookie", String(request.headers.cookie));
+  if ([...headers.keys()].length === 0) return null;
 
-  const headers: Record<string, string> = {};
-  if (request.headers.authorization) headers.authorization = request.headers.authorization;
-  if (request.headers.cookie) headers.cookie = request.headers.cookie;
-  if (Object.keys(headers).length === 0) return null;
-
-  const response = await fetch(`${authUrl.replace(/\/$/, "")}/get-session`, {
-    headers,
-  });
-  if (!response.ok) return null;
-
-  const session = (await response.json()) as SessionResponse;
-  const email = session.user?.email?.trim().toLowerCase();
+  const session = await auth.api.getSession({ headers });
+  const email = session?.user?.email?.trim().toLowerCase();
   return email || null;
 }
 
