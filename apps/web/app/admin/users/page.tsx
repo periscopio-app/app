@@ -249,35 +249,35 @@ export default function AdminUsersPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "admin_platform":
-        return "bg-purple-500/20 text-purple-300 border-purple-500/40";
+        return "bg-purple-500/20 text-purple-700 border-purple-500/40";
       case "md1":
-        return "bg-blue-500/20 text-blue-300 border-blue-500/40";
+        return "bg-blue-500/20 text-blue-700 border-blue-500/40";
       case "ppi":
-        return "bg-teal-500/20 text-teal-300 border-teal-500/40";
+        return "bg-teal-500/20 text-teal-700 border-teal-500/40";
       case "school_manager":
       case "municipal_manager":
-        return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+        return "bg-amber-500/20 text-amber-700 border-amber-500/40";
       default:
-        return "bg-slate-500/20 text-slate-300 border-slate-500/40";
+        return "bg-slate-500/20 text-slate-700 border-slate-500/40";
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-[#f8fafc] p-6 md:p-12 font-sans">
+    <div className="min-h-screen bg-[#F6F9FB] text-[#14202B] p-6 md:p-12 font-sans">
       <div className="mx-auto max-w-6xl">
         {/* Top Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-white/10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-[#E1E9ED]">
           <div>
             <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-700 border border-blue-500/30">
                 Painel Master
               </span>
-              <span className="text-xs text-slate-400">Controle de Acessos & RBAC</span>
+              <span className="text-xs text-slate-600">Controle de Acessos & RBAC</span>
             </div>
             <h1 className="mt-2 text-2xl md:text-3xl font-bold font-display">
               Gestão de Usuários & Privilégios
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-600">
               Usuários Master têm controle irrestrito: visualize tudo, crie novas contas e determine as permissões de acesso ao sistema.
             </p>
           </div>
@@ -285,7 +285,7 @@ export default function AdminUsersPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/admin/setup"
-              className="px-4 py-2 text-sm font-semibold rounded-xl bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition"
+              className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] text-slate-700 border border-[#E1E9ED] hover:bg-[#E1E9ED] transition"
             >
               Provisionar Escola
             </Link>
@@ -300,34 +300,34 @@ export default function AdminUsersPage() {
 
         {/* Feedback Messages */}
         {feedbackSuccess && (
-          <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm flex items-center justify-between">
+          <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-sm flex items-center justify-between">
             <span>✓ {feedbackSuccess}</span>
-            <button onClick={() => setFeedbackSuccess(null)} className="text-emerald-400 hover:text-white">✕</button>
+            <button onClick={() => setFeedbackSuccess(null)} className="text-emerald-700 hover:text-[#14202B]">✕</button>
           </div>
         )}
         {error && (
-          <div className="mt-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-between">
+          <div className="mt-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-sm flex items-center justify-between">
             <span>⚠️ {error}</span>
-            <button onClick={() => setError(null)} className="text-rose-400 hover:text-white">✕</button>
+            <button onClick={() => setError(null)} className="text-rose-700 hover:text-[#14202B]">✕</button>
           </div>
         )}
 
         {/* Filters & Search */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-900/60 p-4 rounded-2xl border border-white/5">
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-[#E1E9ED]">
           <input
             type="text"
             placeholder="Buscar por nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-80 px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full sm:w-80 px-4 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] placeholder-slate-500 focus:outline-none focus:border-blue-500"
           />
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <label className="text-xs text-slate-400 whitespace-nowrap">Filtrar Perfil:</label>
+            <label className="text-xs text-slate-600 whitespace-nowrap">Filtrar Perfil:</label>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
             >
               <option value="all">Todos os Perfis ({usersList.length})</option>
               {roles.map((r) => (
@@ -340,15 +340,15 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Users Table */}
-        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-[#E1E9ED] bg-white">
           {loading ? (
-            <div className="p-12 text-center text-slate-400 text-sm">Carregando usuários da plataforma...</div>
+            <div className="p-12 text-center text-slate-600 text-sm">Carregando usuários da plataforma...</div>
           ) : filteredUsers.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-sm">Nenhum usuário encontrado para esta busca.</div>
+            <div className="p-12 text-center text-slate-600 text-sm">Nenhum usuário encontrado para esta busca.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-white/10">
+                <thead className="bg-[#F6F9FB] text-xs uppercase tracking-wider text-slate-600 border-b border-[#E1E9ED]">
                   <tr>
                     <th className="px-6 py-4">Usuário</th>
                     <th className="px-6 py-4">Perfil & Privilégios</th>
@@ -357,16 +357,16 @@ export default function AdminUsersPage() {
                     <th className="px-6 py-4 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[#E1E9ED]">
                   {filteredUsers.map((u) => {
                     const roleInfo = roles.find((r) => r.role === u.role);
                     return (
-                      <tr key={u.id} className="hover:bg-slate-800/30 transition">
+                      <tr key={u.id} className="hover:bg-[#F0F9FC] transition">
                         <td className="px-6 py-4">
-                          <div className="font-semibold text-white">{u.name}</div>
-                          <div className="text-xs text-slate-400">{u.email}</div>
+                          <div className="font-semibold text-[#14202B]">{u.name}</div>
+                          <div className="text-xs text-slate-600">{u.email}</div>
                           {u.classCode && (
-                            <div className="text-[11px] text-blue-400 mt-0.5">{u.classCode}</div>
+                            <div className="text-[11px] text-blue-700 mt-0.5">{u.classCode}</div>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -378,10 +378,10 @@ export default function AdminUsersPage() {
                             {roleInfo?.title || u.role}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-300">
+                        <td className="px-6 py-4 text-slate-700">
                           {u.schoolName || (u.role === "admin_platform" ? "Plataforma Global (Todas)" : "Geral")}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-xs">
+                        <td className="px-6 py-4 text-slate-600 text-xs">
                           {new Date(u.createdAt).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2">
@@ -390,13 +390,13 @@ export default function AdminUsersPage() {
                               setEditingUser(u);
                               setEditRole(u.role);
                             }}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#F0F9FC] hover:bg-[#E1E9ED] text-slate-800 border border-[#E1E9ED] transition"
                           >
                             Alterar Perfil
                           </button>
                           <button
                             onClick={() => handleDeleteUser(u)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition"
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 border border-rose-500/30 transition"
                           >
                             Excluir
                           </button>
@@ -412,23 +412,23 @@ export default function AdminUsersPage() {
 
         {/* Roles & Privilege Matrix Reference */}
         <div className="mt-12">
-          <h2 className="text-lg font-bold font-display text-white mb-4">
+          <h2 className="text-lg font-bold font-display text-[#14202B] mb-4">
             Catálogo de Perfis e Matriz de Privilégios
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {roles.map((r) => (
-              <div key={r.role} className="p-5 rounded-2xl border border-white/10 bg-slate-900/50">
+              <div key={r.role} className="p-5 rounded-2xl border border-[#E1E9ED] bg-white">
                 <div className="flex items-center justify-between">
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getRoleBadgeColor(r.role)}`}>
                     {r.role}
                   </span>
                   <span className="text-[11px] text-slate-500 uppercase">{r.level}</span>
                 </div>
-                <h3 className="mt-3 font-semibold text-white text-sm">{r.title}</h3>
-                <p className="mt-1 text-xs text-slate-400 leading-relaxed">{r.description}</p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                <h3 className="mt-3 font-semibold text-[#14202B] text-sm">{r.title}</h3>
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">{r.description}</p>
+                <div className="mt-4 pt-3 border-t border-[#E1E9ED] flex flex-wrap gap-1.5">
                   {r.permissions.map((p) => (
-                    <span key={p} className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300">
+                    <span key={p} className="text-[10px] bg-[#F0F9FC] px-2 py-0.5 rounded text-slate-700">
                       ✓ {p}
                     </span>
                   ))}
@@ -440,44 +440,44 @@ export default function AdminUsersPage() {
 
         {/* Modal Novo Usuário */}
         {modalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#121826] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-              <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                <h3 className="text-lg font-bold text-white">Criar Novo Usuário</h3>
-                <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white border border-[#E1E9ED] rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+              <div className="flex justify-between items-center pb-4 border-b border-[#E1E9ED]">
+                <h3 className="text-lg font-bold text-[#14202B]">Criar Novo Usuário</h3>
+                <button onClick={() => setModalOpen(false)} className="text-slate-600 hover:text-[#14202B]">✕</button>
               </div>
 
               <form onSubmit={handleCreateUser} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Nome Completo *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nome Completo *</label>
                   <input
                     type="text"
                     required
                     value={novoNome}
                     onChange={(e) => setNovoNome(e.target.value)}
                     placeholder="Ex: Dra. Mariana Silva"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">E-mail Institucional *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail Institucional *</label>
                   <input
                     type="email"
                     required
                     value={novoEmail}
                     onChange={(e) => setNovoEmail(e.target.value)}
                     placeholder="mariana@escola.gov.br"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Perfil & Privilégios *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Perfil & Privilégios *</label>
                   <select
                     value={novoRole}
                     onChange={(e) => setNovoRole(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                   >
                     {roles.map((r) => (
                       <option key={r.role} value={r.role}>
@@ -485,21 +485,21 @@ export default function AdminUsersPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-slate-600">
                     {roles.find((r) => r.role === novoRole)?.description}
                   </p>
                 </div>
 
                 {ROLES_WITH_SCHOOL.includes(novoRole) && (
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Escola / Unidade <span className="text-rose-400">*</span>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Escola / Unidade <span className="text-rose-700">*</span>
                     </label>
                     <select
                       value={novaEscola}
                       onChange={(e) => setNovaEscola(e.target.value)}
                       required
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                     >
                       <option value="">Selecione a escola...</option>
                       {schoolsList.map((s) => (
@@ -511,7 +511,7 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Senha Inicial
                       <span className="ml-1 text-slate-500 font-normal">(deixe vazio para gerar)</span>
                     </label>
@@ -520,49 +520,49 @@ export default function AdminUsersPage() {
                       value={novaSenha}
                       onChange={(e) => setNovaSenha(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Telefone / WhatsApp</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Telefone / WhatsApp</label>
                     <input
                       type="text"
                       value={novoTelefone}
                       onChange={(e) => setNovoTelefone(e.target.value)}
                       placeholder="(11) 99999-9999"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Registro de Classe (CRM, CRP)</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Registro de Classe (CRM, CRP)</label>
                     <input
                       type="text"
                       value={novoConselho}
                       onChange={(e) => setNovoConselho(e.target.value)}
                       placeholder="Ex: CRM-SP 12345"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Especialidade Clínica</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Especialidade Clínica</label>
                     <input
                       type="text"
                       value={novaEspecialidade}
                       onChange={(e) => setNovaEspecialidade(e.target.value)}
                       placeholder="Ex: Psiquiatria Infantil"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <div className="flex justify-end gap-3 pt-4 border-t border-[#E1E9ED]">
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 text-sm font-semibold rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] text-slate-700 hover:bg-[#E1E9ED]"
                   >
                     Cancelar
                   </button>
@@ -581,19 +581,19 @@ export default function AdminUsersPage() {
 
         {/* Modal Alterar Perfil */}
         {editingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#121826] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-white">Alterar Perfil de Acesso</h3>
-              <p className="mt-1 text-sm text-slate-400">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white border border-[#E1E9ED] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-[#14202B]">Alterar Perfil de Acesso</h3>
+              <p className="mt-1 text-sm text-slate-600">
                 Usuário: <strong>{editingUser.name}</strong> ({editingUser.email})
               </p>
 
               <div className="mt-6">
-                <label className="block text-xs font-semibold text-slate-300 mb-2">Novo Perfil / Privilégio</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-2">Novo Perfil / Privilégio</label>
                 <select
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
                 >
                   {roles.map((r) => (
                     <option key={r.role} value={r.role}>
@@ -601,16 +601,16 @@ export default function AdminUsersPage() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-xs text-slate-400">
+                <p className="mt-2 text-xs text-slate-600">
                   {roles.find((r) => r.role === editRole)?.description}
                 </p>
               </div>
 
-              <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#E1E9ED]">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 text-sm font-semibold rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] text-slate-700 hover:bg-[#E1E9ED]"
                 >
                   Cancelar
                 </button>
