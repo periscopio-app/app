@@ -4,13 +4,9 @@ import { requireActor } from "../security/actor";
 
 export async function authRoutes(app: FastifyInstance) {
   app.get("/api/auth/config", async (_request, reply) => {
-    const googleAuthEnabled = Boolean(
-      process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    );
-
     return {
       authProvider: "better-auth",
-      googleAuthEnabled,
+      googleAuthEnabled: false,
       baseUrl: process.env.BETTER_AUTH_URL || "/api/auth",
     };
   });
