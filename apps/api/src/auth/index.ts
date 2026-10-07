@@ -5,7 +5,7 @@ import { resetPasswordEmail, verificationEmail } from "../email/templates";
 
 /**
  * Better Auth com Postgres (Neon) como storage de sessão/usuário.
- * Suporta autenticação por E-mail/Senha e Google OAuth.
+ * Autenticação somente por E-mail/Senha (sem login social).
  * RBAC próprio do domínio (admin_platform, municipal_manager, school_manager,
  * teacher, ppi, md1, board, researcher) fica em `users.role`, ver packages/shared/src/schema.ts.
  */
@@ -82,14 +82,6 @@ export const auth = betterAuth({
       await sendEmail(user.email, mail.subject, mail.html).catch((err) =>
         console.error("[auth] falha ao enviar e-mail de confirmação:", err?.message ?? err),
       );
-    },
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      enabled: Boolean(process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
-      disableImplicitSignUp: true,
     },
   },
   trustedOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")

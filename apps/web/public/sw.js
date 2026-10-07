@@ -6,9 +6,8 @@
  * 3. Modo offline mostra indicação visual de perda de rede sem expor dados.
  */
 
-const CACHE_NAME = "periscopio-public-v1";
+const CACHE_NAME = "periscopio-public-v2";
 const PUBLIC_ASSETS = [
-  "/",
   "/manifest.json",
   "/hero-escola.png",
   "/landing-logo.webp",
@@ -52,26 +51,34 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Estratégia Stale-While-Revalidate para ativos públicos estáticos
+  // Páginas (HTML) NUNCA vêm do cache: sempre da rede, para que um deploy novo
+  // apareça na hora. Só cai no cache se a rede falhar (modo offline).
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then((hit) => hit || caches.match("/manifest.json"))
+      )
+    );
+    return;
+  }
+
+  // Ativos estáticos com hash (/_next/static) e imagens públicas: cache primeiro,
+  // atualizando em segundo plano.
+  const estatico =
+    url.pathname.startsWith("/_next/static/") ||
+    PUBLIC_ASSETS.includes(url.pathname) ||
+    url.pathname.startsWith("/equipe/");
+  if (!estatico) return;
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Fallback offline para navegação da landing page se desconectado
-          if (event.request.mode === "navigate") {
-            return caches.match("/");
-          }
-        });
-
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+        }
+        return networkResponse;
+      });
       return cachedResponse || fetchPromise;
     })
   );
