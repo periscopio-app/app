@@ -56,6 +56,7 @@ export async function requireActor(
         tenantId: users.tenantId,
         schoolId: users.schoolId,
         role: users.role,
+        accessEnabled: users.accessEnabled,
       })
       .from(users)
       .where(eq(users.email, email))
@@ -67,7 +68,15 @@ export async function requireActor(
       return null;
     }
 
-    const actor: Actor = { ...user, role };
+    if (!user.accessEnabled) {
+      await reply
+        .status(403)
+        .send({ error: "Acesso pendente: confirme o e-mail do convite enviado pela sua escola." });
+      return null;
+    }
+
+    const { accessEnabled: _enabled, ...userData } = user;
+    const actor: Actor = { ...userData, role };
     if (allowedRoles && !hasRole(actor.role, allowedRoles)) {
       await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação" });
       return null;

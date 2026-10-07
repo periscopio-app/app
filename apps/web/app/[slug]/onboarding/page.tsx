@@ -26,6 +26,8 @@ export default function SchoolOnboardingPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [schoolData, setSchoolData] = useState<any>(null);
+  const [responsavelPassword, setResponsavelPassword] = useState("");
+  const [responsavelPasswordConfirm, setResponsavelPasswordConfirm] = useState("");
 
   const [professionals, setProfessionals] = useState<ProfessionalInput[]>([
     {
@@ -101,6 +103,14 @@ export default function SchoolOnboardingPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (responsavelPassword.length < 8) {
+      setError("A sua senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (responsavelPassword !== responsavelPasswordConfirm) {
+      setError("As senhas não conferem.");
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -109,6 +119,7 @@ export default function SchoolOnboardingPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
+          responsavelPassword,
           professionals,
         }),
       });
@@ -118,7 +129,7 @@ export default function SchoolOnboardingPage({
       if (!res.ok) {
         setError(data.error || "Erro ao concluir onboarding da escola.");
       } else {
-        router.push(`/${slug}/login?registered=true`);
+        router.push("/login?convite=confirmado");
       }
     } catch (err: any) {
       setError(err?.message || "Erro de rede ao salvar cadastro.");
@@ -172,6 +183,37 @@ export default function SchoolOnboardingPage({
         )}
 
         <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="resp-password">
+              Crie a sua senha de acesso (mín. 8 caracteres)
+            </label>
+            <input
+              id="resp-password"
+              type="password"
+              className="form-input"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={responsavelPassword}
+              onChange={(e) => setResponsavelPassword(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: "24px" }}>
+            <label className="form-label" htmlFor="resp-password-confirm">
+              Repita a senha
+            </label>
+            <input
+              id="resp-password-confirm"
+              type="password"
+              className="form-input"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={responsavelPasswordConfirm}
+              onChange={(e) => setResponsavelPasswordConfirm(e.target.value)}
+            />
+          </div>
+
           {professionals.map((prof, idx) => (
             <div
               key={idx}

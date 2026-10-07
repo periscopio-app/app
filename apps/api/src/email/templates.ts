@@ -98,3 +98,41 @@ export function resetPasswordEmail(name: string, url: string) {
     }),
   };
 }
+
+export const SPECIALTY_LABELS: Record<string, string> = {
+  psicopedagogia: "Psicopedagogia",
+  medicina: "Medicina",
+  fonoaudiologia: "Fonoaudiologia",
+  psicologia: "Psicologia",
+  neuropsicologia: "Neuropsicologia",
+  psicomotricidade: "Psicomotricidade",
+  servico_social: "Serviço Social",
+};
+
+export function specialtyLabel(specialty?: string | null): string {
+  if (!specialty) return "Profissional da equipe";
+  return SPECIALTY_LABELS[specialty] ?? specialty;
+}
+
+/** Convite enviado ao profissional cadastrado por uma escola; confirmar libera o acesso. */
+export function professionalInviteEmail(opts: {
+  name: string;
+  schoolName: string;
+  specialty?: string | null;
+  confirmUrl: string;
+}) {
+  const area = specialtyLabel(opts.specialty);
+  return {
+    subject: `${opts.schoolName} cadastrou você no Periscópio Saúde`,
+    html: layout({
+      preheader: `Confirme seu e-mail para acessar o Periscópio como ${area}.`,
+      title: "Você foi cadastrado(a) no Periscópio",
+      bodyHtml: `<p style="margin:0 0 12px;line-height:1.5;">Olá, <strong>${escapeHtml(opts.name)}</strong>.</p>
+          <p style="margin:0 0 12px;line-height:1.5;">A escola <strong>${escapeHtml(opts.schoolName)}</strong> cadastrou você na equipe multiprofissional do Periscópio Saúde, na especialidade <strong>${escapeHtml(area)}</strong>.</p>
+          <p style="margin:0;line-height:1.5;">Para liberar o seu acesso, clique no botão abaixo e crie a sua senha. Este link é pessoal e só funciona para este e-mail.</p>`,
+      ctaLabel: "Criar minha senha e liberar o acesso",
+      ctaUrl: opts.confirmUrl,
+      footnote: "O link vale por 7 dias. Se você não reconhece este cadastro, ignore este e-mail: o acesso não será liberado.",
+    }),
+  };
+}

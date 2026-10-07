@@ -10,3 +10,19 @@ test("e-mail de confirmação usa identidade do projeto e escapa o nome", () => 
   assert.ok(!mail.html.includes("<b>Ana</b>"));
   assert.equal(escapeHtml('"&'), "&quot;&amp;");
 });
+
+import { professionalInviteEmail, specialtyLabel } from "./templates";
+
+test("convite do profissional cita escola e especialidade e escapa HTML", () => {
+  const mail = professionalInviteEmail({
+    name: "Ana",
+    schoolName: "Escola <Modelo>",
+    specialty: "fonoaudiologia",
+    confirmUrl: "https://exemplo.test/api/onboarding/confirm-professional?token=abc",
+  });
+  assert.ok(mail.html.includes("Escola &lt;Modelo&gt;"));
+  assert.ok(mail.html.includes("Fonoaudiologia"));
+  assert.ok(mail.html.includes("confirm-professional?token=abc"));
+  assert.ok(mail.subject.includes("Escola <Modelo>"));
+  assert.equal(specialtyLabel(null), "Profissional da equipe");
+});
