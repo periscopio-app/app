@@ -152,7 +152,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
 
   test("RE: rascunho incompleto não envia; completo envia e trava", async () => {
     const draft = fogapPronto();
-    const parcial = { ...draft, respostas_desenvolvimento: {} };
+    const parcial = { ...draft, fogap_state: "aguardando_idade", grupo: null };
     const c = await call("POST", `/api/cases/${caseId}/re-assessment`, "re", { payload: parcial });
     assert.equal(c.status, 201, JSON.stringify(c.body));
 
@@ -229,10 +229,12 @@ describe("jornada clínica (E2E)", { skip }, () => {
     const cons = await call("GET", `/api/cases/${caseId}/consolidated`, "md");
     assert.equal(cons.status, 200, JSON.stringify(cons.body));
 
+    const semPeriodo = await call("POST", `/api/cases/${caseId}/close`, "md", { decision: "acompanhamento", reason: "sem periodicidade" });
+    assert.equal(semPeriodo.status, 400, "acompanhamento exige semestral ou anual");
     const noReason = await call("POST", `/api/cases/${caseId}/close`, "md", { decision: "acompanhamento", reason: "" });
     assert.equal(noReason.status, 400);
 
-    const closed = await call("POST", `/api/cases/${caseId}/close`, "md", { decision: "acompanhamento", reason: "Encerramento sintético da demonstração" });
+    const closed = await call("POST", `/api/cases/${caseId}/close`, "md", { decision: "acompanhamento", followUp: "semestral", reason: "Encerramento sintético da demonstração" });
     assert.equal(closed.status, 200, JSON.stringify(closed.body));
 
     const events = await call("GET", `/api/cases/${caseId}/events`, "md");

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import ClinicalScalesForm from "@/components/evaluations/ClinicalScalesForm";
 import CourseCatalog from "@/components/lms/CourseCatalog";
 
 interface Student {
@@ -318,9 +317,8 @@ export default function PsicopedagogoDashboardPage({
         </div>
       </div>
 
-      {/* Seções Adicionais: 1. Escalas Clínicas | 2. LMS Catálogo */}
+      {/* Escalas M-CHAT/FOGAP-6/SRQ-8 removidas: não aprovadas clinicamente (Dra., 07/out/2026) */}
       <div className="space-y-6">
-        <ClinicalScalesForm studentId={selectedStudentId} />
         <CourseCatalog />
       </div>
     </div>
