@@ -18,7 +18,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    const msg = (() => {
+    // 400/409 trazem mensagem específica do servidor (ex.: validação, horário já reservado)
+    let serverMsg: string | null = null;
+    if (res.status === 400 || res.status === 409) {
+      try {
+        const data = (await res.clone().json()) as { error?: unknown };
+        if (typeof data.error === "string") serverMsg = data.error;
+      } catch { /* sem corpo JSON */ }
+    }
+    const msg = serverMsg ?? (() => {
       switch (res.status) {
         case 401: return "Sessão expirada. Faça login novamente.";
         case 403: return "Seu perfil não possui permissão para esta ação.";
@@ -39,6 +47,7 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE", body: "{}" }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
 };

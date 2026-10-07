@@ -9,6 +9,7 @@ const ROLE_DESTINATIONS: Record<string, string> = {
   md1: "medico",
   specialist: "especialista",
   school_manager: "re",
+  board: "agenda",
   admin_platform: "/admin/users",
 };
 
