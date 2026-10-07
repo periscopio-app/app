@@ -283,6 +283,16 @@ body {
   color: #52206A;
 }
 
+.auth-footer a {
+  color: #682880;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.auth-footer a:hover {
+  color: #52206A;
+}
+
 .lgpd-notice {
   margin-top: 20px;
   padding-top: 16px;
