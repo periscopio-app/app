@@ -3,6 +3,29 @@ import { hashPassword } from "better-auth/crypto";
 import { db } from "../db/client";
 
 /**
+ * Impressão digital da credencial atual do e-mail ("sem-credencial" quando ainda não há senha).
+ * Muda sempre que a senha muda; usada para invalidar links de acesso já consumidos.
+ */
+export async function credentialFingerprint(email: string): Promise<string> {
+  const client = await (db as any).$client;
+  if (!client?.query) throw new Error("Cliente SQL indisponível para ler credencial.");
+  const res = await client.query(
+    `SELECT a.password
+       FROM neon_auth."user" u
+       JOIN neon_auth.account a ON a."userId" = u.id AND a."providerId" = 'credential'
+      WHERE lower(u.email) = $1
+      LIMIT 1`,
+    [email.toLowerCase().trim()],
+  );
+  const password: string | null = res.rows[0]?.password ?? null;
+  return crypto
+    .createHash("sha256")
+    .update(password ?? "sem-credencial")
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/**
  * Cria (ou redefine) a credencial de e-mail/senha no Better Auth (schema neon_auth).
  * Só deve ser chamada depois de provar a posse do e-mail (link de convite enviado ao endereço).
  * O cadastro público está desligado; este é o único caminho para criar credenciais.

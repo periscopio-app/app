@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -162,8 +163,9 @@ export default function LoginPage() {
 
         <div className="auth-footer">
           <p>
-            Acesso por convite. Se a sua escola já cadastrou você, use o link
-            enviado ao seu e-mail para criar a senha.
+            Acesso por cadastro. Se você já foi cadastrado e ainda não tem senha,
+            ou esqueceu a sua,{" "}
+            <Link href="/primeiro-acesso">receba um link por e-mail</Link>.
           </p>
         </div>
 
