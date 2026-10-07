@@ -64,7 +64,7 @@ export async function upsertCredential(opts: {
   }
 
   const updated = await client.query(
-    `UPDATE neon_auth.account SET password = $2, "updatedAt" = NOW()
+    `UPDATE neon_auth.account SET password = $2, "accountId" = $1::text, "updatedAt" = NOW()
      WHERE "userId" = $1 AND "providerId" = 'credential'`,
     [userId, hashed],
   );
@@ -72,7 +72,23 @@ export async function upsertCredential(opts: {
     await client.query(
       `INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
        VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())`,
-      [crypto.randomUUID(), email, userId, hashed],
+      [crypto.randomUUID(), userId, userId, hashed],
     );
   }
+}
+
+/**
+ * O Better Auth só aceita a conta de e-mail/senha quando `account.accountId` é igual ao id do
+ * usuário; qualquer outra coisa vira "User not found" no login. Credenciais criadas antes desta
+ * correção usavam o e-mail (ou um UUID aleatório) nesse campo. Corrige-as na subida da API
+ * (idempotente) para que as senhas já definidas voltem a funcionar.
+ */
+export async function healCredentialAccounts(): Promise<number> {
+  const client = await (db as any).$client;
+  if (!client?.query) return 0;
+  const res = await client.query(
+    `UPDATE neon_auth.account SET "accountId" = "userId"::text, "updatedAt" = NOW()
+      WHERE "providerId" = 'credential' AND "accountId" IS DISTINCT FROM "userId"::text`,
+  );
+  return res.rowCount ?? 0;
 }

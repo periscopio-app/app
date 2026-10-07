@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -88,9 +89,8 @@ export default function RedefinirSenhaPage() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="password">Nova senha</label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 className="form-input"
                 autoComplete="new-password"
                 minLength={8}
@@ -101,9 +101,8 @@ export default function RedefinirSenhaPage() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="confirm">Repita a senha</label>
-              <input
+              <PasswordInput
                 id="confirm"
-                type="password"
                 className="form-input"
                 autoComplete="new-password"
                 minLength={8}

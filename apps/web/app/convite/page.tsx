@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 
 const SPECIALTIES: Record<string, string> = {
@@ -120,9 +121,8 @@ export default function ConvitePage() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="password">Senha</label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 className="form-input"
                 autoComplete="new-password"
                 minLength={8}
@@ -133,9 +133,8 @@ export default function ConvitePage() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="confirm">Repita a senha</label>
-              <input
+              <PasswordInput
                 id="confirm"
-                type="password"
                 className="form-input"
                 autoComplete="new-password"
                 minLength={8}
