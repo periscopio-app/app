@@ -211,6 +211,15 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(consolidatedTry.status, 403, "especialista não lê o consolidado");
   });
 
+  test("especialista lê o FOGAP e só vê pareceres concluídos dos outros", async () => {
+    const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
+    assert.equal(v.status, 200, JSON.stringify(v.body));
+    assert.ok(v.body.fogap, "FOGAP enviado visível");
+    assert.equal(v.body.peerSections.length, 0, "parecer do colega ainda não concluído");
+    assert.equal(v.body.medicalFinalSummary, null, "caso ainda não encerrado");
+    assert.ok(!JSON.stringify(v.body).includes("professionalName"));
+  });
+
   test("especialistas concluem; só então o caso volta ao médico", async () => {
     const draft = await call("PATCH", `/api/cases/sections/${sectionEsp}`, "esp", { summary: { texto: "rascunho sintético" } });
     assert.equal(draft.status, 200, JSON.stringify(draft.body));
@@ -223,6 +232,14 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(locked.status, 409, "seção concluída fica somente leitura");
     const fin = await call("PATCH", `/api/cases/sections/${sectionEsp2}`, "esp2", { summary: { texto: "final" }, markAsCompleted: true });
     assert.equal(fin.status, 200, JSON.stringify(fin.body));
+  });
+
+  test("após conclusão, especialista vê o parecer do colega; sem seção no caso → 403", async () => {
+    const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
+    assert.equal(v.status, 200, JSON.stringify(v.body));
+    assert.deepEqual(v.body.peerSections.map((x: any) => x.specialty), ["fonoaudiologia"]);
+    const re = await call("GET", `/api/cases/${caseId}/specialist-view`, "re");
+    assert.equal(re.status, 403, "RE não usa esta rota");
   });
 
   test("médico vê o consolidado, encerra com motivo e a trilha mostra todos os eventos", async () => {
