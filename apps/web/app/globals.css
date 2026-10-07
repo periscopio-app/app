@@ -1,8 +1,41 @@
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Poppins:wght@600;700&family=Inter:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== Site público v2: leve, luminoso, acolhedor ===== */
+.site-v2 { font-family: "Inter", system-ui, sans-serif; }
+.site-v2 .font-display { font-family: "Poppins", system-ui, sans-serif; }
+
+@layer utilities {
+  .bg-aurora {
+    background:
+      radial-gradient(60rem 30rem at 85% -10%, oklch(0.93 0.07 207.7 / 0.9), transparent 60%),
+      radial-gradient(40rem 26rem at -5% 10%, oklch(0.96 0.07 85 / 0.8), transparent 60%),
+      radial-gradient(34rem 22rem at 50% 110%, oklch(0.95 0.04 325.7 / 0.6), transparent 60%),
+      #F8F9FA;
+  }
+  .bg-soft-turquesa { background: linear-gradient(180deg, oklch(0.975 0.02 207.7), #F8F9FA); }
+  .text-gradient {
+    background: linear-gradient(100deg, oklch(0.55 0.11 207.7), oklch(0.465 0.152 325.7));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .shadow-soft { box-shadow: 0 1px 2px oklch(0.24 0.01 17 / 0.04), 0 12px 32px -12px oklch(0.55 0.11 207.7 / 0.22); }
+  .shadow-lift { box-shadow: 0 2px 4px oklch(0.24 0.01 17 / 0.05), 0 24px 48px -16px oklch(0.46 0.15 325.7 / 0.28); }
+  .blob { border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%; }
+  .reveal { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+  .reveal-2 { animation-delay: .1s; } .reveal-3 { animation-delay: .2s; } .reveal-4 { animation-delay: .3s; }
+  .float-slow { animation: floaty 7s ease-in-out infinite; }
+  .float-slow-2 { animation: floaty 9s ease-in-out -3s infinite; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .float-slow, .float-slow-2 { animation: none !important; }
+  html { scroll-behavior: auto !important; }
+}
+html { scroll-behavior: smooth; }
 
 :root {
   --bg-primary: #F6F9FB;

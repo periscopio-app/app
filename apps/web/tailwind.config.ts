@@ -35,6 +35,12 @@ const ouro = {
   DEFAULT: "#E0A820",
   800: "#7A5A06",
 };
+// Paleta oficial da landing v2 (Guia de Identidade Visual).
+const turquesa = { DEFAULT: "#26A8B8" };
+const amarelo = { DEFAULT: "#F5B031" };
+const empatia = { DEFAULT: "#823386", 800: "#68286B" };
+const verde = { DEFAULT: "#5D8374" };
+const grafite = { DEFAULT: "#221F1F" };
 const tinta = { 900: "#14202B", 700: "#33424F", 500: "#5B6B78" };
 
 const config: Config = {
@@ -47,6 +53,11 @@ const config: Config = {
         comunidade,
         ouro,
         tinta,
+        turquesa,
+        amarelo,
+        empatia,
+        verde,
+        grafite,
         linha: "#E1E9ED",
         fundo: "#F6F9FB",
         sucesso: "#2F7D5B",

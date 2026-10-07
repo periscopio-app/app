@@ -13,8 +13,8 @@ const NAV_LINKS = [
   { href: "/reconhecimentos", label: "Reconhecimentos" },
 ];
 
-const WHATSAPP_MSG = "Olá, gostaria de saber mais sobre o Projeto Periscópio!";
-const WHATSAPP =
+export const WHATSAPP_MSG = "Olá, gostaria de saber mais sobre o Projeto Periscópio!";
+export const WHATSAPP =
   "https://wa.me/5511984444994?text=" + encodeURIComponent(WHATSAPP_MSG);
 
 export function SiteLayout({ children }: { children: ReactNode }) {
@@ -24,10 +24,10 @@ export function SiteLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onScroll = () => setTopo(window.scrollY > 900);
-    window.addEventListener("scroll", onScroll, { passive: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("scroll", onScroll);
@@ -38,11 +38,11 @@ export function SiteLayout({ children }: { children: ReactNode }) {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <div className="font-sans">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+    <div className="site-v2">
+      <header className="sticky top-0 z-20 px-3 pt-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/70 bg-white/75 px-5 py-2 shadow-soft backdrop-blur-xl">
           <Link href="/" aria-label="Periscópio — início">
-            <img src="/equipe/logo.webp" alt="Logo do Periscópio" className="h-12 w-auto" />
+            <img src="/equipe/logo.webp" alt="Periscópio" width={76} height={48} className="h-10 w-auto" />
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
             {NAV_LINKS.map((l) => (
@@ -50,66 +50,55 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 key={l.href}
                 href={l.href}
                 className={
-                  "transition-colors hover:text-primary" +
-                  (isActive(l.href) ? " font-semibold text-primary" : "")
+                  "transition-colors hover:text-turquesa" +
+                  (isActive(l.href) ? " font-semibold text-turquesa" : "")
                 }
               >
                 {l.label}
               </Link>
             ))}
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
-            >
-              Acessar
+            <Link href="/login" className="font-medium text-foreground transition-colors hover:text-empatia">
+              Entrar
             </Link>
             <a
               href="/#contato"
-              className="rounded-full bg-primary px-4 py-2 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="rounded-full bg-empatia px-5 py-2 font-medium text-white transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               Seja parceiro
             </a>
-            <button
-              type="button"
-              className="text-primary md:hidden"
-              aria-label={open ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={open}
-              onClick={() => setOpen(!open)}
-            >
-              {open ? <X /> : <Menu />}
-            </button>
-          </div>
+          </nav>
+          <button
+            type="button"
+            className="text-empatia md:hidden"
+            onClick={() => setOpen(!open)}
+            aria-label={open ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={open}
+          >
+            {open ? <X /> : <Menu />}
+          </button>
         </div>
         {open && (
-          <nav className="flex flex-col gap-1 border-t border-border px-5 py-4 md:hidden">
+          <nav className="mx-auto mt-2 flex max-w-6xl flex-col gap-1 rounded-3xl border border-white/70 bg-white/95 px-5 py-4 shadow-soft md:hidden">
             {NAV_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={() => setOpen(false)}
                 className={
                   "py-2 text-foreground" +
-                  (isActive(l.href)
-                    ? " border-l-4 border-primary pl-3 font-semibold text-foreground"
-                    : "")
+                  (isActive(l.href) ? " border-l-4 border-turquesa pl-3 font-semibold" : "")
                 }
-                onClick={() => setOpen(false)}
               >
                 {l.label}
               </Link>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="py-2 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Acessar plataforma
+            <Link href="/login" onClick={() => setOpen(false)} className="py-2 font-medium text-foreground">
+              Entrar
             </Link>
             <a
               href="/#contato"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-full bg-primary px-4 py-2 text-center font-medium text-primary-foreground"
+              className="mt-2 rounded-full bg-empatia px-4 py-2 text-center font-medium text-white"
             >
               Seja parceiro
             </a>
@@ -117,51 +106,17 @@ export function SiteLayout({ children }: { children: ReactNode }) {
         )}
       </header>
       {open && (
-        <div
-          className="fixed inset-0 z-10 bg-foreground/20 md:hidden"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 z-10 bg-foreground/20 md:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
       )}
 
       <main>{children}</main>
-
-      <footer className="border-t border-border bg-card">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-sm text-muted-foreground md:flex-row md:justify-between">
-          <div>
-            <img
-              src="/equipe/logo.webp"
-              alt="Logo do Periscópio"
-              loading="lazy"
-              className="mb-3 h-16 w-auto"
-            />
-            <p>Programa de Saúde Mental na Escola</p>
-          </div>
-          <div className="md:text-right">
-            <p>Dra. Ana Cecília MD</p>
-            <a
-              href={WHATSAPP}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-block text-muted-foreground transition-colors hover:text-primary"
-            >
-              +55 11 98444-4994
-            </a>
-          </div>
-        </div>
-        <p className="mx-auto max-w-6xl px-5 pb-24 text-xs text-muted-foreground md:pb-8">
-          Privacidade: este site não coleta nem armazena dados pessoais. Os dados
-          informados no formulário de contato são usados apenas para retornar o
-          seu contato, em conformidade com a LGPD (Lei nº 13.709/2018).
-        </p>
-      </footer>
 
       <a
         href={WHATSAPP}
         target="_blank"
         rel="noreferrer"
         aria-label="Falar com a Dra. Ana Cecília no WhatsApp"
-        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-turquesa text-grafite shadow-lg transition-transform hover:scale-105"
       >
         <MessageCircle className="h-7 w-7" />
       </a>
@@ -176,6 +131,30 @@ export function SiteLayout({ children }: { children: ReactNode }) {
           <ArrowUp className="h-5 w-5" />
         </button>
       )}
+
+      <footer className="mt-10 border-t border-border/70 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-sm text-muted-foreground md:flex-row md:justify-between">
+          <div>
+            <img src="/equipe/logo.webp" alt="Periscópio" width={101} height={64} loading="lazy" className="mb-3 h-16 w-auto" />
+            <p>Programa de Saúde Mental na Escola</p>
+          </div>
+          <div className="md:text-right">
+            <p>Dra. Ana Cecília MD</p>
+            <a href={WHATSAPP} target="_blank" rel="noreferrer" className="hover:text-empatia">
+              +55 11 98444-4994
+            </a>
+            <p className="mt-2">
+              <Link href="/privacidade" className="hover:text-empatia">Privacidade</Link>
+              {" · "}
+              <Link href="/termos" className="hover:text-empatia">Termos</Link>
+            </p>
+          </div>
+        </div>
+        <p className="mx-auto max-w-6xl px-5 pb-24 text-xs text-muted-foreground md:pb-8">
+          Privacidade: este site não coleta nem armazena dados pessoais. As mensagens do formulário são enviadas
+          diretamente pelo seu WhatsApp. A plataforma do Periscópio segue a LGPD (Lei nº 13.709/2018).
+        </p>
+      </footer>
     </div>
   );
 }
@@ -191,9 +170,7 @@ export function PageHeader({
 }) {
   return (
     <section className="mx-auto max-w-6xl px-5 pb-10 pt-16 md:pt-24">
-      <p className="text-sm font-semibold uppercase tracking-widest text-roxo">
-        {eyebrow}
-      </p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-empatia">{eyebrow}</p>
       <h1 className="mt-4 max-w-3xl font-display text-[2rem] leading-tight text-foreground sm:text-4xl md:text-5xl">
         {title}
       </h1>
