@@ -41,7 +41,7 @@ const ALLOWED_TRANSITIONS: AllowedTransition[] = [
   { from: "rascunho", to: "enviado_re", roles: ["ppi"] },
   { from: "enviado_re", to: "revisao_medica", roles: ["ppi", "md1"] }, // automática após envio
   { from: "revisao_medica", to: "delegado", roles: ["md1"] },
-  { from: "delegado", to: "retornado", roles: ["md1"] }, // automática quando todas as seções concluídas
+  { from: "delegado", to: "retornado", roles: ["md1", "specialist"] }, // automática (disparada pelo especialista que conclui a última seção) quando todas as seções concluídas
   { from: "retornado", to: "encerrado", roles: ["md1"] },
   { from: "enviado_re", to: "rascunho", roles: ["md1"] }, // devolução formal
   { from: "revisao_medica", to: "rascunho", roles: ["md1"] }, // devolução após revisão médica
