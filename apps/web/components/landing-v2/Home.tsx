@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SiteLayout, WHATSAPP } from "@/components/SiteLayout";
 import { assistentes, equipe, tecnologia } from "@/lib/equipe";
 import { ContactForm } from "./ContactForm";
+import { EquipeSection } from "./EquipeSection";
 import { VideoTaruma } from "./VideoTaruma";
 
 const stats = [
@@ -246,64 +247,7 @@ export function Home() {
               </h2>
             </div>
           </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {equipe.map((m) => (
-              <article key={m.n} className="rounded-3xl bg-white p-6 shadow-soft transition hover:-translate-y-1 hover:shadow-lift">
-                {m.foto && (
-                  <img
-                    src={m.fotoSm ?? m.foto}
-                    alt={m.n}
-                    loading="lazy"
-                    width={80}
-                    height={80}
-                    className="mb-4 h-20 w-20 rounded-full border-4 border-secondary object-cover object-top"
-                  />
-                )}
-                <h3 className="font-display text-base font-semibold leading-snug text-foreground">{m.n}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{m.r}</p>
-                {m.lattes && (
-                  <a
-                    href={m.lattes}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block text-sm font-semibold text-empatia hover:underline"
-                  >
-                    Currículo Lattes
-                  </a>
-                )}
-              </article>
-            ))}
-          </div>
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
-            <div className="rounded-3xl bg-white p-6 shadow-soft">
-              <h3 className="font-display text-base font-semibold text-foreground">Pesquisa</h3>
-              <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                {assistentes.map((a) => (
-                  <li key={a.n}>
-                    {a.n}
-                    {a.lattes && (
-                      <>
-                        {" · "}
-                        <a href={a.lattes} target="_blank" rel="noopener noreferrer" className="font-semibold text-empatia hover:underline">
-                          Lattes
-                        </a>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-3xl bg-white p-6 shadow-soft">
-              <h3 className="font-display text-base font-semibold text-foreground">Tecnologia</h3>
-              <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                {tecnologia.map((t) => (
-                  <li key={t.n}>
-                    {t.n} · {t.r}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <EquipeSection equipe={equipe} assistentes={assistentes} tecnologia={tecnologia} />
         </div>
       </section>
 
