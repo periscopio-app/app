@@ -1149,15 +1149,22 @@ export default function REDashboardPage({
                     </div>
 
                     {(() => {
-                      const { pronto, pendencias } = prontoParaRevisao(fogapPayload);
+                      const { pronto, pendencias, avisos } = prontoParaRevisao(fogapPayload);
                       return (
                         <div className={`rounded-xl border px-4 py-3 text-sm ${
                           pronto ? "border-sucesso/20 bg-sucesso/5 text-sucesso" : "border-ouro-300 bg-ouro-50 text-ouro-800"
                         }`}>
                           {pronto ? (
-                            <div className="flex items-center gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
                               <CheckCircle className="h-4 w-4 shrink-0" />
-                              Formulário completo. Pronto para envio ao médico.
+                              {avisos.length === 0 ? "Formulário completo. Pronto para envio ao médico." : "Pode ser enviado ao médico. Itens em branco serão enviados como estão:"}
+                              </div>
+                              {avisos.length > 0 && (
+                                <ul className="mt-1.5 list-disc list-inside text-xs space-y-0.5 pl-1">
+                                  {avisos.map((a) => <li key={a}>{a}</li>)}
+                                </ul>
+                              )}
                             </div>
                           ) : (
                             <div className="space-y-1.5">

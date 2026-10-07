@@ -360,7 +360,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const { pronto, pendencias } = prontoParaRevisao(existing.payload as FogapPayload);
     if (!pronto) {
       return reply.status(422).send({
-        error: "Formulário incompleto. Preencha todos os campos obrigatórios antes de enviar.",
+        error: "Não é possível enviar: informe a idade da criança e confirme que ela está na faixa do piloto.",
         pendencias,
       });
     }
@@ -438,6 +438,8 @@ export async function casesRoutes(app: FastifyInstance) {
       })
     ).min(1),
     reason: z.string().min(1),
+    // Decisão do médico (Dra., 07/out/2026): 1 = precisa de avaliação neuropsicológica, 0 = não. Sem ordem automática.
+    needsNeuropsych: z.boolean().optional(),
   });
 
   app.post("/api/cases/:caseId/delegate", async (request, reply) => {
@@ -455,7 +457,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const parse = delegateSchema.safeParse(request.body);
     if (!parse.success) return reply.status(400).send({ error: "Dados inválidos", issues: parse.error.issues });
 
-    const { delegations, reason } = parse.data;
+    const { delegations, reason, needsNeuropsych } = parse.data;
 
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
@@ -483,6 +485,16 @@ export async function casesRoutes(app: FastifyInstance) {
       }
 
       await applyTransitionInTx(txDb, caseId, "delegado", actor, reason);
+
+      if (needsNeuropsych !== undefined) {
+        await txDb.insert(caseTimeline).values({
+          tenantId: actor.tenantId,
+          caseId,
+          actorId: actor.id,
+          event: "case:neuropsych_decision",
+          payload: { precisaAvaliacaoNeuropsicologica: needsNeuropsych ? 1 : 0, actorRole: actor.role },
+        });
+      }
     });
 
     // Notifica cada especialista designado
@@ -754,10 +766,17 @@ export async function casesRoutes(app: FastifyInstance) {
 
   // ── Encerramento (md1 apenas) ────────────────────────────────────────────
 
-  const closeSchema = z.object({
-    decision: z.enum(["encaminhamento", "acompanhamento", "alta"]),
-    reason: z.string().min(1),
-  });
+  // Opções confirmadas pela Dra. (07/out/2026). Só o médico encerra; acompanhamento é semestral ou anual até a alta.
+  const closeSchema = z
+    .object({
+      decision: z.enum(["encaminhamento", "acompanhamento", "alta", "abandono", "interrupcao_justificada"]),
+      followUp: z.enum(["semestral", "anual"]).optional(),
+      reason: z.string().min(1),
+    })
+    .refine((d) => d.decision !== "acompanhamento" || !!d.followUp, {
+      message: "Informe a periodicidade do acompanhamento (semestral ou anual).",
+      path: ["followUp"],
+    });
 
   app.post("/api/cases/:caseId/close", async (request, reply) => {
     const actor = await requireActor(request, reply, ["md1"]);
@@ -774,7 +793,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const parse = closeSchema.safeParse(request.body);
     if (!parse.success) return reply.status(400).send({ error: "Dados inválidos", issues: parse.error.issues });
 
-    const { decision, reason } = parse.data;
+    const { decision, reason, followUp } = parse.data;
 
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
@@ -788,11 +807,11 @@ export async function casesRoutes(app: FastifyInstance) {
         caseId,
         actorId: actor.id,
         event: "case:closed",
-        payload: { decision, reason, actorRole: actor.role },
+        payload: { decision, followUp: decision === "acompanhamento" ? followUp : undefined, reason, actorRole: actor.role },
       });
     });
 
-    return { success: true, decision, message: "Caso encerrado com sucesso." };
+    return { success: true, decision, followUp, message: "Caso encerrado com sucesso." };
   });
 
   // ── Trilha de eventos (md1 apenas, paginada) ─────────────────────────────

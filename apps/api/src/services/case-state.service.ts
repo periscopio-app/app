@@ -36,7 +36,7 @@ type AllowedTransition = {
   roles: readonly string[];
 };
 
-// NÃO IMPLEMENTAR regra de ordem neuro→psico até decisão clínica confirmada
+// Neuro→psico NÃO é ordem fixa (Dra., 07/out/2026): o médico decide por caso (evento case:neuropsych_decision).
 const ALLOWED_TRANSITIONS: AllowedTransition[] = [
   { from: "rascunho", to: "enviado_re", roles: ["ppi"] },
   { from: "enviado_re", to: "revisao_medica", roles: ["ppi", "md1"] }, // automática após envio

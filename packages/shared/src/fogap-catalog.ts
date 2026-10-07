@@ -232,38 +232,40 @@ export function makeFogapPayloadVazio(): FogapPayload {
   };
 }
 
-export function prontoParaRevisao(payload: FogapPayload): { pronto: boolean; pendencias: string[] } {
+/**
+ * Regra confirmada pela Dra. (07/out/2026): o FOGAP pode ser enviado ao médico com itens em branco.
+ * Só bloqueia o envio quando não há idade/grupo ou a criança está fora do piloto.
+ * Itens em branco viram `avisos` (informativos), nunca `pendencias` (bloqueantes).
+ */
+export function prontoParaRevisao(payload: FogapPayload): { pronto: boolean; pendencias: string[]; avisos: string[] } {
   const pendencias: string[] = [];
+  const avisos: string[] = [];
 
   if (!payload.grupo || payload.fogap_state === "aguardando_idade") {
     pendencias.push("Idade não informada");
-    return { pronto: false, pendencias };
+    return { pronto: false, pendencias, avisos };
   }
   if (payload.fogap_state === "fora_da_faixa" || payload.fogap_state === "faixa_fora_do_piloto") {
     pendencias.push("Faixa etária não atendida pelo piloto");
-    return { pronto: false, pendencias };
+    return { pronto: false, pendencias, avisos };
   }
 
   const itens = getItensGrupo(payload.grupo);
   const devPendentes = itens.filter((item) => !payload.respostas_desenvolvimento[item.id]);
   if (devPendentes.length > 0) {
-    pendencias.push(`${devPendentes.length} item(s) de desenvolvimento sem resposta`);
+    avisos.push(`${devPendentes.length} item(s) de desenvolvimento em branco`);
   }
 
   const hiInsuf = payload.historico_insuficiente;
-  const compPendentes = FOGAP_COMPORTAMENTOS.filter(
-    (c) => !payload.respostas_comportamentos[c.id]
-  );
+  const compPendentes = FOGAP_COMPORTAMENTOS.filter((c) => !payload.respostas_comportamentos[c.id]);
   if (compPendentes.length > 0 && !hiInsuf.marcado) {
-    pendencias.push(
-      `${compPendentes.length} comportamento(s) sem resposta (ou marque "histórico insuficiente")`
-    );
+    avisos.push(`${compPendentes.length} comportamento(s) em branco`);
   }
   if (hiInsuf.marcado && (!hiInsuf.fonte?.trim() || !hiInsuf.periodo_observado?.trim())) {
-    pendencias.push("Histórico insuficiente: informe fonte e período observado");
+    avisos.push("Histórico insuficiente: fonte ou período observado em branco");
   }
 
-  return { pronto: pendencias.length === 0, pendencias };
+  return { pronto: true, pendencias, avisos };
 }
 
 export function validarPayloadFogap(payload: unknown): string | null {

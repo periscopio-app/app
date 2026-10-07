@@ -42,6 +42,14 @@ const JOURNEY_COLORS: Record<string, string> = {
   encerrado: "bg-linha text-tinta-500",
 };
 
+const CLOSE_LABELS: Record<string, string> = {
+  encaminhamento: "Encaminhamento",
+  acompanhamento: "Acompanhamento",
+  alta: "Alta",
+  abandono: "Abandono",
+  interrupcao_justificada: "Interrupção justificada",
+};
+
 const SPECIALTIES = [
   { id: "fonoaudiologia", label: "Fonoaudiologia" },
   { id: "neuropsicologia", label: "Neuropsicologia" },
@@ -79,9 +87,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   const [consolidatedLoading, setConsolidatedLoading] = useState(false);
 
   // Close case form
-  const [closeDecision, setCloseDecision] = useState<"encaminhamento" | "acompanhamento" | "alta">(
-    "acompanhamento"
-  );
+  type CloseDecision = "encaminhamento" | "acompanhamento" | "alta" | "abandono" | "interrupcao_justificada";
+  const [closeDecision, setCloseDecision] = useState<CloseDecision>("acompanhamento");
+  const [followUp, setFollowUp] = useState<"semestral" | "anual">("semestral");
+  // 1 = precisa de avaliação neuropsicológica; 0 = não. Decisão do médico, sem ordem automática.
+  const [needsNeuropsych, setNeedsNeuropsych] = useState<"" | "0" | "1">("");
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState(false);
 
@@ -196,6 +206,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       await api.post(`/api/cases/${activeCase.id}/delegate`, {
         delegations: delegationList,
         reason: "Delegação médica após revisão da avaliação da RE",
+        needsNeuropsych: needsNeuropsych === "" ? undefined : needsNeuropsych === "1",
       });
       const updated = cases.map((c) =>
         c.id === activeCase.id ? { ...c, journeyState: "delegado" as const } : c
@@ -240,6 +251,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
     try {
       await api.post(`/api/cases/${activeCase.id}/close`, {
         decision: closeDecision,
+        followUp: closeDecision === "acompanhamento" ? followUp : undefined,
         reason: closeReason,
       });
       const updated = cases.map((c) =>
@@ -463,6 +475,18 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         Delegação disponível apenas quando o caso está em revisão médica.
                       </div>
                     )}
+                    <label className="block text-xs font-semibold text-tinta-700">
+                      Precisa de avaliação neuropsicológica? (decisão do médico; sem ordem automática)
+                      <select
+                        value={needsNeuropsych}
+                        onChange={(e) => setNeedsNeuropsych(e.target.value as "" | "0" | "1")}
+                        className="mt-1 w-full rounded-xl border border-linha bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">Não registrar</option>
+                        <option value="0">Não (0)</option>
+                        <option value="1">Sim (1)</option>
+                      </select>
+                    </label>
                     <div className="space-y-3">
                       {SPECIALTIES.map((spec) => (
                         <div key={spec.id} className="grid grid-cols-5 items-center gap-3">
@@ -628,7 +652,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             Decisão de conduta
                           </label>
                           <div className="flex gap-2">
-                            {(["encaminhamento", "acompanhamento", "alta"] as const).map((d) => (
+                            {(["encaminhamento", "acompanhamento", "alta", "abandono", "interrupcao_justificada"] as const).map((d) => (
                               <label
                                 key={d}
                                 className={`flex-1 flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
@@ -645,10 +669,23 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                   onChange={() => setCloseDecision(d)}
                                   className="sr-only"
                                 />
-                                {d.charAt(0).toUpperCase() + d.slice(1)}
+                                {CLOSE_LABELS[d]}
                               </label>
                             ))}
                           </div>
+                          {closeDecision === "acompanhamento" && (
+                            <label className="mt-3 block text-xs font-semibold text-tinta-700">
+                              Periodicidade do acompanhamento (até a alta)
+                              <select
+                                value={followUp}
+                                onChange={(e) => setFollowUp(e.target.value as "semestral" | "anual")}
+                                className="mt-1 w-full rounded-xl border border-linha bg-white px-3 py-2 text-sm"
+                              >
+                                <option value="semestral">Semestral</option>
+                                <option value="anual">Anual</option>
+                              </select>
+                            </label>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-tinta-700 mb-1">
