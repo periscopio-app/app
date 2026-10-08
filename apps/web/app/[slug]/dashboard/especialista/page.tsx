@@ -228,7 +228,7 @@ export default function EspecialistaDashboardPage({
                     <span
                       className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
                         sec.status === "concluido"
-                          ? "bg-sucesso/10 text-sucesso"
+                          ? "bg-sucesso/10 text-black"
                           : sec.status === "em_andamento"
                           ? "bg-ceu-100 text-black"
                           : "bg-ouro-100 text-black"
@@ -273,7 +273,7 @@ export default function EspecialistaDashboardPage({
                   <span
                     className={`text-xs font-bold rounded-full px-2.5 py-1 ${
                       activeSection.status === "concluido"
-                        ? "bg-sucesso/10 text-sucesso"
+                        ? "bg-sucesso/10 text-black"
                         : activeSection.status === "em_andamento"
                         ? "bg-ceu-100 text-black"
                         : "bg-ouro-100 text-black"
@@ -284,7 +284,7 @@ export default function EspecialistaDashboardPage({
                 </div>
 
                 {isReadOnly && (
-                  <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-sucesso">
+                  <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-black">
                     <CheckCircle className="h-4 w-4 shrink-0" />
                     Parecer concluído e registrado no prontuário. Edição bloqueada.
                   </div>
@@ -294,7 +294,7 @@ export default function EspecialistaDashboardPage({
                   <div
                     className={`rounded-xl px-4 py-3 text-sm ${
                       saveMsg.includes("concluído") || saveMsg.includes("salvo")
-                        ? "bg-sucesso/10 text-sucesso"
+                        ? "bg-sucesso/10 text-black"
                         : "bg-erro/10 text-black"
                     }`}
                   >

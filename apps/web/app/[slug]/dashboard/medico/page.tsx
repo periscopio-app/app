@@ -405,7 +405,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   <div
                     className={`mb-4 rounded-xl px-4 py-3 text-sm ${
                       actionMsg.includes("sucesso") || actionMsg.includes("delegado") || actionMsg.includes("encerrado")
-                        ? "bg-sucesso/10 text-sucesso"
+                        ? "bg-sucesso/10 text-black"
                         : "bg-erro/10 text-black"
                     }`}
                   >
@@ -432,7 +432,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           <span
                             className={`text-xs font-bold rounded-full px-2.5 py-0.5 ${
                               reAssessment.status === "enviado"
-                                ? "bg-sucesso/10 text-sucesso"
+                                ? "bg-sucesso/10 text-black"
                                 : reAssessment.status === "devolvido"
                                 ? "bg-erro/10 text-black"
                                 : "bg-ouro-100 text-black"
@@ -556,7 +556,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                               <span
                                 className={`text-xs font-bold rounded-full px-2 py-0.5 ${
                                   sec.status === "concluido"
-                                    ? "bg-sucesso/10 text-sucesso"
+                                    ? "bg-sucesso/10 text-black"
                                     : "bg-ouro-100 text-black"
                                 }`}
                               >

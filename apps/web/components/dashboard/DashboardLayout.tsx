@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
 import { api } from "@/lib/api";
-import {
+import { MapPinned,
   FileText,
   Stethoscope,
   ShieldCheck,
@@ -88,11 +88,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const agendaItem = { label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board", exact: false };
   const agendaRoles = ["ppi", "school_manager", "md1", "board"];
+  const mapaItem = { label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão", exact: false };
+  const mapaRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"];
 
   const visibleClinical = userRole
     ? [
         ...clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false })),
         ...(agendaRoles.includes(userRole) ? [agendaItem] : []),
+        ...(mapaRoles.includes(userRole) ? [mapaItem] : []),
       ]
     : [];
 

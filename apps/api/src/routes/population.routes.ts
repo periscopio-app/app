@@ -28,7 +28,7 @@ const payloadSchema = z
     services: z.record(count),
   })
   .strict();
-const importSchema = z
+export const importSchema = z
   .object({
     source: z.string().min(3).max(60),
     referenceYear: z.number().int().min(2000).max(2100),
@@ -57,7 +57,7 @@ const geoSchema = z.object({
   externalCode: z.string().max(30).optional(),
 });
 
-const norm = (s: string) =>
+export const norm = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 export async function populationRoutes(app: FastifyInstance) {

@@ -213,6 +213,9 @@ export default function REDashboardPage({
   const [birthMonth, setBirthMonth] = useState(1); // 1–12
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
+  const [studentMsgOk, setStudentMsgOk] = useState(true);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Active case & assessment
   const [activeCase, setActiveCase] = useState<CaseItem | null>(null);
@@ -283,9 +286,40 @@ export default function REDashboardPage({
         birthMonth: Number(birthMonth),
       });
       setStudents((prev) => [...prev, data.student]);
+      setStudentMsgOk(true);
       setStudentMsg(`Aluno cadastrado. Código LGPD: ${data.student.studentCode}`);
     } catch (err: unknown) {
+      setStudentMsgOk(false);
       setStudentMsg(err instanceof Error ? err.message : "Erro ao cadastrar aluno.");
+    }
+  }
+
+  // Importação em lote: uma linha por aluno, "ano;mês" (ex.: 2016;5). Nenhum outro dado é aceito.
+  async function handleBulkImport() {
+    if (!schoolId) return;
+    setStudentMsg(null);
+    const lines = bulkText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const rows = lines.map((l) => {
+      const [y, m] = l.split(/[;,\t ]+/);
+      return { birthYear: Number(y), birthMonth: Number(m) };
+    });
+    if (rows.length === 0) {
+      setStudentMsgOk(false);
+      setStudentMsg("Cole ao menos uma linha no formato ano;mês (ex.: 2016;5).");
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      const data = await api.post<{ imported: number; students: Student[] }>(`/api/schools/${schoolId}/students/bulk`, { students: rows });
+      setStudents((prev) => [...prev, ...data.students]);
+      setBulkText("");
+      setStudentMsgOk(true);
+      setStudentMsg(`${data.imported} alunos importados com código pseudonimizado.`);
+    } catch (err: unknown) {
+      setStudentMsgOk(false);
+      setStudentMsg(err instanceof Error ? err.message : "Erro ao importar alunos.");
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -587,7 +621,7 @@ export default function REDashboardPage({
               Cadastrar Aluno (LGPD)
             </h2>
             {studentMsg && (
-              <p className={`text-xs rounded-lg px-3 py-2 mb-3 ${studentMsg.includes("Erro") ? "bg-erro/10 text-black" : "bg-sucesso/10 text-sucesso"}`}>
+              <p role="status" className={`text-xs rounded-lg px-3 py-2 mb-3 text-black border ${studentMsgOk ? "bg-[#EAF6F0] border-[#CFE8DB]" : "bg-[#FDECEA] border-erro"}`}>
                 {studentMsg}
               </p>
             )}
@@ -625,6 +659,25 @@ export default function REDashboardPage({
                 Gerar código pseudonimizado
               </button>
             </form>
+            <details className="mt-3 rounded-xl border border-linha p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-black">Importar vários alunos (colar lista)</summary>
+              <p className="text-xs text-neutral-800 mt-2">Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2016;5). Não cole nomes nem outros dados — só ano e mês de nascimento.</p>
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                rows={5}
+                placeholder={"2016;5\n2015;11\n2017;2"}
+                className="mt-2 w-full rounded-xl border border-linha px-3 py-2 text-sm text-black font-mono outline-none focus:ring-2 focus:ring-roxo/40"
+              />
+              <button
+                type="button"
+                onClick={handleBulkImport}
+                disabled={bulkBusy}
+                className="mt-2 w-full rounded-xl bg-roxo-100 border border-roxo px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+              >
+                {bulkBusy ? "Importando..." : "Importar lista"}
+              </button>
+            </details>
           </div>
 
           {/* Student list */}
@@ -770,7 +823,7 @@ export default function REDashboardPage({
                 {caseMsg && (
                   <div className={`rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
                     caseMsg.includes("sucesso") || caseMsg.includes("salvo")
-                      ? "bg-sucesso/10 text-sucesso"
+                      ? "bg-sucesso/10 text-black"
                       : "bg-erro/10 text-black"
                   }`}>
                     {caseMsg}
@@ -876,7 +929,7 @@ export default function REDashboardPage({
                       </div>
                     )}
                     {fogapPayload.fogap_state === "rascunho" && fogapPayload.grupo && (
-                      <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-sucesso">
+                      <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-black">
                         <CheckCircle className="h-4 w-4 shrink-0" />
                         Grupo <strong>{fogapPayload.grupo}</strong> carregado — {fogapPayload.idade_anos}a {fogapPayload.idade_meses ?? 0}m · {itensGrupo.length} itens de desenvolvimento.
                       </div>
@@ -1152,7 +1205,7 @@ export default function REDashboardPage({
                       const { pronto, pendencias, avisos } = prontoParaRevisao(fogapPayload);
                       return (
                         <div className={`rounded-xl border px-4 py-3 text-sm ${
-                          pronto ? "border-sucesso/20 bg-sucesso/5 text-sucesso" : "border-ouro-300 bg-ouro-50 text-black"
+                          pronto ? "border-sucesso/20 bg-sucesso/5 text-black" : "border-ouro-300 bg-ouro-50 text-black"
                         }`}>
                           {pronto ? (
                             <div>
