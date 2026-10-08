@@ -26,7 +26,7 @@ export default function MetodoPage() {
       <section className="mx-auto max-w-6xl px-5 pb-16">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="rounded-3xl border border-border bg-card p-8">
-            <span className="text-sm font-bold text-roxo">ETAPA 1</span>
+            <span className="text-sm font-bold text-black">ETAPA 1</span>
             <h2 className="mt-3 font-display text-xl font-bold text-foreground">Observação Sensível na Escola</h2>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
               O professor e a equipe pedagógica recebem capacitação contínua para reconhecer alterações comportamentais,

@@ -54,10 +54,10 @@ export default function NotionTasksWidget() {
     <div className="bg-white border border-[#E1E9ED] rounded-2xl p-6 shadow-sm">
       <div className="flex items-center justify-between border-b border-[#E1E9ED] pb-4 mb-5">
         <div>
-          <h2 className="text-lg font-bold text-[#14202B] flex items-center gap-2">
+          <h2 className="text-lg font-bold text-black flex items-center gap-2">
             <span>📋 Board de Tarefas do Sistema (Notion Sync)</span>
           </h2>
-          <p className="text-xs text-[#5B6B78] mt-1">
+          <p className="text-xs text-neutral-800 mt-1">
             Sincronização com a Board oficial do Periscópio
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function NotionTasksWidget() {
           <button
             onClick={loadTasks}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E1E9ED] hover:bg-[#F0F9FC] text-[#3D6B6B] transition-all"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E1E9ED] hover:bg-[#F0F9FC] text-black transition-all"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             <span>Atualizar</span>
@@ -74,7 +74,7 @@ export default function NotionTasksWidget() {
             href="https://app.notion.com/p/3de22e9df44c8010a6d3e984b965654a?v=2f400e2b472342b49f2312201b05b36b"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#682880]/10 text-[#682880] hover:bg-[#682880]/20 transition-all"
+            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#682880]/10 text-black hover:bg-[#682880]/20 transition-all"
           >
             <span>Abrir no Notion</span>
             <ExternalLink className="w-3 h-3" />
@@ -136,9 +136,9 @@ export default function NotionTasksWidget() {
               className="flex items-start justify-between gap-3 p-3 rounded-xl border border-[#E1E9ED] bg-[#F6F9FB]/50 hover:bg-white transition-all"
             >
               <div className="space-y-1">
-                <p className="text-xs font-semibold text-[#14202B] leading-snug">{task.title}</p>
+                <p className="text-xs font-semibold text-black leading-snug">{task.title}</p>
                 {task.description && (
-                  <p className="text-[11px] text-[#5B6B78]">{task.description}</p>
+                  <p className="text-[11px] text-neutral-800">{task.description}</p>
                 )}
               </div>
               <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-full border ${badgeClass} shrink-0`}>

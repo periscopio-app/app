@@ -112,13 +112,13 @@ export function NotificationCenter() {
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notificações${unread > 0 ? ` — ${unread} não lidas` : ""}`}
         aria-expanded={open}
-        className="relative p-2 rounded-lg text-[#5B6B78] hover:text-[#682880] hover:bg-[#F0F9FC] transition"
+        className="relative p-2 rounded-lg text-neutral-800 hover:text-black hover:bg-[#F0F9FC] transition"
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-[#682880] text-white text-[10px] font-bold flex items-center justify-center px-1"
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-roxo-100 border border-roxo text-black text-[10px] font-bold flex items-center justify-center px-1"
           >
             {unread > 99 ? "99+" : unread}
           </span>
@@ -133,12 +133,12 @@ export function NotificationCenter() {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#E1E9ED]">
-            <span className="text-sm font-bold text-[#14202B]">Notificações</span>
+            <span className="text-sm font-bold text-black">Notificações</span>
             <div className="flex items-center gap-2">
               {unread > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="flex items-center gap-1 text-xs text-[#682880] hover:underline"
+                  className="flex items-center gap-1 text-xs text-black hover:underline"
                   title="Marcar todas como lidas"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export function NotificationCenter() {
                 </button>
               )}
               <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-[#F0F9FC]" aria-label="Fechar">
-                <X className="w-4 h-4 text-[#5B6B78]" />
+                <X className="w-4 h-4 text-neutral-800" />
               </button>
             </div>
           </div>
@@ -159,7 +159,7 @@ export function NotificationCenter() {
             className="overflow-y-auto flex-1"
           >
             {visible.length === 0 ? (
-              <p className="text-xs text-[#5B6B78] text-center py-8">Nenhuma notificação pendente.</p>
+              <p className="text-xs text-neutral-800 text-center py-8">Nenhuma notificação pendente.</p>
             ) : (
               visible.map((notif) => (
                 <div
@@ -169,8 +169,8 @@ export function NotificationCenter() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-[#14202B] leading-relaxed">{labelFor(notif)}</p>
-                    <p className="text-[10px] text-[#5B6B78] mt-1">
+                    <p className="text-xs text-black leading-relaxed">{labelFor(notif)}</p>
+                    <p className="text-[10px] text-neutral-800 mt-1">
                       {new Date(notif.createdAt).toLocaleString("pt-BR", {
                         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                       })}
@@ -180,7 +180,7 @@ export function NotificationCenter() {
                     {!notif.readAt && (
                       <button
                         onClick={() => markRead(notif.id)}
-                        className="p-1 rounded hover:bg-[#E1E9ED] text-[#5B6B78]"
+                        className="p-1 rounded hover:bg-[#E1E9ED] text-neutral-800"
                         aria-label="Marcar como lida"
                         title="Marcar como lida"
                       >
@@ -189,7 +189,7 @@ export function NotificationCenter() {
                     )}
                     <button
                       onClick={() => dismiss(notif.id)}
-                      className="p-1 rounded hover:bg-[#E1E9ED] text-[#5B6B78]"
+                      className="p-1 rounded hover:bg-[#E1E9ED] text-neutral-800"
                       aria-label="Descartar"
                       title="Descartar"
                     >

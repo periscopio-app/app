@@ -32,7 +32,7 @@ export function VideoTaruma() {
             className="h-full w-full object-cover"
           />
           <span className="absolute inset-0 grid place-items-center">
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-amarelo text-grafite shadow-lg transition-transform group-hover:scale-110">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-amarelo text-black shadow-lg transition-transform group-hover:scale-110">
               <svg viewBox="0 0 24 24" className="ml-1 h-7 w-7 fill-current" aria-hidden="true">
                 <path d="M8 5v14l11-7z" />
               </svg>

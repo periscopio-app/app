@@ -34,12 +34,12 @@ const JOURNEY_LABELS: Record<string, string> = {
 };
 
 const JOURNEY_COLORS: Record<string, string> = {
-  rascunho: "bg-ouro-100 text-ouro-800",
-  enviado_re: "bg-ceu-100 text-ceu-800",
-  revisao_medica: "bg-roxo-100 text-roxo-800",
-  delegado: "bg-comunidade-100 text-comunidade-700",
-  retornado: "bg-ouro-100 text-ouro-800",
-  encerrado: "bg-linha text-tinta-500",
+  rascunho: "bg-ouro-100 text-black",
+  enviado_re: "bg-ceu-100 text-black",
+  revisao_medica: "bg-roxo-100 text-black",
+  delegado: "bg-comunidade-100 text-black",
+  retornado: "bg-ouro-100 text-black",
+  encerrado: "bg-linha text-neutral-800",
 };
 
 const CLOSE_LABELS: Record<string, string> = {
@@ -286,7 +286,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-tinta-500 text-sm">
+      <div className="flex items-center justify-center py-24 text-neutral-800 text-sm">
         Carregando painel médico...
       </div>
     );
@@ -297,15 +297,15 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       {me && <RoleBanner me={me} />}
 
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-erro">
+        <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-black">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-tinta-900">Painel Médico</h1>
-        <p className="text-sm text-tinta-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-black">Painel Médico</h1>
+        <p className="text-sm text-neutral-800 mt-0.5">
           Revisão clínica, delegação e encerramento de casos.
         </p>
       </div>
@@ -313,13 +313,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: case queue */}
         <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-          <h2 className="text-sm font-bold text-tinta-900 mb-3 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-roxo" />
+          <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-black" />
             Fila de casos ({cases.length})
           </h2>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
             {cases.length === 0 && (
-              <p className="text-xs text-tinta-500 text-center py-6">
+              <p className="text-xs text-neutral-800 text-center py-6">
                 Nenhum caso aguardando revisão médica.
               </p>
             )}
@@ -334,16 +334,16 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-tinta-900">{c.studentCode}</span>
+                  <span className="text-xs font-semibold text-black">{c.studentCode}</span>
                   <span
                     className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-tinta-500"
+                      JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"
                     }`}
                   >
                     {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
                   </span>
                 </div>
-                <div className="text-[11px] text-tinta-500 mt-0.5">
+                <div className="text-[11px] text-neutral-800 mt-0.5">
                   {new Date(c.createdAt).toLocaleDateString("pt-BR")}
                 </div>
               </button>
@@ -355,8 +355,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
         <div className="lg:col-span-2">
           {!activeCase ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
-              <ClipboardList className="h-10 w-10 text-tinta-500/40 mb-3" />
-              <p className="text-sm font-semibold text-tinta-700">
+              <ClipboardList className="h-10 w-10 text-neutral-800/40 mb-3" />
+              <p className="text-sm font-semibold text-black">
                 Selecione um caso para revisar
               </p>
             </div>
@@ -365,10 +365,10 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
               {/* Case header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-linha">
                 <div>
-                  <h2 className="text-base font-bold text-tinta-900">{activeCase.studentCode}</h2>
+                  <h2 className="text-base font-bold text-black">{activeCase.studentCode}</h2>
                   <span
                     className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-tinta-500"
+                      JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"
                     }`}
                   >
                     {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
@@ -389,8 +389,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       onClick={action}
                       className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
                         view === id
-                          ? "bg-roxo text-white"
-                          : "text-tinta-500 hover:bg-fundo hover:text-tinta-900"
+                          ? "bg-roxo-100 border border-roxo text-black"
+                          : "text-neutral-800 hover:bg-fundo hover:text-black"
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -406,7 +406,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     className={`mb-4 rounded-xl px-4 py-3 text-sm ${
                       actionMsg.includes("sucesso") || actionMsg.includes("delegado") || actionMsg.includes("encerrado")
                         ? "bg-sucesso/10 text-sucesso"
-                        : "bg-erro/10 text-erro"
+                        : "bg-erro/10 text-black"
                     }`}
                   >
                     {actionMsg}
@@ -416,14 +416,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* RE Assessment view */}
                 {view === "re" && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <FileSearch className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <FileSearch className="h-4 w-4 text-black" />
                       Avaliação da RE (FOGAP Demo)
                     </h3>
                     {reLoading ? (
-                      <p className="text-sm text-tinta-500">Carregando avaliação...</p>
+                      <p className="text-sm text-neutral-800">Carregando avaliação...</p>
                     ) : !reAssessment ? (
-                      <p className="text-sm text-tinta-500">
+                      <p className="text-sm text-neutral-800">
                         Nenhuma avaliação enviada para este caso ainda.
                       </p>
                     ) : (
@@ -434,14 +434,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                               reAssessment.status === "enviado"
                                 ? "bg-sucesso/10 text-sucesso"
                                 : reAssessment.status === "devolvido"
-                                ? "bg-erro/10 text-erro"
-                                : "bg-ouro-100 text-ouro-800"
+                                ? "bg-erro/10 text-black"
+                                : "bg-ouro-100 text-black"
                             }`}
                           >
                             {reAssessment.status.toUpperCase()}
                           </span>
                           {reAssessment.submittedAt && (
-                            <span className="text-xs text-tinta-500">
+                            <span className="text-xs text-neutral-800">
                               Enviado em{" "}
                               {new Date(reAssessment.submittedAt).toLocaleDateString("pt-BR")}
                             </span>
@@ -452,8 +452,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             .filter(([, v]) => Boolean(v))
                             .map(([key, value]) => (
                               <div key={key} className="px-4 py-2.5 grid grid-cols-2 gap-4">
-                                <span className="text-xs font-semibold text-tinta-700">{key}</span>
-                                <span className="text-xs text-tinta-500">{value}</span>
+                                <span className="text-xs font-semibold text-black">{key}</span>
+                                <span className="text-xs text-neutral-800">{value}</span>
                               </div>
                             ))}
                         </div>
@@ -465,17 +465,17 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* Delegation form */}
                 {view === "delegate" && (
                   <form onSubmit={handleDelegate} className="space-y-4">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <Users className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <Users className="h-4 w-4 text-black" />
                       Delegar especialistas
                     </h3>
                     {activeCase.journeyState !== "revisao_medica" && (
-                      <div className="flex items-center gap-2 rounded-xl border border-ceu-300 bg-ceu-50 px-4 py-3 text-sm text-ceu-800">
+                      <div className="flex items-center gap-2 rounded-xl border border-ceu-300 bg-ceu-50 px-4 py-3 text-sm text-black">
                         <AlertCircle className="h-4 w-4 shrink-0" />
                         Delegação disponível apenas quando o caso está em revisão médica.
                       </div>
                     )}
-                    <label className="block text-xs font-semibold text-tinta-700">
+                    <label className="block text-xs font-semibold text-black">
                       Precisa de avaliação neuropsicológica? (decisão do médico; sem ordem automática)
                       <select
                         value={needsNeuropsych}
@@ -490,11 +490,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     <div className="space-y-3">
                       {SPECIALTIES.map((spec) => (
                         <div key={spec.id} className="grid grid-cols-5 items-center gap-3">
-                          <span className="col-span-2 text-sm font-semibold text-tinta-700">
+                          <span className="col-span-2 text-sm font-semibold text-black">
                             {spec.label}
                           </span>
                           <select
-                            className="col-span-3 rounded-xl border border-linha px-3 py-2 text-sm text-tinta-900 bg-white outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                            className="col-span-3 rounded-xl border border-linha px-3 py-2 text-sm text-black bg-white outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
                             value={delegations[spec.id] ?? ""}
                             onChange={(e) =>
                               setDelegations((prev) => ({ ...prev, [spec.id]: e.target.value }))
@@ -523,7 +523,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       <button
                         type="submit"
                         disabled={delegating || activeCase.journeyState !== "revisao_medica"}
-                        className="flex items-center gap-2 rounded-xl bg-roxo px-5 py-2 text-sm font-semibold text-white hover:bg-roxo-800 disabled:opacity-60 transition"
+                        className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
                       >
                         <ChevronRight className="h-4 w-4" />
                         {delegating ? "Delegando..." : "Confirmar delegação"}
@@ -535,14 +535,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* Consolidated view */}
                 {view === "consolidated" && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-black" />
                       Prontuário consolidado
                     </h3>
                     {consolidatedLoading ? (
-                      <p className="text-sm text-tinta-500">Carregando...</p>
+                      <p className="text-sm text-neutral-800">Carregando...</p>
                     ) : sections.length === 0 ? (
-                      <p className="text-sm text-tinta-500">
+                      <p className="text-sm text-neutral-800">
                         Nenhuma seção disponível ainda.
                       </p>
                     ) : (
@@ -550,24 +550,24 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         {sections.map((sec) => (
                           <div key={sec.id} className="rounded-xl border border-linha p-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-semibold text-tinta-900 capitalize">
+                              <span className="text-sm font-semibold text-black capitalize">
                                 {sec.specialty}
                               </span>
                               <span
                                 className={`text-xs font-bold rounded-full px-2 py-0.5 ${
                                   sec.status === "concluido"
                                     ? "bg-sucesso/10 text-sucesso"
-                                    : "bg-ouro-100 text-ouro-800"
+                                    : "bg-ouro-100 text-black"
                                 }`}
                               >
                                 {sec.status}
                               </span>
                             </div>
                             {sec.notes && (
-                              <p className="text-xs text-tinta-700 whitespace-pre-wrap">{sec.notes}</p>
+                              <p className="text-xs text-black whitespace-pre-wrap">{sec.notes}</p>
                             )}
                             {sec.professionalName && (
-                              <p className="text-[11px] text-tinta-500 mt-2">
+                              <p className="text-[11px] text-neutral-800 mt-2">
                                 {sec.professionalName}
                                 {sec.professionalClassCode
                                   ? ` · ${sec.professionalClassCode}`
@@ -584,23 +584,23 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* Return to RE form */}
                 {view === "return" && (
                   <form onSubmit={handleReturn} className="space-y-4">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <RotateCcw className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-black" />
                       Devolver ao RE
                     </h3>
                     {activeCase.journeyState !== "revisao_medica" ? (
-                      <div className="flex items-center gap-2 rounded-xl border border-linha bg-fundo px-4 py-3 text-sm text-tinta-700">
-                        <AlertCircle className="h-4 w-4 shrink-0 text-tinta-500" />
+                      <div className="flex items-center gap-2 rounded-xl border border-linha bg-fundo px-4 py-3 text-sm text-black">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-neutral-800" />
                         Devolução disponível apenas quando o caso está em revisão médica.
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm text-tinta-500">
+                        <p className="text-sm text-neutral-800">
                           O profissional RE receberá o caso de volta com o motivo informado e poderá editar e reenviar a avaliação.
                         </p>
                         <div>
-                          <label className="block text-xs font-semibold text-tinta-700 mb-1">
-                            Motivo da devolução <span className="text-erro">*</span>
+                          <label className="block text-xs font-semibold text-black mb-1">
+                            Motivo da devolução <span className="text-black">*</span>
                           </label>
                           <textarea
                             rows={4}
@@ -608,14 +608,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             value={returnReason}
                             onChange={(e) => setReturnReason(e.target.value)}
                             placeholder="Descreva o que deve ser revisado ou complementado na avaliação..."
-                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-tinta-900 resize-none outline-none focus:ring-2 focus:ring-roxo/40"
+                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-none outline-none focus:ring-2 focus:ring-roxo/40"
                           />
                         </div>
                         <div className="flex justify-end">
                           <button
                             type="submit"
                             disabled={returning || !returnReason.trim()}
-                            className="flex items-center gap-2 rounded-xl border border-ouro-400 bg-ouro-50 px-5 py-2 text-sm font-semibold text-ouro-800 hover:bg-ouro-100 disabled:opacity-60 transition"
+                            className="flex items-center gap-2 rounded-xl border border-ouro-400 bg-ouro-50 px-5 py-2 text-sm font-semibold text-black hover:bg-ouro-100 disabled:opacity-60 transition"
                           >
                             <RotateCcw className="h-4 w-4" />
                             {returning ? "Devolvendo..." : "Devolver ao RE"}
@@ -629,17 +629,17 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* Close case form */}
                 {view === "close" && (
                   <form onSubmit={handleCloseCase} className="space-y-4">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-black" />
                       Encerrar caso
                     </h3>
                     {activeCase.journeyState === "encerrado" ? (
-                      <div className="flex items-center gap-2 rounded-xl border border-linha bg-fundo px-4 py-3 text-sm text-tinta-700">
-                        <Lock className="h-4 w-4 shrink-0 text-tinta-500" />
+                      <div className="flex items-center gap-2 rounded-xl border border-linha bg-fundo px-4 py-3 text-sm text-black">
+                        <Lock className="h-4 w-4 shrink-0 text-neutral-800" />
                         Este caso já foi encerrado.
                       </div>
                     ) : activeCase.journeyState !== "retornado" ? (
-                      <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-ouro-800">
+                      <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-black">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                         <span>
                           Encerramento disponível apenas após todos os especialistas concluírem seus pareceres (estado: <strong>retornado</strong>).
@@ -648,7 +648,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     ) : (
                       <>
                         <div>
-                          <label className="block text-xs font-semibold text-tinta-700 mb-1">
+                          <label className="block text-xs font-semibold text-black mb-1">
                             Decisão de conduta
                           </label>
                           <div className="flex gap-2">
@@ -657,8 +657,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                 key={d}
                                 className={`flex-1 flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
                                   closeDecision === d
-                                    ? "border-roxo bg-roxo-100 text-roxo-800"
-                                    : "border-linha text-tinta-700 hover:bg-fundo"
+                                    ? "border-roxo bg-roxo-100 text-black"
+                                    : "border-linha text-black hover:bg-fundo"
                                 }`}
                               >
                                 <input
@@ -674,7 +674,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             ))}
                           </div>
                           {closeDecision === "acompanhamento" && (
-                            <label className="mt-3 block text-xs font-semibold text-tinta-700">
+                            <label className="mt-3 block text-xs font-semibold text-black">
                               Periodicidade do acompanhamento (até a alta)
                               <select
                                 value={followUp}
@@ -688,8 +688,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           )}
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-tinta-700 mb-1">
-                            Justificativa clínica <span className="text-erro">*</span>
+                          <label className="block text-xs font-semibold text-black mb-1">
+                            Justificativa clínica <span className="text-black">*</span>
                           </label>
                           <textarea
                             rows={4}
@@ -697,14 +697,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             value={closeReason}
                             onChange={(e) => setCloseReason(e.target.value)}
                             placeholder="Descreva a conduta clínica adotada e a justificativa para o encerramento..."
-                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-tinta-900 resize-none outline-none focus:ring-2 focus:ring-roxo/40"
+                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-none outline-none focus:ring-2 focus:ring-roxo/40"
                           />
                         </div>
                         <div className="flex justify-end">
                           <button
                             type="submit"
                             disabled={closing || !closeReason.trim()}
-                            className="rounded-xl bg-roxo px-5 py-2 text-sm font-semibold text-white hover:bg-roxo-800 disabled:opacity-60 transition"
+                            className="rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
                           >
                             {closing ? "Encerrando..." : "Encerrar caso"}
                           </button>
@@ -717,12 +717,12 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 {/* Audit trail */}
                 {view === "trail" && (
                   <div className="space-y-3">
-                    <h3 className="font-semibold text-tinta-900 flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-roxo" />
+                    <h3 className="font-semibold text-black flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-black" />
                       Trilha de auditoria
                     </h3>
                     {trailLoading ? (
-                      <p className="text-sm text-tinta-500">Carregando trilha...</p>
+                      <p className="text-sm text-neutral-800">Carregando trilha...</p>
                     ) : (
                       <AuditTrail events={events} />
                     )}
@@ -731,7 +731,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
 
                 {/* Default queue view */}
                 {view === "queue" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-tinta-500">
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-800">
                     <p className="text-sm">
                       Caso selecionado. Use as abas acima para revisar a avaliação, delegar,
                       consultar o consolidado ou encerrar o caso.

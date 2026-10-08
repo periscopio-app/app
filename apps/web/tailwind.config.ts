@@ -10,6 +10,7 @@ import type { Config } from "tailwindcss";
 const roxo = {
   50: "#F8F2FB",
   100: "#EFE3F4",
+  200: "#E2CCEB",
   500: "#9556B0",
   DEFAULT: "#682880",
   800: "#52206A",
@@ -40,8 +41,8 @@ const turquesa = { DEFAULT: "#26A8B8" };
 const amarelo = { DEFAULT: "#F5B031" };
 const empatia = { DEFAULT: "#823386", 800: "#68286B" };
 const verde = { DEFAULT: "#5D8374" };
-const grafite = { DEFAULT: "#221F1F" };
-const tinta = { 900: "#14202B", 700: "#33424F", 500: "#5B6B78" };
+const grafite = { DEFAULT: "#000000" };
+const tinta = { 900: "#000000", 700: "#000000", 500: "#262626" };
 
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
@@ -64,14 +65,14 @@ const config: Config = {
         erro: "#B42318",
         // aliases semânticos
         background: "#F6F9FB",
-        foreground: "#14202B",
+        foreground: "#000000",
         card: "#FFFFFF",
         border: "#E1E9ED",
         input: "#CBD6DC",
         ring: "#682880",
-        "muted-foreground": "#5B6B78",
-        primary: { DEFAULT: "#682880", foreground: "#FFFFFF" },
-        secondary: { DEFAULT: "#F0F9FC", foreground: "#14202B" },
+        "muted-foreground": "#262626",
+        primary: { DEFAULT: "#682880", foreground: "#000000" },
+        secondary: { DEFAULT: "#F0F9FC", foreground: "#000000" },
       },
       fontFamily: {
         display: ["Montserrat", "sans-serif"],

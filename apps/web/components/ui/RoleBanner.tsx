@@ -18,9 +18,9 @@ export function RoleBanner({ me, schoolName }: { me: Me; schoolName?: string }) 
       aria-label="Perfil ativo"
       className="flex flex-wrap items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-sm"
     >
-      <span className="font-semibold text-tinta-900">{me.name}</span>
+      <span className="font-semibold text-black">{me.name}</span>
       <span className="text-tinta-400">·</span>
-      <span className="rounded-full bg-roxo-100 px-2.5 py-0.5 text-xs font-semibold text-roxo-800">
+      <span className="rounded-full bg-roxo-100 px-2.5 py-0.5 text-xs font-semibold text-black">
         {ROLE_LABELS[me.role] ?? me.role}
       </span>
       {schoolName && (
