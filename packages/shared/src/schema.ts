@@ -9,6 +9,7 @@ import {
   integer,
   date,
   uniqueIndex,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -36,6 +37,11 @@ export const schools = pgTable("schools", {
   status: varchar("status", { length: 30 }).default("pending_onboarding"),
   branding: jsonb("branding"), // { logoUrl, primaryColor, theme }
   isControlGroup: boolean("is_control_group").default(false).notNull(),
+  externalCode: varchar("external_code", { length: 30 }), // sigla usada na base populacional importada
+  address: text("address"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  enrollment: integer("enrollment"), // alunos matriculados (denominador da prevalência)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -378,4 +384,19 @@ export const expertMeetingRequests = pgTable("expert_meeting_requests", {
   uniqueIndex("expert_meeting_requests_active_slot_unique")
     .on(t.slotId)
     .where(sql`${t.status} in ('pending','confirmed')`),
+]);
+
+
+/** Agregados populacionais por escola (ex.: base do Tarumã). Nunca contém dado individual. */
+export const populationAggregates = pgTable("population_aggregates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  source: varchar("source", { length: 60 }).notNull(),
+  referenceYear: integer("reference_year").notNull(),
+  schoolCode: varchar("school_code", { length: 30 }).notNull(), // "TOTAL" = município inteiro
+  schoolLabel: varchar("school_label", { length: 120 }),
+  payload: jsonb("payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("population_aggregates_unique").on(t.tenantId, t.source, t.schoolCode),
 ]);

@@ -13,6 +13,7 @@ import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
 import { notificationsRoutes } from "./routes/notifications.routes";
 import { expertMeetingsRoutes } from "./routes/expert-meetings.routes";
+import { populationRoutes } from "./routes/population.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
 const app = Fastify({ logger: opts.logger ?? true, trustProxy: true });
@@ -59,6 +60,7 @@ app.register(evaluationsRoutes);
 app.register(coursesRoutes);
 app.register(notificationsRoutes);
 app.register(expertMeetingsRoutes);
+app.register(populationRoutes);
 
 return app;
 }
