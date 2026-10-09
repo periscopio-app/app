@@ -14,6 +14,7 @@ import {
   planSchool,
   type AggregatePayload,
 } from "../services/population-planning.service";
+import { TARUMA_SOURCE, buildTarumaDashboard } from "../services/taruma-dashboard.service";
 
 const READ_ROLES = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"] as const;
 const GEO_ROLES = ["admin_platform", "municipal_manager", "school_manager", "ppi"] as const;
@@ -142,6 +143,106 @@ export async function populationRoutes(app: FastifyInstance) {
       unlinked,
       notice:
         "Números agregados de casos registrados. Células com menos de 5 casos são ocultadas. Não são diagnósticos e não indicam risco individual.",
+    };
+  });
+
+  // ── Painel exclusivo de Tarumã: KPIs e gráficos prontos, só com agregados ─
+  app.get("/api/population/taruma", async (request, reply) => {
+    const actor = await requireActor(request, reply, READ_ROLES);
+    if (!actor) return;
+
+    const q = request.query as Record<string, string | undefined>;
+    let capRaw: unknown;
+    try {
+      capRaw = q.capacity ? JSON.parse(q.capacity) : undefined;
+    } catch {
+      return reply.status(400).send({ error: "Parâmetro de capacidade inválido" });
+    }
+    const capacity = parseCapacity(capRaw);
+
+    const rows = await db.select().from(populationAggregates).where(eq(populationAggregates.source, TARUMA_SOURCE));
+    // Usuário do próprio município enxerga o dele; a administração da plataforma enxerga o município de Tarumã.
+    let tenantId = rows.find((r) => r.tenantId === actor.tenantId)?.tenantId;
+    if (!tenantId && actor.role === "admin_platform") tenantId = rows[0]?.tenantId;
+    if (!tenantId) {
+      return reply.status(404).send({ error: "A base de Tarumã não está disponível para o seu perfil." });
+    }
+
+    const aggs = rows.filter((r) => r.tenantId === tenantId);
+    const allSchools = await db.select().from(schools).where(eq(schools.tenantId, tenantId));
+    const visible = allSchools.filter((s) => canAccessSchool(actor, s.tenantId, s.id));
+    const wholeNetwork = actor.role === "admin_platform" || !actor.schoolId;
+
+    const perSchool = aggs.filter((a) => a.schoolCode !== "TOTAL");
+    const totalRow = aggs.find((a) => a.schoolCode === "TOTAL") ?? null;
+    const matchOf = (s: (typeof allSchools)[number]) =>
+      perSchool.find(
+        (a) =>
+          (s.externalCode && norm(s.externalCode) === norm(a.schoolCode)) ||
+          norm(s.name) === norm(a.schoolLabel ?? "") ||
+          norm(s.name) === norm(`escola ${a.schoolLabel ?? ""}`),
+      );
+
+    const points = visible.map((s) => {
+      const agg = matchOf(s);
+      const payload = (agg?.payload ?? null) as AggregatePayload | null;
+      return {
+        schoolId: s.id,
+        name: s.name,
+        label: agg?.schoolLabel ?? s.name,
+        address: s.address,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        enrollment: s.enrollment,
+        externalCode: s.externalCode,
+        planning: payload ? planSchool(payload, s.enrollment, capacity) : null,
+        ageBands: payload?.ageBands ?? null,
+        complaints: payload?.complaints ?? null,
+        services: payload?.services ?? null,
+        semInformacao: missingInfo({ latitude: s.latitude, longitude: s.longitude, enrollment: s.enrollment, hasAggregate: !!agg }),
+      };
+    });
+
+    let dashboard;
+    if (wholeNetwork && totalRow) {
+      dashboard = buildTarumaDashboard(
+        totalRow.payload as AggregatePayload,
+        perSchool.map((a) => ({ code: a.schoolCode, label: a.schoolLabel ?? a.schoolCode, payload: a.payload as AggregatePayload })),
+        capacity,
+        "municipio",
+      );
+    } else {
+      // Escola isolada: o painel usa só o agregado da escola vinculada ao usuário.
+      const own = visible.map(matchOf).find(Boolean);
+      if (!own) return reply.status(404).send({ error: "Sua escola não tem dados na base de Tarumã." });
+      dashboard = buildTarumaDashboard(
+        own.payload as AggregatePayload,
+        [{ code: own.schoolCode, label: own.schoolLabel ?? own.schoolCode, payload: own.payload as AggregatePayload }],
+        capacity,
+        "escola",
+      );
+    }
+
+    if (tenantId !== actor.tenantId) {
+      await db.insert(auditLogs).values({
+        tenantId: actor.tenantId, actorId: actor.id, action: "population:taruma_view", entity: "population_aggregates",
+        metadata: { role: actor.role, source: TARUMA_SOURCE },
+      });
+    }
+
+    return {
+      municipality: "Tarumã",
+      // Referência do município (centro aproximado), não é a localização de escola alguma.
+      center: { latitude: -22.7467, longitude: -50.5811 },
+      source: TARUMA_SOURCE,
+      referenceYear: totalRow?.referenceYear ?? perSchool[0]?.referenceYear ?? null,
+      capacity,
+      capacityIsPlaceholder: true,
+      serviceLabels: SERVICE_LABELS,
+      services: SERVICES,
+      dashboard,
+      schools: points,
+      notice: dashboard.notes[0],
     };
   });
 
