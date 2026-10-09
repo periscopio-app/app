@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
 import { api } from "@/lib/api";
-import { MapPinned,
+import { BarChart3, MapPinned,
   FileText,
   Stethoscope,
   ShieldCheck,
@@ -91,11 +91,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const mapaItem = { label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão", exact: false };
   const mapaRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"];
 
+  const biItem = { label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3, badge: "Gestão", exact: false };
+
   const visibleClinical = userRole
     ? [
         ...clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false })),
         ...(agendaRoles.includes(userRole) ? [agendaItem] : []),
-        ...(mapaRoles.includes(userRole) ? [mapaItem] : []),
+        ...(mapaRoles.includes(userRole) ? [biItem, mapaItem] : []),
       ]
     : [];
 

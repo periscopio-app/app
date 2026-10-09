@@ -1,0 +1,5 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.4
+# Opcional: só é usado se ANTHROPIC_API_KEY estiver definida (veja README, seção Privacidade).
+anthropic==0.40.0

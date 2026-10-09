@@ -20,7 +20,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     // 400/409 trazem mensagem específica do servidor (ex.: validação, horário já reservado)
     let serverMsg: string | null = null;
-    if (res.status === 400 || res.status === 409) {
+    if (res.status === 400 || res.status === 409 || res.status === 429 || res.status === 503) {
       try {
         const data = (await res.clone().json()) as { error?: unknown };
         if (typeof data.error === "string") serverMsg = data.error;

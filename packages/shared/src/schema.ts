@@ -10,6 +10,8 @@ import {
   date,
   uniqueIndex,
   doublePrecision,
+  real,
+  smallint,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -400,3 +402,25 @@ export const populationAggregates = pgTable("population_aggregates", {
 }, (t) => [
   uniqueIndex("population_aggregates_unique").on(t.tenantId, t.source, t.schoolCode),
 ]);
+
+
+/**
+ * Perguntas feitas ao BI (linguagem natural → plano de consulta).
+ * Guarda apenas a pergunta já higienizada (sem CPF/e-mail/telefone) e o plano. Nunca guarda resultado nem dado de aluno.
+ * `approved` = exemplo validado por gestão; só esses alimentam o aprendizado do assistente.
+ */
+export const biQuestions = pgTable("bi_questions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  userId: uuid("user_id").references(() => users.id),
+  role: varchar("role", { length: 40 }).notNull(),
+  question: text("question").notNull(),
+  plan: jsonb("plan"),
+  source: varchar("source", { length: 20 }).notNull(), // example | llm | rules
+  confidence: real("confidence"),
+  rating: smallint("rating"), // 1 útil | -1 não útil
+  correctedPlan: jsonb("corrected_plan"),
+  approved: boolean("approved").default(false).notNull(),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
