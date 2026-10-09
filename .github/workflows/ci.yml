@@ -72,6 +72,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python do extrator da base individual (planilha sintética)
+        run: |
+          pip install openpyxl pytest
+          python -m pytest -q apps/api/scripts/taruma
+
       - name: Testes unitários + E2E (banco descartável, dados sintéticos)
         run: pnpm --filter @periscopio/api test
         env:
