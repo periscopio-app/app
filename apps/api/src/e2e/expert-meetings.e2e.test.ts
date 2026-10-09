@@ -64,6 +64,7 @@ describe("agenda do Board (E2E)", { skip }, () => {
     const people = [
       { key: "gestor", email: "gestor@teste.local", role: "school_manager", tenant: tA.id, school: sA.id },
       { key: "re", email: "re@teste.local", role: "ppi", tenant: tA.id, school: sA.id },
+      { key: "re2", email: "re2@teste.local", role: "ppi", tenant: tA.id, school: sA.id },
       { key: "board", email: "dra@teste.local", role: "board", tenant: tA.id, school: null },
       { key: "esp", email: "esp@teste.local", role: "specialist", tenant: tA.id, school: sA.id },
       { key: "boardB", email: "drab@teste.local", role: "board", tenant: tB.id, school: null },
@@ -142,7 +143,7 @@ describe("agenda do Board (E2E)", { skip }, () => {
   });
 
   test("mesmo horário não pode ser reservado duas vezes", async () => {
-    const r = await call("POST", "/api/expert-meetings", "gestor", {
+    const r = await call("POST", "/api/expert-meetings", "re2", {
       slotId: slotIds[0], professionalName: "Outro Profissional", topic: "Outro assunto qualquer sobre o caso",
     });
     assert.equal(r.status, 409);
@@ -152,7 +153,9 @@ describe("agenda do Board (E2E)", { skip }, () => {
 
   test("solicitante vê só os seus pedidos; board vê todos", async () => {
     assert.equal((await call("GET", "/api/expert-meetings", "re")).body.meetings.length, 1);
-    assert.equal((await call("GET", "/api/expert-meetings", "gestor")).body.meetings.length, 0);
+    assert.equal((await call("GET", "/api/expert-meetings", "re2")).body.meetings.length, 0);
+    // Diretor não pede nem consulta o Board: quem pede é o RE (ou o médico).
+    assert.equal((await call("GET", "/api/expert-meetings", "gestor")).status, 403);
     assert.equal((await call("GET", "/api/expert-meetings", "board")).body.meetings.length, 1);
     assert.equal((await call("GET", "/api/expert-meetings", "boardB")).body.meetings.length, 0);
   });

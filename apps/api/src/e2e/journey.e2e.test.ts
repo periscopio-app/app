@@ -131,14 +131,14 @@ describe("jornada clínica (E2E)", { skip }, () => {
   });
 
   test("RE cadastra aluno só por código e abre o caso", async () => {
-    // Quem cria aluno/caso: papéis de gestão da escola (gestor) conforme schoolMgmtRoles.
-    const s = await call("POST", "/api/students", "gestor", { schoolId: ids.schoolA, birthYear: 2019, birthMonth: 5 });
+    // Quem cadastra aluno e abre o caso: o RE (REGISTRY_ROLES). O diretor não cadastra.
+    const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: 2019, birthMonth: 5 });
     assert.equal(s.status, 201, JSON.stringify(s.body));
     studentId = s.body.student.id;
     assert.match(s.body.student.studentCode, /^ESCO-\d{4}-[A-Z0-9]+$/);
     assert.equal("name" in s.body.student, false, "aluno não pode ter nome");
 
-    const c = await call("POST", "/api/cases", "gestor", { studentId });
+    const c = await call("POST", "/api/cases", "re", { studentId });
     assert.equal(c.status, 201, JSON.stringify(c.body));
     caseId = c.body.case.id;
     assert.equal(c.body.case.journeyState, "rascunho");
