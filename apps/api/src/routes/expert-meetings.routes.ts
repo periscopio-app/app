@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "../db/client";
 import { expertBoardSettings, expertMeetingRequests, expertSlots, schools, users } from "@periscopio/shared";
 import { requireActor } from "../security/actor";
+import { BOARD_MANAGER_ROLES as MANAGER_ROLES, BOARD_REQUESTER_ROLES as REQUESTER_ROLES } from "../security/permissions";
 import { sendTemplatedEmail } from "../email/templated";
 import {
   MEETING_NOTICE,
@@ -11,8 +12,6 @@ import {
   validateSlotRange,
 } from "../services/expert-meeting-guard";
 
-const REQUESTER_ROLES = ["school_manager", "ppi", "md1"] as const;
-const MANAGER_ROLES = ["board", "admin_platform"] as const;
 const DEFAULT_NOTIFY = "equipe@projetoperiscopio.com.br";
 const TZ = "America/Sao_Paulo";
 

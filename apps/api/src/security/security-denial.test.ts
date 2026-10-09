@@ -24,8 +24,17 @@ test("garante que admin e gestores NUNCA possuem acesso a papéis clínicos", ()
   }
 });
 
+test("board e ADM são gestão: não têm papel clínico nem de seção do núcleo", () => {
+  for (const role of ["board", "admin_platform", "municipal_manager", "school_manager"] as const) {
+    assert.strictEqual(hasRole(role, CLINICAL_ROLES), false, `${role} não é clínico`);
+    assert.strictEqual(hasRole(role, SPECIALIST_CLINICAL_ROLES), false, `${role} não preenche seção do núcleo`);
+  }
+  // O RE acompanha e envia, mas não preenche seção de especialista.
+  assert.strictEqual(hasRole("ppi", SPECIALIST_CLINICAL_ROLES), false);
+});
+
 test("garante que apenas profissionais clínicos possuem papéis clínicos autorizados", () => {
-  const clinicalRoles = ["teacher", "ppi", "md1", "board", "specialist"] as const;
+  const clinicalRoles = ["teacher", "ppi", "md1", "specialist"] as const;
 
   for (const role of clinicalRoles) {
     assert.strictEqual(

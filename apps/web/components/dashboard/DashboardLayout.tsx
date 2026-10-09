@@ -18,6 +18,7 @@ import { BarChart3, MapPinned,
   Search,
   ArrowUpRight,
   CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -81,13 +82,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const clinicalItems = [
     { role: "ppi", label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
-    { role: "school_manager", label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
+    { role: "school_manager", label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
+    { role: "municipal_manager", label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
     { role: "md1", label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { role: "specialist", label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
   ];
 
   const agendaItem = { label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board", exact: false };
-  const agendaRoles = ["ppi", "school_manager", "md1", "board"];
+  const agendaRoles = ["ppi", "md1", "board"];
   const mapaItem = { label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão", exact: false };
   const mapaRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"];
 

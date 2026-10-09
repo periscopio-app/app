@@ -8,7 +8,8 @@ const ROLE_LABELS: Record<string, string> = {
   teacher: "Professor(a)",
   admin_platform: "Admin Plataforma",
   municipal_manager: "Gestor(a) Municipal",
-  board: "Board Científico",
+  board: "Board de Especialistas",
+  researcher: "Pesquisador(a)",
 };
 
 export function RoleBanner({ me, schoolName }: { me: Me; schoolName?: string }) {

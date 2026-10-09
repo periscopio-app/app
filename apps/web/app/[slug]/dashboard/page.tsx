@@ -8,7 +8,9 @@ const ROLE_DESTINATIONS: Record<string, string> = {
   ppi: "re",
   md1: "medico",
   specialist: "especialista",
-  school_manager: "re",
+  school_manager: "gestao",
+  municipal_manager: "gestao",
+  researcher: "bi",
   board: "agenda",
   admin_platform: "/admin/users",
 };

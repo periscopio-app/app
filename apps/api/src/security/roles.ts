@@ -41,7 +41,6 @@ export const CLINICAL_ROLES: readonly Role[] = [
   "teacher",
   "ppi",
   "md1",
-  "board",
   "specialist",
 ] as const;
 
@@ -53,8 +52,6 @@ export const TRIAGEM_ROLES: readonly Role[] = [
 
 /** Papéis de especialista clínico para prontuário multidisciplinar delegado. */
 export const SPECIALIST_CLINICAL_ROLES: readonly Role[] = [
-  "ppi",
   "md1",
-  "board",
   "specialist",
 ] as const;
