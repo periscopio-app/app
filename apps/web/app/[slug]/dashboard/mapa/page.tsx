@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { api, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
@@ -86,9 +87,15 @@ export default function MapaPage() {
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
   const markersRef = useRef<import("mapbox-gl").Marker[]>([]);
 
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug;
+
   const load = useCallback(async (cap?: Record<string, number>) => {
     try {
-      const qs = cap && Object.keys(cap).length ? `?capacity=${encodeURIComponent(JSON.stringify(cap))}` : "";
+      const q = new URLSearchParams();
+      if (slug) q.set("slug", slug);
+      if (cap && Object.keys(cap).length) q.set("capacity", JSON.stringify(cap));
+      const qs = q.toString() ? `?${q.toString()}` : "";
       const d = await api.get<MapData>(`/api/population/taruma${qs}`);
       setData(d);
       setCapacity((prev) => (Object.keys(prev).length ? prev : d.capacity));
@@ -96,7 +103,7 @@ export default function MapaPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar o mapa.");
     }
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
     api.get<{ user: Me }>("/api/me").then((r) => setMe(r.user)).catch(() => undefined);
@@ -319,27 +326,32 @@ export default function MapaPage() {
             </tr>
           </thead>
           <tbody>
-            {data?.schools.map((s) => (
-              <tr
-                key={s.schoolId}
-                onClick={() => setSelected(s)}
-                className={`border-b border-linha cursor-pointer hover:bg-roxo-50 ${current?.schoolId === s.schoolId ? "bg-roxo-100" : ""}`}
-              >
-                <td className="py-2 pr-3 font-semibold">{s.label}</td>
-                <td className="py-2 pr-3">{s.planning ? show(s.planning.casesRegistered) : "—"}</td>
-                <td className="py-2 pr-3">{s.planning?.ratePer1000 ?? "—"}</td>
-                <td className="py-2 pr-3">
-                  {s.planning ? `${s.planning.lowerBound ? "≥ " : ""}${s.planning.professionalsTotal}` : "—"}
-                </td>
-                <td className="py-2">
-                  {s.semInformacao.length === 0 ? "Completa" : s.semInformacao.map((m) => (
-                    <span key={m} className="mr-1 inline-block rounded-full border border-neutral-500 bg-neutral-100 px-2 py-0.5 text-[11px]">{m}</span>
-                  ))}
+            {data && data.schools.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-xs text-neutral-500">
+                  Nenhuma escola com dados populacionais cadastrada para este município ainda.
                 </td>
               </tr>
-            ))}
-            {data && data.schools.length === 0 && (
-              <tr><td colSpan={5} className="py-6 text-center text-black">Nenhuma escola cadastrada para este perfil.</td></tr>
+            ) : (
+              data?.schools.map((s) => (
+                <tr
+                  key={s.schoolId}
+                  onClick={() => setSelected(s)}
+                  className={`border-b border-linha cursor-pointer hover:bg-roxo-50 ${current?.schoolId === s.schoolId ? "bg-roxo-100" : ""}`}
+                >
+                  <td className="py-2 pr-3 font-semibold">{s.label}</td>
+                  <td className="py-2 pr-3">{s.planning ? show(s.planning.casesRegistered) : "—"}</td>
+                  <td className="py-2 pr-3">{s.planning?.ratePer1000 ?? "—"}</td>
+                  <td className="py-2 pr-3">
+                    {s.planning ? `${s.planning.lowerBound ? "≥ " : ""}${s.planning.professionalsTotal}` : "—"}
+                  </td>
+                  <td className="py-2">
+                    {s.semInformacao.length === 0 ? "Completa" : s.semInformacao.map((m) => (
+                      <span key={m} className="mr-1 inline-block rounded-full border border-neutral-500 bg-neutral-100 px-2 py-0.5 text-[11px]">{m}</span>
+                    ))}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

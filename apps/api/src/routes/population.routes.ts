@@ -161,11 +161,32 @@ export async function populationRoutes(app: FastifyInstance) {
     const capacity = parseCapacity(capRaw);
 
     const rows = await db.select().from(populationAggregates).where(eq(populationAggregates.source, TARUMA_SOURCE));
-    // Usuário do próprio município enxerga o dele; a administração da plataforma enxerga o município de Tarumã.
+    // Usuário do próprio município enxerga o dele; a administração da plataforma ou visualização demo enxergam Tarumã.
+    const isDemo = q.slug === "demo-escola" || q.slug === "taruma" || q.demo === "true";
     let tenantId = rows.find((r) => r.tenantId === actor.tenantId)?.tenantId;
-    if (!tenantId && actor.role === "admin_platform") tenantId = rows[0]?.tenantId;
+    if (!tenantId && (actor.role === "admin_platform" || isDemo)) {
+      tenantId = rows[0]?.tenantId;
+    }
     if (!tenantId) {
-      return reply.status(404).send({ error: "A base de Tarumã não está disponível para o seu perfil." });
+      const emptyBase: AggregatePayload = {
+        total: 0,
+        ageBands: { "3-5": 0, "6-9": 0, "10-12": 0, "13-17": 0, "18+": 0 },
+        complaints: {},
+        services: { fonoaudiologia: 0, psicopedagogia: 0, psicoterapia: 0, psicomotricidade: 0, neuropsicologia: 0, assistencia_social: 0, consulta_medica: 0 },
+      };
+      const emptyDashboard = buildTarumaDashboard(emptyBase, [], capacity, "municipio");
+      return reply.send({
+        municipality: "Município sem dados populacionais",
+        source: null,
+        center: { latitude: -22.7467, longitude: -50.5811 },
+        referenceYear: 2024,
+        capacity,
+        serviceLabels: SERVICE_LABELS,
+        services: SERVICES,
+        dashboard: emptyDashboard,
+        schools: [],
+        notice: "Nenhum dado populacional foi cadastrado para este município ainda. Para conhecer a ferramenta com dados reais, acesse a demonstração municipal de Tarumã.",
+      });
     }
 
     const aggs = rows.filter((r) => r.tenantId === tenantId);
