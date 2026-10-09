@@ -755,7 +755,7 @@ export default function REDashboardPage({
                 Selecione ou abra um caso para iniciar a avaliação
               </p>
               <p className="text-xs text-neutral-800 mt-1">
-                Escolha um aluno à esquerda e clique em "Abrir"
+                Escolha um aluno à esquerda e clique em &quot;Abrir&quot;
               </p>
             </div>
           ) : (

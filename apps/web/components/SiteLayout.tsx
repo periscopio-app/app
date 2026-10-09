@@ -60,12 +60,12 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Link href="/login" className="font-medium text-foreground transition-colors hover:text-black">
               Entrar
             </Link>
-            <a
+            <Link
               href="/#contato"
               className="rounded-full bg-roxo-100 border border-roxo px-5 py-2 font-medium text-black transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               Seja parceiro
-            </a>
+            </Link>
           </nav>
           <button
             type="button"
@@ -95,13 +95,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Link href="/login" onClick={() => setOpen(false)} className="py-2 font-medium text-foreground">
               Entrar
             </Link>
-            <a
+            <Link
               href="/#contato"
               onClick={() => setOpen(false)}
               className="mt-2 rounded-full bg-roxo-100 border border-roxo px-4 py-2 text-center font-medium text-black"
             >
               Seja parceiro
-            </a>
+            </Link>
           </nav>
         )}
       </header>

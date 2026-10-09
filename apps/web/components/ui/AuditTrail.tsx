@@ -84,7 +84,7 @@ export function AuditTrail({ events }: { events: TimelineEvent[] }) {
               </span>
 
               {reason && (
-                <span className="mt-1 text-xs text-tinta-600 italic">"{reason}"</span>
+                <span className="mt-1 text-xs text-tinta-600 italic">&ldquo;{reason}&rdquo;</span>
               )}
               {decision && (
                 <span className="mt-1 inline-flex w-fit rounded-full bg-ceu-100 px-2 py-0.5 text-xs font-semibold text-black">

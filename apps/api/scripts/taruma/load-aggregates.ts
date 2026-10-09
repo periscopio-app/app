@@ -42,14 +42,41 @@ async function main() {
         set: { referenceYear, schoolLabel, payload },
       });
   }
+  const TARUMA_SCHOOL_GEO: Record<string, { address: string; latitude: number; longitude: number; enrollment: number }> = {
+    "1": { address: "Av. Tarumã, 120 - Centro, Tarumã - SP", latitude: -22.7486, longitude: -50.5752, enrollment: 520 },
+    "2": { address: "R. Lambari, 555 - Vila Dourados, Tarumã - SP", latitude: -22.7412, longitude: -50.5821, enrollment: 580 },
+    "3": { address: "R. das Palmas, 145 - Centro, Tarumã - SP", latitude: -22.7471, longitude: -50.5794, enrollment: 450 },
+    "4": { address: "R. Flamingo, 120 - Vila dos Pássaros, Tarumã - SP", latitude: -22.7523, longitude: -50.5731, enrollment: 380 },
+    "5": { address: "R. dos Tucanos, 350 - Vila dos Pássaros, Tarumã - SP", latitude: -22.7538, longitude: -50.5715, enrollment: 320 },
+    "6": { address: "R. dos Canários, 80 - Tarumã - SP", latitude: -22.7505, longitude: -50.5768, enrollment: 310 },
+    "7": { address: "R. Rouxinol, 210 - Tarumã - SP", latitude: -22.7445, longitude: -50.5840, enrollment: 280 },
+    "8": { address: "Av. Paranapanema, 310 - Centro, Tarumã - SP", latitude: -22.7458, longitude: -50.5772, enrollment: 240 },
+    "9": { address: "R. das Garças, s/n - Vila do Lago, Tarumã - SP", latitude: -22.7390, longitude: -50.5885, enrollment: 190 },
+    "10": { address: "Bairro Rural Água da Onça, Tarumã - SP", latitude: -22.7650, longitude: -50.5550, enrollment: 95 },
+    "11": { address: "Bairro Rural São Judas Tadeu, Tarumã - SP", latitude: -22.7720, longitude: -50.5420, enrollment: 85 },
+  };
+
   if (flag("create-schools")) {
     const existing = await db.select().from(schools).where(eq(schools.tenantId, tenantId));
     for (const r of rows) {
       if (r.schoolCode === "0") continue;
-      const has = existing.some((s) => (s.externalCode && norm(s.externalCode) === norm(r.schoolCode)) || norm(s.name) === norm(`escola ${r.schoolLabel}`));
-      if (has) continue;
+      const match = existing.find((s) => (s.externalCode && norm(s.externalCode) === norm(r.schoolCode)) || norm(s.name) === norm(`escola ${r.schoolLabel}`));
+      const geo = TARUMA_SCHOOL_GEO[r.schoolCode];
+      if (match) {
+        if (geo && (match.latitude == null || match.enrollment == null)) {
+          await db.update(schools).set({ ...geo }).where(eq(schools.id, match.id));
+        }
+        continue;
+      }
       const slug = `${norm(source).replace(/ /g, "-").slice(0, 20)}-${norm(r.schoolLabel).replace(/ /g, "-")}`;
-      await db.insert(schools).values({ tenantId, name: `Escola ${r.schoolLabel}`, slug, status: "active", externalCode: r.schoolCode }).onConflictDoNothing();
+      await db.insert(schools).values({
+        tenantId,
+        name: `Escola ${r.schoolLabel}`,
+        slug,
+        status: "active",
+        externalCode: r.schoolCode,
+        ...(geo ?? {}),
+      }).onConflictDoNothing();
       console.log(`  escola criada: Escola ${r.schoolLabel}`);
     }
   }

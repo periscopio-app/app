@@ -1,3 +1,4 @@
+import Link from "next/link";
 import "@/components/landing/landing.css";
 
 export default function LegalPage({
@@ -11,19 +12,19 @@ export default function LegalPage({
     <div className="piloto legal-page">
       <div className="legal-bar">
         <div className="wrap">
-          <a href="/" aria-label="Periscópio, voltar ao início">
+          <Link href="/" aria-label="Periscópio, voltar ao início">
             <img src="/landing-logo.webp" alt="Periscópio" />
-          </a>
-          <a className="btn btn-outline" href="/">Voltar ao site</a>
+          </Link>
+          <Link className="btn btn-outline" href="/">Voltar ao site</Link>
         </div>
       </div>
       <main className="legal-doc">
         <h1>{titulo}</h1>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="legal-foot">
-          <a href="/privacidade">Política de Privacidade</a>
-          <a href="/termos">Termos de Serviço e Uso</a>
-          <a href="/">Início</a>
+          <Link href="/privacidade">Política de Privacidade</Link>
+          <Link href="/termos">Termos de Serviço e Uso</Link>
+          <Link href="/">Início</Link>
         </div>
       </main>
     </div>

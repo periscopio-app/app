@@ -9,13 +9,15 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "test": "tsx --test --test-concurrency=1 src/**/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "seed:masters": "tsx scripts/seed-masters.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "taruma:load": "tsx scripts/taruma/load-aggregates.ts",
-    "taruma:seed-bi": "tsx scripts/taruma/seed-bi-examples.ts"
+    "taruma:seed-bi": "tsx scripts/taruma/seed-bi-examples.ts",
+    "seed:journey": "tsx scripts/seed-journey.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
