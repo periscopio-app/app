@@ -15,7 +15,7 @@ import {
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import { SPECIALIST_CLINICAL_ROLES } from "../security/roles";
-import { CASE_LIST_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
+import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
 import { ageBracketOf, generateStudentCode, validateBirth } from "../services/student-code";
 import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
 import {
@@ -182,6 +182,17 @@ export async function casesRoutes(app: FastifyInstance) {
     return { professionals: list };
   });
 
+  /** Especialistas do núcleo do município, para o médico escolher a quem delegar. Só id, nome e especialidade. */
+  app.get("/api/nucleo/professionals", async (request, reply) => {
+    const actor = await requireActor(request, reply, NUCLEO_DIRECTORY_ROLES);
+    if (!actor) return;
+    const list = await db
+      .select({ id: users.id, name: users.name, specialty: users.specialty, role: users.role, classCode: users.classCode })
+      .from(users)
+      .where(and(eq(users.tenantId, actor.tenantId), eq(users.role, "specialist"), eq(users.accessEnabled, true)));
+    return { professionals: list };
+  });
+
   // ── Casos ───────────────────────────────────────────────────────────────
 
   app.post("/api/cases", async (request, reply) => {
@@ -308,6 +319,12 @@ export async function casesRoutes(app: FastifyInstance) {
         )
       )
       .limit(1);
+
+    // Mesma validação do PUT: sem ela, um rascunho malformado era aceito aqui e derrubava o envio (500).
+    const createError = formCode === SNAP4_FORM_CODE
+      ? validarPayloadSnap4(parse.data.payload)
+      : validarPayloadFogap(parse.data.payload);
+    if (createError) return reply.status(400).send({ error: createError });
 
     if (existing) {
       return reply.status(409).send({
