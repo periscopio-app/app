@@ -1,12 +1,13 @@
 """Planejamento opcional com modelo de linguagem. Desligado por padrão.
 
-Só roda se houver chave de um provedor (GEMINI_API_KEY ou ANTHROPIC_API_KEY). Envia: a pergunta (já sem CPF/e-mail/telefone), o catálogo de métricas
+Só roda se houver chave de um provedor (GROQ_API_KEY, GEMINI_API_KEY ou ANTHROPIC_API_KEY). Envia: a pergunta (já sem CPF/e-mail/telefone), o catálogo de métricas
 e alguns exemplos aprovados. Nunca envia linhas de dados nem identificadores de aluno — o Python não tem acesso a eles.
 """
 from __future__ import annotations
 
 import json
 import os
+import urllib.error
 import urllib.request
 
 SYSTEM = (
@@ -19,12 +20,16 @@ SYSTEM = (
 
 
 def provider() -> str | None:
-    """Escolhe o provedor. BI_LLM_PROVIDER=gemini|anthropic força; sem isso, usa o que tiver chave."""
+    """Escolhe o provedor. BI_LLM_PROVIDER=groq|gemini|anthropic força; sem isso, usa o que tiver chave."""
     forced = os.environ.get("BI_LLM_PROVIDER", "").strip().lower()
+    if forced == "groq":
+        return "groq" if os.environ.get("GROQ_API_KEY") and os.environ.get("BI_LLM_MODEL") else None
     if forced == "gemini":
         return "gemini" if os.environ.get("GEMINI_API_KEY") and os.environ.get("BI_LLM_MODEL") else None
     if forced == "anthropic":
         return "anthropic" if os.environ.get("ANTHROPIC_API_KEY") else None
+    if os.environ.get("GROQ_API_KEY") and os.environ.get("BI_LLM_MODEL"):
+        return "groq"
     if os.environ.get("GEMINI_API_KEY") and os.environ.get("BI_LLM_MODEL"):
         return "gemini"
     if os.environ.get("ANTHROPIC_API_KEY"):
@@ -68,6 +73,42 @@ def _call_gemini(prompt: str) -> str:
     return "".join(p.get("text", "") for p in parts)
 
 
+def _call_groq(prompt: str) -> str:
+    """Groq (API compatível com OpenAI). O ID do modelo vem de BI_LLM_MODEL (ex.: openai/gpt-oss-120b)."""
+    model = os.environ["BI_LLM_MODEL"]
+    body = {
+        "model": model,
+        "temperature": 0,
+        # modelos de raciocínio gastam parte do limite pensando: folga para o JSON não sair cortado
+        "max_completion_tokens": 1500,
+        "response_format": {"type": "json_object"},
+        "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
+    }
+    if "gpt-oss" in model:
+        body["reasoning_effort"] = "low"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
+        "User-Agent": "periscopio-bi-rag/1.0",
+    }
+
+    def post(payload: dict) -> dict:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode(), headers=headers, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=25) as resp:  # noqa: S310 - URL fixa
+            return json.loads(resp.read())
+
+    try:
+        data = post(body)
+    except urllib.error.HTTPError as e:
+        if e.code != 400:
+            raise
+        body.pop("response_format")  # modelo sem modo JSON: o _parse extrai o JSON do texto
+        data = post(body)
+    return data["choices"][0]["message"].get("content") or ""
+
+
 def _call_anthropic(prompt: str) -> str:
     import anthropic  # import tardio: o serviço sobe sem a dependência configurada
 
@@ -87,7 +128,8 @@ def plan_with_llm(question: str, catalog: dict, examples: list[dict]) -> dict | 
         return None
     try:
         prompt = _prompt(question, catalog, examples)
-        text = _call_gemini(prompt) if which == "gemini" else _call_anthropic(prompt)
+        call = {"groq": _call_groq, "gemini": _call_gemini}.get(which, _call_anthropic)
+        text = call(prompt)
         return _parse(text)
     except Exception:
         return None  # qualquer falha cai nas regras; nunca derruba a pergunta
