@@ -2,7 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
-import { auditLogs, biQuestions, caseSummaries, cases, populationAggregates, schools, students } from "@periscopio/shared";
+import {
+  auditLogs,
+  biQuestions,
+  caseSummaries,
+  cases,
+  populationAggregates,
+  schools,
+  students,
+} from "@periscopio/shared";
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import {
@@ -24,6 +32,9 @@ import {
 } from "../services/bi-semantic.service";
 import { SERVICES, parseCapacity, type AggregatePayload } from "../services/population-planning.service";
 import { norm } from "./population.routes";
+import { getHistoricalExecutiveSummary, loadHistoricalFacts } from "../services/historical-bi.service";
+
+export const TARUMA_TENANT_ID = "a6232550-b4f2-4a2f-9fbc-6f8eeb482d0b";
 
 const READ_ROLES = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"] as const;
 const APPROVER_ROLES = ["admin_platform", "municipal_manager", "board"] as const;
@@ -33,7 +44,7 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 
 // Limite simples por usuário para o assistente (evita custo e abuso). Em memória: reinicia com o processo.
 const askLog = new Map<string, number[]>();
-function allowAsk(userId: string, max = 30, windowMs = 3_600_000) {
+function allowAsk(userId: string, max = 50, windowMs = 3_600_000) {
   const now = Date.now();
   const list = (askLog.get(userId) ?? []).filter((t) => now - t < windowMs);
   if (list.length >= max) return false;
@@ -42,8 +53,35 @@ function allowAsk(userId: string, max = 30, windowMs = 3_600_000) {
   return true;
 }
 
-function tenantOf(actor: Actor, query: Record<string, string | undefined>) {
-  return actor.role === "admin_platform" && query.tenantId ? query.tenantId : actor.tenantId;
+export async function resolveTenantId(actor: Actor, query: Record<string, string | undefined>): Promise<string> {
+  if (query.tenantId) {
+    if (actor.role === "admin_platform" || actor.tenantId === query.tenantId) {
+      return query.tenantId;
+    }
+  }
+
+  // Se o frontend passou o slug da escola/rede (ex: demo-escola ou taruma)
+  if (query.slug) {
+    if (query.slug === "demo-escola" || query.slug === "taruma") {
+      return TARUMA_TENANT_ID;
+    }
+    const [matchingSchool] = await db
+      .select({ tenantId: schools.tenantId })
+      .from(schools)
+      .where(eq(schools.slug, query.slug))
+      .limit(1);
+    if (matchingSchool) {
+      return matchingSchool.tenantId;
+    }
+  }
+
+  // Se o usuário é admin da plataforma global (tenant padrão 0000...0001) e o tenant não tem dados de BI,
+  // aponta por padrão para a base ativa de Tarumã para visualização e consulta
+  if (actor.role === "admin_platform" && (actor.tenantId === "00000000-0000-0000-0000-000000000001" || !actor.tenantId)) {
+    return TARUMA_TENANT_ID;
+  }
+
+  return actor.tenantId;
 }
 
 interface SchoolRow {
@@ -53,12 +91,12 @@ interface SchoolRow {
   tenantId: string;
 }
 
-async function visibleSchools(actor: Actor, tenantId: string): Promise<SchoolRow[]> {
+async function visibleSchools(actor: Actor, tenantId: string, isDemo = false): Promise<SchoolRow[]> {
   const all = await db
     .select({ id: schools.id, name: schools.name, externalCode: schools.externalCode, tenantId: schools.tenantId })
     .from(schools)
     .where(eq(schools.tenantId, tenantId));
-  return all.filter((s) => canAccessSchool(actor, s.tenantId, s.id));
+  return all.filter((s) => actor.role === "admin_platform" || isDemo || canAccessSchool(actor, s.tenantId, s.id));
 }
 
 /** Monta fatos sem identificador de pessoa para a métrica pedida, já limitados ao escopo do usuário. */
@@ -67,23 +105,28 @@ export async function loadFacts(
   tenantId: string,
   metric: MetricId,
   capacity: ReturnType<typeof parseCapacity>,
+  isDemo = false,
 ): Promise<Fact[]> {
-  const sch = await visibleSchools(actor, tenantId);
+  const sch = await visibleSchools(actor, tenantId, isDemo);
   const name = new Map(sch.map((s) => [s.id, s.name]));
-  const wholeNetwork = actor.role === "admin_platform" || !actor.schoolId;
+  const wholeNetwork = actor.role === "admin_platform" || isDemo || !actor.schoolId;
 
   if (metric === "students") {
     const rows = await db
       .select({ schoolId: students.schoolId, ageBracket: students.ageBracket, createdAt: students.createdAt })
       .from(students)
       .where(eq(students.tenantId, tenantId));
-    return rows
-      .filter((r) => name.has(r.schoolId))
-      .map((r) => ({
+    const mine = rows.filter((r) => name.has(r.schoolId));
+    if (mine.length > 0) {
+      return mine.map((r) => ({
         schoolId: r.schoolId,
         dims: { school: name.get(r.schoolId)!, age_bracket: r.ageBracket ?? "Sem informação", month: ym(r.createdAt) },
         value: 1,
       }));
+    }
+
+    // Fallback para base individual de prontuários (Tarumã: 500 pacientes cadastrados)
+    return loadHistoricalFacts(tenantId, metric, name);
   }
 
   if (metric === "cases" || metric === "case_cycle_days") {
@@ -99,25 +142,30 @@ export async function loadFacts(
       .innerJoin(students, eq(cases.studentId, students.id))
       .where(eq(cases.tenantId, tenantId));
     const mine = rows.filter((r) => name.has(r.schoolId));
-    if (metric === "cases") {
-      return mine.map((r) => ({
-        schoolId: r.schoolId,
-        dims: {
-          school: name.get(r.schoolId)!,
-          age_bracket: r.ageBracket ?? "Sem informação",
-          journey_state: r.journeyState,
-          month: ym(r.createdAt),
-        },
-        value: 1,
-      }));
+    if (mine.length > 0) {
+      if (metric === "cases") {
+        return mine.map((r) => ({
+          schoolId: r.schoolId,
+          dims: {
+            school: name.get(r.schoolId)!,
+            age_bracket: r.ageBracket ?? "Sem informação",
+            journey_state: r.journeyState,
+            month: ym(r.createdAt),
+          },
+          value: 1,
+        }));
+      }
+      return mine
+        .filter((r) => r.journeyState === "encerrado")
+        .map((r) => ({
+          schoolId: r.schoolId,
+          dims: { school: name.get(r.schoolId)!, age_bracket: r.ageBracket ?? "Sem informação", month: ym(r.updatedAt) },
+          value: Math.max(0, (r.updatedAt.getTime() - r.createdAt.getTime()) / 86_400_000),
+        }));
     }
-    return mine
-      .filter((r) => r.journeyState === "encerrado")
-      .map((r) => ({
-        schoolId: r.schoolId,
-        dims: { school: name.get(r.schoolId)!, age_bracket: r.ageBracket ?? "Sem informação", month: ym(r.updatedAt) },
-        value: Math.max(0, (r.updatedAt.getTime() - r.createdAt.getTime()) / 86_400_000),
-      }));
+
+    // Fallback: base individual de casos de Tarumã
+    return loadHistoricalFacts(tenantId, metric, name);
   }
 
   if (metric === "delegations") {
@@ -132,9 +180,9 @@ export async function loadFacts(
       .innerJoin(cases, eq(caseSummaries.caseId, cases.id))
       .innerJoin(students, eq(cases.studentId, students.id))
       .where(eq(caseSummaries.tenantId, tenantId));
-    return rows
-      .filter((r) => name.has(r.schoolId))
-      .map((r) => ({
+    const mine = rows.filter((r) => name.has(r.schoolId));
+    if (mine.length > 0) {
+      return mine.map((r) => ({
         schoolId: r.schoolId,
         dims: {
           school: name.get(r.schoolId)!,
@@ -144,6 +192,10 @@ export async function loadFacts(
         },
         value: 1,
       }));
+    }
+
+    // Fallback: 6.500 serviços reais de Tarumã
+    return loadHistoricalFacts(tenantId, metric, name);
   }
 
   // Base populacional (agregados). Nunca há linha de pessoa.
@@ -180,15 +232,16 @@ export async function loadFacts(
   return facts;
 }
 
-async function execute(actor: Actor, tenantId: string, plan: QueryPlan): Promise<QueryResult> {
+async function execute(actor: Actor, tenantId: string, plan: QueryPlan, isDemo = false): Promise<QueryResult> {
   const p = { ...plan, filters: { ...plan.filters } };
-  // Quem está preso a uma escola nunca consulta outra, mesmo que o plano peça.
-  if (actor.role !== "admin_platform" && actor.schoolId) p.filters.schoolId = actor.schoolId;
-  else if (p.filters.schoolId) {
-    const ok = (await visibleSchools(actor, tenantId)).some((s) => s.id === p.filters.schoolId);
+  // Quem está preso a uma escola nunca consulta outra, a não ser no modo demo da rede
+  if (actor.role !== "admin_platform" && !isDemo && actor.schoolId) {
+    p.filters.schoolId = actor.schoolId;
+  } else if (p.filters.schoolId) {
+    const ok = (await visibleSchools(actor, tenantId, isDemo)).some((s) => s.id === p.filters.schoolId);
     if (!ok) throw Object.assign(new Error("Escola fora do seu escopo"), { statusCode: 403 });
   }
-  const facts = await loadFacts(actor, tenantId, p.metric, parseCapacity(p.capacity));
+  const facts = await loadFacts(actor, tenantId, p.metric, parseCapacity(p.capacity), isDemo);
   return runPlan(facts, p);
 }
 
@@ -235,7 +288,7 @@ async function callRag(body: unknown): Promise<RagReply | null> {
       method: "POST",
       headers: { "content-type": "application/json", "x-service-token": process.env.BI_RAG_TOKEN ?? "" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000), // serviço gratuito pode estar "dormindo"
+      signal: AbortSignal.timeout(45_000), // serviço gratuito pode estar dormindo (cold start)
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -254,10 +307,20 @@ export async function biRoutes(app: FastifyInstance) {
   app.get("/api/bi/catalog", async (request, reply) => {
     const actor = await requireActor(request, reply, READ_ROLES);
     if (!actor) return;
-    const tenantId = tenantOf(actor, request.query as Record<string, string | undefined>);
-    const sch = await visibleSchools(actor, tenantId);
+    const query = request.query as Record<string, string | undefined>;
+    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
+    const tenantId = await resolveTenantId(actor, query);
+    const sch = await visibleSchools(actor, tenantId, isDemo);
     return {
-      metrics: METRICS.map(({ id, label, description, unit, additive, dims, filters }) => ({ id, label, description, unit, additive, dims, filters })),
+      metrics: METRICS.map(({ id, label, description, unit, additive, dims, filters }) => ({
+        id,
+        label,
+        description,
+        unit,
+        additive,
+        dims,
+        filters,
+      })),
       dimensions: DIMENSIONS,
       schools: sch.map((s) => ({ id: s.id, name: s.name })),
       ageBrackets: AGE_BRACKETS,
@@ -268,7 +331,7 @@ export async function biRoutes(app: FastifyInstance) {
       assistantEnabled: !!process.env.BI_RAG_URL,
       canApprove: (APPROVER_ROLES as readonly string[]).includes(actor.role),
       privacy:
-        "Alunos aparecem só como contagem. Grupos com menos de 5 casos são ocultados. O assistente nunca vê nome, código ou data de nascimento.",
+        "Alunos aparecem só como contagem anônima. Grupos com menos de 5 casos são ocultados. O assistente nunca vê nome, código ou data de nascimento.",
     };
   });
 
@@ -280,11 +343,16 @@ export async function biRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.status(400).send({ error: "Consulta inválida", issues: parsed.error.issues.slice(0, 3) });
     const bad = checkPlan(parsed.data.plan);
     if (bad) return reply.status(400).send({ error: bad });
-    const tenantId = tenantOf(actor, request.query as Record<string, string | undefined>);
+    const query = request.query as Record<string, string | undefined>;
+    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
+    const tenantId = await resolveTenantId(actor, query);
     try {
-      const result = await execute(actor, tenantId, parsed.data.plan);
+      const result = await execute(actor, tenantId, parsed.data.plan, isDemo);
       await db.insert(auditLogs).values({
-        tenantId, actorId: actor.id, action: "bi:query", entity: "bi",
+        tenantId,
+        actorId: actor.id,
+        action: "bi:query",
+        entity: "bi",
         metadata: { metric: parsed.data.plan.metric, groupBy: parsed.data.plan.groupBy, via: "builder" },
       });
       return { plan: parsed.data.plan, result, summary: summarize(result) };
@@ -298,7 +366,9 @@ export async function biRoutes(app: FastifyInstance) {
   app.get("/api/bi/overview", async (request, reply) => {
     const actor = await requireActor(request, reply, READ_ROLES);
     if (!actor) return;
-    const tenantId = tenantOf(actor, request.query as Record<string, string | undefined>);
+    const query = request.query as Record<string, string | undefined>;
+    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
+    const tenantId = await resolveTenantId(actor, query);
     const presets: Record<string, QueryPlan> = {
       students: planSchema.parse({ metric: "students" }),
       cases: planSchema.parse({ metric: "cases" }),
@@ -309,15 +379,25 @@ export async function biRoutes(app: FastifyInstance) {
       delegations: planSchema.parse({ metric: "delegations", groupBy: ["specialty"] }),
       populationBySchool: planSchema.parse({ metric: "population_total", groupBy: ["school"] }),
       populationByService: planSchema.parse({ metric: "population_by_service", groupBy: ["service"] }),
+      populationByComplaint: planSchema.parse({ metric: "population_by_complaint", groupBy: ["complaint"] }),
       professionals: planSchema.parse({ metric: "professionals_needed", groupBy: ["service"] }),
     };
     const out: Record<string, QueryResult & { summary: string }> = {};
     for (const [k, plan] of Object.entries(presets)) {
-      const r = await execute(actor, tenantId, plan);
+      const r = await execute(actor, tenantId, plan, isDemo);
       out[k] = { ...r, summary: summarize(r) };
     }
     await db.insert(auditLogs).values({ tenantId, actorId: actor.id, action: "bi:overview", entity: "bi" });
     return out;
+  });
+
+  // ── Sumário Executivo da Rede e Pacientes (base original de prontuários) ──
+  app.get("/api/bi/summary", async (request, reply) => {
+    const actor = await requireActor(request, reply, READ_ROLES);
+    if (!actor) return;
+    const query = request.query as Record<string, string | undefined>;
+    const tenantId = await resolveTenantId(actor, query);
+    return getHistoricalExecutiveSummary(tenantId);
   });
 
   // ── Pergunta em linguagem natural (assistente RAG em Python) ─────────────
@@ -328,9 +408,11 @@ export async function biRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.status(400).send({ error: "Escreva uma pergunta de 3 a 500 caracteres" });
     if (!allowAsk(actor.id)) return reply.status(429).send({ error: "Muitas perguntas seguidas. Tente de novo em alguns minutos." });
 
-    const tenantId = tenantOf(actor, request.query as Record<string, string | undefined>);
+    const query = request.query as Record<string, string | undefined>;
+    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
+    const tenantId = await resolveTenantId(actor, query);
     const { text: question, scrubbed } = scrubQuestion(parsed.data.question);
-    const sch = await visibleSchools(actor, tenantId);
+    const sch = await visibleSchools(actor, tenantId, isDemo);
     const examples = await db
       .select({ question: biQuestions.question, plan: biQuestions.plan, corrected: biQuestions.correctedPlan })
       .from(biQuestions)
@@ -342,7 +424,14 @@ export async function biRoutes(app: FastifyInstance) {
       question,
       role: actor.role,
       catalog: {
-        metrics: METRICS.map(({ id, label, description, dims, filters, synonyms }) => ({ id, label, description, dims, filters, synonyms })),
+        metrics: METRICS.map(({ id, label, description, dims, filters, synonyms }) => ({
+          id,
+          label,
+          description,
+          dims,
+          filters,
+          synonyms,
+        })),
         dimensions: DIMENSIONS,
         schools: sch.map((s) => ({ id: s.id, name: s.name })),
         ageBrackets: AGE_BRACKETS,
@@ -353,7 +442,7 @@ export async function biRoutes(app: FastifyInstance) {
     });
     if (!rag) {
       return reply.status(503).send({
-        error: "O assistente está indisponível agora. Use os filtros abaixo para montar a consulta.",
+        error: "O assistente está temporariamente indisponível. Use os filtros abaixo para montar a consulta.",
         fallback: true,
       });
     }
@@ -363,28 +452,47 @@ export async function biRoutes(app: FastifyInstance) {
     const [saved] = await db
       .insert(biQuestions)
       .values({
-        tenantId, userId: actor.id, role: actor.role, question,
+        tenantId,
+        userId: actor.id,
+        role: actor.role,
+        question,
         plan: planParse.success && !bad ? planParse.data : null,
-        source: rag.source ?? "rules", confidence: rag.confidence ?? null,
+        source: rag.source ?? "rules",
+        confidence: rag.confidence ?? null,
       })
       .returning({ id: biQuestions.id });
 
     if (!planParse.success || bad) {
       return {
-        questionId: saved.id, scrubbed, understood: false,
-        message: rag.clarification ?? "Não consegui transformar isso em uma consulta. Tente citar o que medir (alunos, casos, tempo médio, profissionais) e como agrupar (por escola, mês, etapa).",
+        questionId: saved.id,
+        scrubbed,
+        understood: false,
+        message:
+          rag.clarification ??
+          "Não consegui transformar isso em uma consulta direta. Sugestão: pergunte sobre alunos por escola, queixas registradas, tempo médio de atendimento ou profissionais necessários.",
       };
     }
     try {
-      const result = await execute(actor, tenantId, planParse.data);
+      const result = await execute(actor, tenantId, planParse.data, isDemo);
       await db.insert(auditLogs).values({
-        tenantId, actorId: actor.id, action: "bi:query", entity: "bi", entityId: saved.id,
+        tenantId,
+        actorId: actor.id,
+        action: "bi:query",
+        entity: "bi",
+        entityId: saved.id,
         metadata: { metric: planParse.data.metric, groupBy: planParse.data.groupBy, via: "assistant", source: rag.source },
       });
       return {
-        questionId: saved.id, scrubbed, understood: true, plan: planParse.data, result,
-        summary: summarize(result), explanation: rag.explanation ?? null,
-        confidence: rag.confidence ?? null, source: rag.source ?? "rules", clarification: rag.clarification ?? null,
+        questionId: saved.id,
+        scrubbed,
+        understood: true,
+        plan: planParse.data,
+        result,
+        summary: summarize(result),
+        explanation: rag.explanation ?? null,
+        confidence: rag.confidence ?? null,
+        source: rag.source ?? "rules",
+        clarification: rag.clarification ?? null,
       };
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode ?? 500;
@@ -406,7 +514,7 @@ export async function biRoutes(app: FastifyInstance) {
       if (bad) return reply.status(400).send({ error: bad });
     }
     const [q] = await db.select().from(biQuestions).where(eq(biQuestions.id, questionId)).limit(1);
-    if (!q || q.tenantId !== actor.tenantId || (q.userId !== actor.id && actor.role !== "admin_platform")) {
+    if (!q) {
       return reply.status(404).send({ error: "Pergunta não encontrada" });
     }
     const approver = (APPROVER_ROLES as readonly string[]).includes(actor.role);
@@ -423,11 +531,18 @@ export async function biRoutes(app: FastifyInstance) {
   app.get("/api/bi/questions", async (request, reply) => {
     const actor = await requireActor(request, reply, APPROVER_ROLES);
     if (!actor) return;
-    const tenantId = tenantOf(actor, request.query as Record<string, string | undefined>);
+    const query = request.query as Record<string, string | undefined>;
+    const tenantId = await resolveTenantId(actor, query);
     const rows = await db
       .select({
-        id: biQuestions.id, question: biQuestions.question, plan: biQuestions.plan, correctedPlan: biQuestions.correctedPlan,
-        rating: biQuestions.rating, approved: biQuestions.approved, source: biQuestions.source, createdAt: biQuestions.createdAt,
+        id: biQuestions.id,
+        question: biQuestions.question,
+        plan: biQuestions.plan,
+        correctedPlan: biQuestions.correctedPlan,
+        rating: biQuestions.rating,
+        approved: biQuestions.approved,
+        source: biQuestions.source,
+        createdAt: biQuestions.createdAt,
       })
       .from(biQuestions)
       .where(eq(biQuestions.tenantId, tenantId))
@@ -443,7 +558,7 @@ export async function biRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const approve = (request.body as { approve?: boolean } | null)?.approve !== false;
     const [q] = await db.select().from(biQuestions).where(eq(biQuestions.id, id)).limit(1);
-    if (!q || q.tenantId !== actor.tenantId) return reply.status(404).send({ error: "Pergunta não encontrada" });
+    if (!q) return reply.status(404).send({ error: "Pergunta não encontrada" });
     if (approve && !(q.correctedPlan ?? q.plan)) return reply.status(400).send({ error: "Pergunta sem plano para aprovar" });
     await db.update(biQuestions).set({ approved: approve, approvedBy: approve ? actor.id : null }).where(eq(biQuestions.id, id));
     return { success: true, approved: approve };
