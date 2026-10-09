@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import NotionTasksWidget from "@/components/admin/NotionTasksWidget";
+import { LocationSelector, type LocationValue } from "@/components/ui/LocationSelector";
 
 export default function SysAdminSetupPage() {
   const [nomeEscola, setNomeEscola] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [slug, setSlug] = useState("");
+  const [location, setLocation] = useState<LocationValue>({ countryCode: "BR", stateUf: "SP", cityName: "" });
   const [responsavelNome, setResponsavelNome] = useState("");
   const [responsavelEmail, setResponsavelEmail] = useState("");
   const [responsavelTelefone, setResponsavelTelefone] = useState("");
@@ -53,6 +55,9 @@ export default function SysAdminSetupPage() {
           nomeEscola,
           cnpj,
           slug,
+          country: location.countryCode,
+          state: location.stateUf,
+          city: location.cityName,
           responsavelNome,
           responsavelEmail,
           responsavelTelefone,
@@ -205,6 +210,16 @@ export default function SysAdminSetupPage() {
 
             <div style={{ background: "rgba(59, 130, 246, 0.08)", padding: "10px 14px", borderRadius: "8px", fontSize: "0.82rem", color: "#93c5fd", marginBottom: "18px" }}>
               🌐 <strong>Acesso Exclusivo White Label:</strong> <code>https://app.projetoperiscopio.com.br/{slug || "slug-da-escola"}</code>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "18px" }}>
+              <label className="form-label" style={{ marginBottom: "8px", display: "block" }}>
+                Localização Geográfica da Instituição (País, Estado e Município)
+              </label>
+              <LocationSelector
+                value={location}
+                onChange={(newLoc) => setLocation(newLoc)}
+              />
             </div>
 
             <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", margin: "20px 0" }} />
