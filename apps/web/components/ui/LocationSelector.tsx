@@ -14,6 +14,7 @@ import {
   BRAZILIAN_STATES,
   COUNTRIES,
   fetchCitiesByState,
+  getCountryFlag,
   type BrazilianState,
   type City,
   type Country,
@@ -139,23 +140,32 @@ export function LocationSelector({
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectLabel>América do Sul</SelectLabel>
-              {COUNTRIES.filter((c) =>
-                ["BR", "AR", "CL", "UY", "PY", "CO", "PE", "BO", "EC", "VE"].includes(c.code)
-              ).map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <span className="mr-2 text-base">{c.flag}</span>
-                  {c.name}
+              <SelectLabel>Destaque</SelectLabel>
+              {COUNTRIES.filter((c) => c.sigla === "BR").map((c) => (
+                <SelectItem key={c.sigla} value={c.sigla}>
+                  <span className="mr-2 text-base">{getCountryFlag(c.sigla)}</span>
+                  <span className="font-semibold">{c.nome_pais}</span>
                 </SelectItem>
               ))}
-              <SelectLabel>Outros Países</SelectLabel>
+
+              <SelectLabel>América Latina & Vizinhos</SelectLabel>
+              {COUNTRIES.filter((c) =>
+                ["AR", "CL", "UY", "PY", "CO", "PE", "BO", "EC", "VE"].includes(c.sigla)
+              ).map((c) => (
+                <SelectItem key={c.sigla} value={c.sigla}>
+                  <span className="mr-2 text-base">{getCountryFlag(c.sigla)}</span>
+                  {c.nome_pais}
+                </SelectItem>
+              ))}
+
+              <SelectLabel>Todos os Países ({COUNTRIES.length})</SelectLabel>
               {COUNTRIES.filter(
                 (c) =>
-                  !["BR", "AR", "CL", "UY", "PY", "CO", "PE", "BO", "EC", "VE"].includes(c.code)
+                  !["BR", "AR", "CL", "UY", "PY", "CO", "PE", "BO", "EC", "VE"].includes(c.sigla)
               ).map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <span className="mr-2 text-base">{c.flag}</span>
-                  {c.name}
+                <SelectItem key={c.sigla} value={c.sigla}>
+                  <span className="mr-2 text-base">{getCountryFlag(c.sigla)}</span>
+                  {c.nome_pais}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -292,9 +302,17 @@ export function CountrySelect({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          {COUNTRIES.map((c) => (
-            <SelectItem key={c.code} value={c.code}>
-              <span className="mr-2 text-base">{c.flag}</span> {c.name}
+          <SelectLabel>Destaque</SelectLabel>
+          {COUNTRIES.filter((c) => c.sigla === "BR").map((c) => (
+            <SelectItem key={c.sigla} value={c.sigla}>
+              <span className="mr-2 text-base">{getCountryFlag(c.sigla)}</span>
+              <span className="font-semibold">{c.nome_pais}</span>
+            </SelectItem>
+          ))}
+          <SelectLabel>Todos os Países ({COUNTRIES.length})</SelectLabel>
+          {COUNTRIES.filter((c) => c.sigla !== "BR").map((c) => (
+            <SelectItem key={c.sigla} value={c.sigla}>
+              <span className="mr-2 text-base">{getCountryFlag(c.sigla)}</span> {c.nome_pais}
             </SelectItem>
           ))}
         </SelectGroup>

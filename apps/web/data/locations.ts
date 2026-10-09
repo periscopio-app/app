@@ -4,9 +4,20 @@
 import countriesData from "./countries.json";
 
 export interface Country {
-  code: string;
-  name: string;
-  flag: string;
+  sigla: string;
+  nome_pais: string;
+  nome_pais_int: string;
+  gentilico: string;
+}
+
+export function getCountryFlag(sigla: string): string {
+  if (!sigla || sigla.length !== 2) return "🌐";
+  try {
+    const chars = [...sigla.toUpperCase()].map((c) => 127397 + c.charCodeAt(0));
+    return String.fromCodePoint(...chars);
+  } catch {
+    return "🌐";
+  }
 }
 
 export interface BrazilianState {
@@ -90,8 +101,8 @@ const cache: Record<string, City[]> = {};
 
 /**
  * Busca a lista de municípios de uma UF.
- * Tenta a API oficial do IBGE para trazer todos os municípios e faz cache em memória.
- * Caso haja falha de rede ou timeout, usa imediatamente a lista local pré-compilada.
+ * Carrega dinamicamente a base completa local com 5.570 municípios do Brasil (0ms de latência),
+ * com fallback para a API oficial do IBGE e cache em memória.
  */
 export async function fetchCitiesByState(uf: string): Promise<City[]> {
   const cleanUf = uf.toUpperCase().trim();
@@ -101,9 +112,30 @@ export async function fetchCitiesByState(uf: string): Promise<City[]> {
     return cache[cleanUf];
   }
 
+  // 1. Base local completa (instantânea e resiliente a falhas de rede)
+  try {
+    const localData = await import("./brazil-cities.json");
+    const estado = localData.estados?.find((e: { sigla: string }) => e.sigla === cleanUf);
+    if (estado && Array.isArray(estado.cidades) && estado.cidades.length > 0) {
+      const cities: City[] = estado.cidades
+        .map((name: string, idx: number) => ({
+          id: `${cleanUf}-${idx}`,
+          name,
+          uf: cleanUf,
+        }))
+        .sort((a: City, b: City) => a.name.localeCompare(b.name, "pt-BR"));
+
+      cache[cleanUf] = cities;
+      return cities;
+    }
+  } catch {
+    // Continua para o fallback de rede caso ocorra erro
+  }
+
+  // 2. Fallback online via API oficial do IBGE
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 3000);
 
     const res = await fetch(
       `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${cleanUf}/municipios`,
@@ -123,10 +155,10 @@ export async function fetchCitiesByState(uf: string): Promise<City[]> {
       }
     }
   } catch {
-    // Falha silenciosa de rede -> fallback imediato
+    // Falha de rede tolerada
   }
 
-  // Fallback local
+  // 3. Fallback estático das cidades principais
   const defaultList = DEFAULT_CITIES_BY_STATE[cleanUf] ?? [];
   const fallbackCities: City[] = defaultList.map((name, idx) => ({
     id: `${cleanUf}-${idx}`,
