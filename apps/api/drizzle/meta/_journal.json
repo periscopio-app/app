@@ -99,6 +99,13 @@
       "when": 1791592800000,
       "tag": "0013_base_individual",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791679200000,
+      "tag": "0014_dicionario_base_individual",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import {
   legacyPatientLocations,
   legacyPatientServices,
   legacyPatients,
+  legacyVariableDictionary,
   schools,
 } from "@periscopio/shared";
 import {
@@ -96,7 +97,7 @@ async function main() {
 
   // Barreiras: nenhum identificador direto pode ter sobrado.
   const denied = new Set<string>();
-  for (const l of lines) for (const k of deniedColumns(Object.keys(l.raw))) denied.add(k);
+  for (const l of lines) for (const k of deniedColumns(Object.keys(l.raw), manifest.allowedColumns)) denied.add(k);
   if (denied.size) problems.push(`colunas com cara de identificador direto na camada bruta: ${[...denied].join(", ")} (mapeie como nome/endereço ou descarte no contrato)`);
   const pii = lines.flatMap((l) => scanPiiValues(l).map((h) => ({ row: l.sourceRow, ...h })));
   if (pii.length && !flag("allow-pii-patterns")) {
@@ -116,6 +117,8 @@ async function main() {
   console.log("  por escola:", JSON.stringify(perSchool));
   console.log("  localização:", JSON.stringify(byStatus));
   console.log(`  complementos: ${lines.reduce((a, l) => a + l.complaints.length, 0)} queixas, ${lines.reduce((a, l) => a + l.services.length, 0)} serviços, ${lines.reduce((a, l) => a + l.items.length, 0)} itens clínicos`);
+  if (manifest.allowedColumns?.length) console.log(`  colunas liberadas por revisão humana (nome parece identificador, conteúdo não é): ${manifest.allowedColumns.join(", ")}`);
+  if (manifest.dictionary?.length) console.log(`  dicionário de variáveis: ${manifest.dictionary.length} linhas`);
   for (const w of manifest.warnings ?? []) console.log("  aviso do extrator:", w);
   if (!apply) {
     console.log("Nada foi gravado. Rode com --apply para gravar.");
@@ -202,6 +205,10 @@ async function main() {
     for (const part of chunk(services, 500)) await tx.insert(legacyPatientServices).values(part);
     const items = lines.flatMap((l) => l.items.map((i) => ({ patientId: l.patientId, tenantId, kind: i.kind, position: i.position, text: i.text })));
     for (const part of chunk(items, 500)) await tx.insert(legacyPatientItems).values(part);
+
+    for (const part of chunk(manifest.dictionary ?? [], 500)) {
+      await tx.insert(legacyVariableDictionary).values(part.map((d) => ({ ...d, batchId: batch.id, tenantId })));
+    }
 
     await tx.insert(auditLogs).values({
       tenantId,
