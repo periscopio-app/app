@@ -122,15 +122,15 @@ export default function AgendaPage() {
     run(() => api.patch(`/api/expert-meetings/${id}/${action}`, { note }), action === "confirm" ? "Reunião confirmada e e-mails enviados." : "Pedido recusado e horário liberado.");
   };
 
-  if (!me) return <p className="py-16 text-center text-sm text-tinta-500">Carregando agenda...</p>;
+  if (!me) return <p className="py-16 text-center text-sm text-neutral-800">Carregando agenda...</p>;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4 md:p-8">
       <header className="flex items-center gap-3">
-        <CalendarClock aria-hidden className="h-7 w-7 text-roxo" />
+        <CalendarClock aria-hidden className="h-7 w-7 text-black" />
         <div>
-          <h1 className="text-2xl font-bold text-tinta-900">Agenda do Board de experts</h1>
-          <p className="text-sm text-tinta-500">
+          <h1 className="text-2xl font-bold text-black">Agenda do Board de experts</h1>
+          <p className="text-sm text-neutral-800">
             {isManager ? "Libere horários e confirme os pedidos das escolas." : "Peça uma reunião do Board para discutir um caso."}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function AgendaPage() {
               </div>
               <Button type="submit" disabled={busy}>Salvar sala</Button>
             </form>
-            <p className="text-sm text-tinta-500">Crie a sala no Google Meet com sua conta e cole o link aqui. Ele é enviado em todas as confirmações.</p>
+            <p className="text-sm text-neutral-800">Crie a sala no Google Meet com sua conta e cole o link aqui. Ele é enviado em todas as confirmações.</p>
           </Card>
 
           <Card className="flex flex-col gap-4 p-6">
@@ -160,12 +160,12 @@ export default function AgendaPage() {
               <Button type="submit" disabled={busy}>Adicionar</Button>
             </form>
             <ul className="divide-y divide-linha">
-              {slots.length === 0 && <li className="py-2 text-sm text-tinta-500">Nenhum horário futuro.</li>}
+              {slots.length === 0 && <li className="py-2 text-sm text-neutral-800">Nenhum horário futuro.</li>}
               {slots.map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span>{fmt(s.startsAt)}</span>
                   <span className="flex items-center gap-3">
-                    <span className="text-tinta-500">{s.status === "available" ? "Livre" : s.status === "booked" ? "Reservado" : "Cancelado"}</span>
+                    <span className="text-neutral-800">{s.status === "available" ? "Livre" : s.status === "booked" ? "Reservado" : "Cancelado"}</span>
                     {s.status === "available" && (
                       <Button variant="ghost" className="min-h-9 px-3 text-sm" disabled={busy} onClick={() => run(() => api.delete(`/api/expert-meetings/slots/${s.id}`), "Horário cancelado.")}>
                         Cancelar
@@ -182,7 +182,7 @@ export default function AgendaPage() {
           <h2 className="text-lg font-semibold">Pedir reunião</h2>
           {notice && <Alert tom="atencao">{notice}</Alert>}
           {slots.length === 0 ? (
-            <p className="text-sm text-tinta-500">Não há horários liberados no momento. Tente novamente em breve.</p>
+            <p className="text-sm text-neutral-800">Não há horários liberados no momento. Tente novamente em breve.</p>
           ) : (
             <form onSubmit={requestMeeting} className="flex flex-col gap-4">
               <fieldset className="flex flex-col gap-2">
@@ -198,10 +198,10 @@ export default function AgendaPage() {
               </fieldset>
               <Field id="prof" label="Nome do profissional" value={professionalName} onChange={(e) => setProfessionalName(e.target.value)} required minLength={3} maxLength={120} />
               <div className="flex flex-col gap-2">
-                <label htmlFor="topic" className="text-sm font-semibold text-tinta-900">Breve descrição do problema a discutir</label>
+                <label htmlFor="topic" className="text-sm font-semibold text-black">Breve descrição do problema a discutir</label>
                 <textarea id="topic" rows={4} value={topic} onChange={(e) => setTopic(e.target.value)} required minLength={10} maxLength={600}
                   className="rounded-xl border-[1.5px] border-input bg-white px-4 py-3 text-base focus:border-roxo focus:outline-none focus:ring-2 focus:ring-roxo/30" />
-                <span className="text-xs text-tinta-500">{topic.length}/600</span>
+                <span className="text-xs text-neutral-800">{topic.length}/600</span>
               </div>
               <Field id="code" label="Código do aluno (opcional)" placeholder="ESCO-2026-XXXX" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} maxLength={64} />
               <Button type="submit" disabled={busy || !slotId}>Solicitar reunião</Button>
@@ -212,7 +212,7 @@ export default function AgendaPage() {
 
       <Card className="flex flex-col gap-4 p-6">
         <h2 className="text-lg font-semibold">{isManager ? "Pedidos das escolas" : "Meus pedidos"}</h2>
-        {meetings.length === 0 && <p className="text-sm text-tinta-500">Nenhum pedido ainda.</p>}
+        {meetings.length === 0 && <p className="text-sm text-neutral-800">Nenhum pedido ainda.</p>}
         <ul className="flex flex-col gap-3">
           {meetings.map((m) => (
             <li key={m.id} className="rounded-2xl border border-border p-4 text-sm">
@@ -220,16 +220,16 @@ export default function AgendaPage() {
                 <strong>{fmtShort(m.startsAt)}</strong>
                 <Badge estado={STATUS_ESTADO[m.status]}>{STATUS_LABEL[m.status]}</Badge>
               </div>
-              <p className="mt-1 text-tinta-500">
+              <p className="mt-1 text-neutral-800">
                 {m.schoolName ? `${m.schoolName} · ` : ""}{m.professionalName}{m.studentCode ? ` · ${m.studentCode}` : ""}
               </p>
               <p className="mt-2">{m.topic}</p>
               {m.status === "confirmed" && m.meetUrl && (
-                <a href={m.meetUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 font-semibold text-roxo underline">
+                <a href={m.meetUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 font-semibold text-black underline">
                   <Video aria-hidden className="h-4 w-4" /> Entrar na sala (Google Meet)
                 </a>
               )}
-              {m.decisionNote && <p className="mt-2 text-tinta-500">Observação: {m.decisionNote}</p>}
+              {m.decisionNote && <p className="mt-2 text-neutral-800">Observação: {m.decisionNote}</p>}
               {isManager && m.status === "pending" && (
                 <div className="mt-3 flex gap-2">
                   <Button disabled={busy} onClick={() => decide(m.id, "confirm")}>Confirmar</Button>

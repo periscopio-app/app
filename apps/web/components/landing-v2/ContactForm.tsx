@@ -47,10 +47,10 @@ export function ContactForm() {
           className={`${campo} mt-1 font-normal`}
         />
       </label>
-      {erro && <p className="text-sm font-medium text-erro">{erro}</p>}
+      {erro && <p className="text-sm font-medium text-black">{erro}</p>}
       <button
         type="submit"
-        className="w-full rounded-full bg-empatia px-6 py-3 font-semibold text-white shadow-lift transition hover:-translate-y-0.5"
+        className="w-full rounded-full bg-roxo-100 border border-roxo px-6 py-3 font-semibold text-black shadow-lift transition hover:-translate-y-0.5"
       >
         Enviar pelo WhatsApp
       </button>

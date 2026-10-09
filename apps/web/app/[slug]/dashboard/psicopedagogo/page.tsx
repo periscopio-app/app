@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import CourseCatalog from "@/components/lms/CourseCatalog";
+import { api } from "@/lib/api";
 
 interface Student {
   id: string;
@@ -32,7 +33,9 @@ export default function PsicopedagogoDashboardPage({
 
   // Modal / Form para cadastrar aluno
   const [birthYear, setBirthYear] = useState(2016);
+  const [birthMonth, setBirthMonth] = useState(1);
   const [studentSuccess, setStudentSuccess] = useState<string | null>(null);
+  const [studentError, setStudentError] = useState<string | null>(null);
 
   // Modal / Form para abrir caso e delegar seções
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
@@ -74,23 +77,18 @@ export default function PsicopedagogoDashboardPage({
     e.preventDefault();
     if (!school) return;
     setStudentSuccess(null);
+    setStudentError(null);
 
     try {
-      const res = await fetch(`${apiUrl}/api/students`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          schoolId: school.id,
-          birthYear: Number(birthYear),
-        }),
+      const data = await api.post<{ student: Student }>("/api/students", {
+        schoolId: school.id,
+        birthYear: Number(birthYear),
+        birthMonth: Number(birthMonth),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setStudentSuccess(`Aluno cadastrado com sucesso! ID Pseudonimizado: ${data.student.studentCode}`);
-        setStudentsList([...studentsList, data.student]);
-      }
-    } catch (err: any) {
-      alert("Erro ao cadastrar aluno");
+      setStudentSuccess(`Aluno cadastrado com sucesso! ID Pseudonimizado: ${data.student.studentCode}`);
+      setStudentsList([...studentsList, data.student]);
+    } catch (err: unknown) {
+      setStudentError(err instanceof Error ? err.message : "Erro ao cadastrar aluno.");
     }
   };
 
@@ -181,6 +179,11 @@ export default function PsicopedagogoDashboardPage({
             Em conformidade com a <strong>LGPD</strong>, não coletamos nome nem CPF de alunos. O sistema gera automaticamente um código pseudonimizado.
           </p>
 
+          {studentError && (
+            <div className="alert-box alert-error" style={{ fontSize: "0.82rem" }} role="alert">
+              <span>{studentError}</span>
+            </div>
+          )}
           {studentSuccess && (
             <div className="alert-box alert-success" style={{ fontSize: "0.82rem" }}>
               <span>✓</span>
@@ -200,6 +203,14 @@ export default function PsicopedagogoDashboardPage({
                 className="form-input"
                 required
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Mês de Nascimento *</label>
+              <select value={birthMonth} onChange={(e) => setBirthMonth(Number(e.target.value))} className="form-input" required>
+                {["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
             </div>
 
             <button type="submit" className="btn-primary" style={{ padding: "10px" }}>

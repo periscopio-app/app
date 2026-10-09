@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
 import { api } from "@/lib/api";
-import {
+import { MapPinned,
   FileText,
   Stethoscope,
   ShieldCheck,
@@ -88,11 +88,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const agendaItem = { label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board", exact: false };
   const agendaRoles = ["ppi", "school_manager", "md1", "board"];
+  const mapaItem = { label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão", exact: false };
+  const mapaRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"];
 
   const visibleClinical = userRole
     ? [
         ...clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false })),
         ...(agendaRoles.includes(userRole) ? [agendaItem] : []),
+        ...(mapaRoles.includes(userRole) ? [mapaItem] : []),
       ]
     : [];
 
@@ -114,7 +117,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F9FB] text-[#14202B] flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-[#F6F9FB] text-black flex flex-col md:flex-row font-sans">
       {/* Mobile First Sticky Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E1E9ED] sticky top-0 z-40 shadow-sm">
         <Link href="/" aria-label="Periscópio — início" className="flex items-center gap-2">
@@ -122,12 +125,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-[#682880] bg-[#682880]/10 px-2 py-0.5 rounded-full border border-[#682880]/20">
+          <span className="text-[11px] font-bold text-black bg-[#682880]/10 px-2 py-0.5 rounded-full border border-[#682880]/20">
             NEMT
           </span>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2.5 text-[#14202B] hover:text-[#682880] rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] transition active:scale-95"
+            className="p-2.5 text-black hover:text-black rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] transition active:scale-95"
             aria-label={mobileMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
             aria-expanded={mobileMenuOpen}
           >
@@ -139,7 +142,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Overlay Backdrop for Mobile Menu */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+          className="fixed inset-0 bg-slate-200/70 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
@@ -168,7 +171,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="md:hidden p-1.5 rounded-lg text-[#5B6B78] hover:text-[#14202B] hover:bg-[#F0F9FC]"
+                className="md:hidden p-1.5 rounded-lg text-neutral-800 hover:text-black hover:bg-[#F0F9FC]"
                 aria-label="Fechar menu"
               >
                 <X className="w-5 h-5" />
@@ -176,7 +179,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="mt-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#682880] bg-[#682880]/10 px-2.5 py-1 rounded-full border border-[#682880]/20">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-black bg-[#682880]/10 px-2.5 py-1 rounded-full border border-[#682880]/20">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 Protocolo NEMT Escolar
               </span>
@@ -185,12 +188,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* School / Tenant Switcher Info */}
             <div className="mt-3 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] flex items-center justify-between">
               <div className="flex items-center gap-2 overflow-hidden">
-                <School className="w-4 h-4 text-[#682880] shrink-0" />
-                <span className="text-xs font-bold text-[#14202B] truncate">
+                <School className="w-4 h-4 text-black shrink-0" />
+                <span className="text-xs font-bold text-black truncate">
                   {currentSlug === "demo-escola" ? "Escola Municipal Demo" : currentSlug}
                 </span>
               </div>
-              <span className="text-[10px] text-[#5B6B78] uppercase font-mono font-bold">Tenant</span>
+              <span className="text-[10px] text-neutral-800 uppercase font-mono font-bold">Tenant</span>
             </div>
           </div>
 
@@ -198,7 +201,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <nav className="p-4 flex-1 space-y-6">
             {navItems.map((group) => (
               <div key={group.group}>
-                <h3 className="px-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5B6B78] mb-2">
+                <h3 className="px-3 text-[11px] font-extrabold uppercase tracking-wider text-neutral-800 mb-2">
                   {group.group}
                 </h3>
                 <div className="space-y-1">
@@ -214,15 +217,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           flex items-center justify-between px-3.5 py-3 md:py-2.5 rounded-xl text-sm font-semibold transition-all group
                           ${
                             active
-                              ? "bg-[#682880] text-white shadow-sm"
-                              : "text-[#5B6B78] hover:text-[#14202B] hover:bg-[#F0F9FC]"
+                              ? "bg-roxo-100 border border-roxo text-black shadow-sm"
+                              : "text-neutral-800 hover:text-black hover:bg-[#F0F9FC]"
                           }
                         `}
                       >
                         <div className="flex items-center gap-3">
                           <Icon
                             className={`w-5 h-5 md:w-4 md:h-4 transition-colors ${
-                              active ? "text-white" : "text-[#5B6B78] group-hover:text-[#682880]"
+                              active ? "text-black" : "text-neutral-800 group-hover:text-black"
                             }`}
                           />
                           <span>{item.label}</span>
@@ -232,8 +235,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                               active
-                                ? "bg-white/20 text-white border-white/30"
-                                : "bg-[#F0F9FC] text-[#5B6B78] border-[#E1E9ED]"
+                                ? "bg-white/20 text-black border-white/30"
+                                : "bg-[#F0F9FC] text-neutral-800 border-[#E1E9ED]"
                             }`}
                           >
                             {item.badge}
@@ -248,11 +251,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Quick Access Card */}
             <div className="p-3.5 rounded-2xl bg-[#F0F9FC] border border-[#E1E9ED]">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#682880]">
-                <Sparkles className="w-4 h-4 text-[#682880]" />
+              <div className="flex items-center gap-2 text-xs font-bold text-black">
+                <Sparkles className="w-4 h-4 text-black" />
                 <span>Janela Terapêutica</span>
               </div>
-              <p className="text-[11px] text-[#5B6B78] mt-1 leading-relaxed">
+              <p className="text-[11px] text-neutral-800 mt-1 leading-relaxed">
                 Acompanhamento de 120 dias e triagem precoce antes do encaminhamento ao SUS.
               </p>
             </div>
@@ -262,14 +265,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="p-4 border-t border-[#E1E9ED] bg-[#FAFCFE]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-full bg-[#682880] text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-roxo-100 border border-roxo text-black font-bold flex items-center justify-center shrink-0 text-sm shadow-sm">
                   {session?.user?.name ? session.user.name[0].toUpperCase() : "P"}
                 </div>
                 <div className="overflow-hidden">
-                  <div className="text-xs font-bold text-[#14202B] truncate">
+                  <div className="text-xs font-bold text-black truncate">
                     {session?.user?.name || "Profissional Periscópio"}
                   </div>
-                  <div className="text-[11px] text-[#5B6B78] truncate">
+                  <div className="text-[11px] text-neutral-800 truncate">
                     {session?.user?.email || "Conectado via Neon Auth"}
                   </div>
                 </div>
@@ -278,7 +281,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <button
                 onClick={handleLogout}
                 title="Sair da Conta"
-                className="p-2 rounded-lg text-[#5B6B78] hover:text-[#B42318] hover:bg-[#FDECEA] transition"
+                className="p-2 rounded-lg text-neutral-800 hover:text-black hover:bg-[#FDECEA] transition"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -291,12 +294,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Utility Header (Desktop) */}
         <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/90 backdrop-blur-md border-b border-[#E1E9ED] sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-3 w-96 bg-[#F6F9FB] border border-[#E1E9ED] rounded-xl px-3 py-2 text-xs text-[#14202B]">
-            <Search className="w-4 h-4 text-[#5B6B78]" />
+          <div className="flex items-center gap-3 w-96 bg-[#F6F9FB] border border-[#E1E9ED] rounded-xl px-3 py-2 text-xs text-black">
+            <Search className="w-4 h-4 text-neutral-800" />
             <input
               type="text"
               placeholder="Buscar aluno (ID LGPD), protocolo ou parecer..."
-              className="bg-transparent border-none outline-none w-full text-[#14202B] placeholder-[#5B6B78]"
+              className="bg-transparent border-none outline-none w-full text-black placeholder-[#5B6B78]"
             />
           </div>
 
@@ -304,7 +307,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <NotificationCenter />
             <Link
               href={`/${currentSlug}/dashboard/re`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#682880] hover:bg-[#52206A] text-white shadow-sm transition"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black shadow-sm transition"
             >
               <span>+ Novo Prontuário</span>
             </Link>
@@ -312,10 +315,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               href="https://wa.me/5511984444994"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-[#14202B] border border-[#E1E9ED] transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-black border border-[#E1E9ED] transition"
             >
               <span>Suporte</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-[#5B6B78]" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-neutral-800" />
             </a>
           </div>
         </header>

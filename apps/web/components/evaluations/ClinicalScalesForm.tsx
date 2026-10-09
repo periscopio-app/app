@@ -165,11 +165,11 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
       {/* Header & Scale Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E1E9ED] pb-4 gap-4">
         <div>
-          <h2 className="text-lg font-extrabold text-[#14202B] flex items-center gap-2 font-display">
-            <ClipboardCheck className="w-5 h-5 text-[#682880]" />
+          <h2 className="text-lg font-extrabold text-black flex items-center gap-2 font-display">
+            <ClipboardCheck className="w-5 h-5 text-black" />
             <span>Formulários & Escalas Clínicas Interativas</span>
           </h2>
-          <p className="text-xs text-[#5B6B78] mt-0.5">
+          <p className="text-xs text-neutral-800 mt-0.5">
             Aplicação de M-CHAT, FOGAP e SRQ-20 com pontuação e resumo automático no prontuário
           </p>
         </div>
@@ -181,8 +181,8 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
             onClick={() => { setSelectedScale("mchat"); setAnswers({}); setSuccess(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               selectedScale === "mchat"
-                ? "bg-[#682880] text-white shadow-sm"
-                : "text-[#5B6B78] hover:text-[#14202B]"
+                ? "bg-roxo-100 border border-roxo text-black shadow-sm"
+                : "text-neutral-800 hover:text-black"
             }`}
           >
             M-CHAT (Autismo)
@@ -193,8 +193,8 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
             onClick={() => { setSelectedScale("fogap"); setAnswers({}); setSuccess(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               selectedScale === "fogap"
-                ? "bg-[#682880] text-white shadow-sm"
-                : "text-[#5B6B78] hover:text-[#14202B]"
+                ? "bg-roxo-100 border border-roxo text-black shadow-sm"
+                : "text-neutral-800 hover:text-black"
             }`}
           >
             FOGAP (Aprendizagem)
@@ -205,8 +205,8 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
             onClick={() => { setSelectedScale("srq20"); setAnswers({}); setSuccess(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               selectedScale === "srq20"
-                ? "bg-[#682880] text-white shadow-sm"
-                : "text-[#5B6B78] hover:text-[#14202B]"
+                ? "bg-roxo-100 border border-roxo text-black shadow-sm"
+                : "text-neutral-800 hover:text-black"
             }`}
           >
             SRQ-20 (Saúde Mental)
@@ -234,11 +234,11 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
           {questions.map((q) => (
             <div key={q.id} className="p-4 rounded-xl bg-[#F6F9FB] border border-[#E1E9ED]">
               {q.category && (
-                <span className="text-[10px] uppercase font-extrabold text-[#682880] tracking-wider mb-1 block">
+                <span className="text-[10px] uppercase font-extrabold text-black tracking-wider mb-1 block">
                   {q.category}
                 </span>
               )}
-              <p className="text-xs font-bold text-[#14202B] mb-2.5 leading-relaxed">{q.text}</p>
+              <p className="text-xs font-bold text-black mb-2.5 leading-relaxed">{q.text}</p>
               <div className="flex flex-wrap gap-2">
                 {q.options.map((opt) => {
                   const isSelected = answers[q.id] === opt.score;
@@ -249,8 +249,8 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
                       onClick={() => handleSelectOption(q.id, opt.score)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
                         isSelected
-                          ? "bg-[#682880] text-white border-[#682880] shadow-sm"
-                          : "bg-white text-[#5B6B78] border-[#E1E9ED] hover:bg-[#F0F9FC] hover:text-[#14202B]"
+                          ? "bg-roxo-100 border border-roxo text-black border-roxo shadow-sm"
+                          : "bg-white text-neutral-800 border-[#E1E9ED] hover:bg-[#F0F9FC] hover:text-black"
                       }`}
                     >
                       {opt.label}
@@ -267,10 +267,10 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-[#5B6B78] font-bold">Pontuação Total:</span>
-                <span className="text-lg font-extrabold text-[#682880]">{currentScore} pts</span>
+                <span className="text-xs text-neutral-800 font-bold">Pontuação Total:</span>
+                <span className="text-lg font-extrabold text-black">{currentScore} pts</span>
               </div>
-              <p className="text-xs text-[#5B6B78] mt-0.5">{riskInfo.desc}</p>
+              <p className="text-xs text-neutral-800 mt-0.5">{riskInfo.desc}</p>
             </div>
 
             <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold border ${riskInfo.color}`}>
@@ -281,20 +281,20 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
           {/* Automatic Clinical Summary Card Preview */}
           <div className="p-3.5 bg-white rounded-xl border border-[#E1E9ED] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#14202B] flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#682880]" />
+              <span className="text-xs font-bold text-black flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-black" />
                 Resumo Automático de Prontuário
               </span>
               <button
                 type="button"
                 onClick={handleCopySummary}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#682880] hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-black hover:underline"
               >
                 <Copy className="w-3 h-3" />
                 <span>{copiedSummary ? "Copiado!" : "Copiar Texto"}</span>
               </button>
             </div>
-            <pre className="text-[11px] font-mono text-[#5B6B78] whitespace-pre-wrap bg-[#F6F9FB] p-2.5 rounded-lg border border-[#E1E9ED]">
+            <pre className="text-[11px] font-mono text-neutral-800 whitespace-pre-wrap bg-[#F6F9FB] p-2.5 rounded-lg border border-[#E1E9ED]">
               {generateClinicalSummaryText()}
             </pre>
           </div>
@@ -303,7 +303,7 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
             <button
               type="submit"
               disabled={submitting || Object.keys(answers).length === 0}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#682880] hover:bg-[#52206A] text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black font-bold text-xs shadow-sm transition-all disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{submitting ? "Gravando..." : "Anexar Resumo ao Prontuário"}</span>

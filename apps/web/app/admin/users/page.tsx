@@ -263,7 +263,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F9FB] text-[#14202B] p-6 md:p-12 font-sans">
+    <div className="min-h-screen bg-[#F6F9FB] text-black p-6 md:p-12 font-sans">
       <div className="mx-auto max-w-6xl">
         {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-[#E1E9ED]">
@@ -291,7 +291,7 @@ export default function AdminUsersPage() {
             </Link>
             <button
               onClick={() => setModalOpen(true)}
-              className="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition"
+              className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg transition"
             >
               + Novo Usuário
             </button>
@@ -302,13 +302,13 @@ export default function AdminUsersPage() {
         {feedbackSuccess && (
           <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-sm flex items-center justify-between">
             <span>✓ {feedbackSuccess}</span>
-            <button onClick={() => setFeedbackSuccess(null)} className="text-emerald-700 hover:text-[#14202B]">✕</button>
+            <button onClick={() => setFeedbackSuccess(null)} className="text-emerald-700 hover:text-black">✕</button>
           </div>
         )}
         {error && (
           <div className="mt-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-sm flex items-center justify-between">
             <span>⚠️ {error}</span>
-            <button onClick={() => setError(null)} className="text-rose-700 hover:text-[#14202B]">✕</button>
+            <button onClick={() => setError(null)} className="text-rose-700 hover:text-black">✕</button>
           </div>
         )}
 
@@ -319,7 +319,7 @@ export default function AdminUsersPage() {
             placeholder="Buscar por nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-80 px-4 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full sm:w-80 px-4 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black placeholder-slate-500 focus:outline-none focus:border-blue-500"
           />
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -327,7 +327,7 @@ export default function AdminUsersPage() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+              className="px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
             >
               <option value="all">Todos os Perfis ({usersList.length})</option>
               {roles.map((r) => (
@@ -363,7 +363,7 @@ export default function AdminUsersPage() {
                     return (
                       <tr key={u.id} className="hover:bg-[#F0F9FC] transition">
                         <td className="px-6 py-4">
-                          <div className="font-semibold text-[#14202B]">{u.name}</div>
+                          <div className="font-semibold text-black">{u.name}</div>
                           <div className="text-xs text-slate-600">{u.email}</div>
                           {u.classCode && (
                             <div className="text-[11px] text-blue-700 mt-0.5">{u.classCode}</div>
@@ -412,7 +412,7 @@ export default function AdminUsersPage() {
 
         {/* Roles & Privilege Matrix Reference */}
         <div className="mt-12">
-          <h2 className="text-lg font-bold font-display text-[#14202B] mb-4">
+          <h2 className="text-lg font-bold font-display text-black mb-4">
             Catálogo de Perfis e Matriz de Privilégios
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -424,7 +424,7 @@ export default function AdminUsersPage() {
                   </span>
                   <span className="text-[11px] text-slate-500 uppercase">{r.level}</span>
                 </div>
-                <h3 className="mt-3 font-semibold text-[#14202B] text-sm">{r.title}</h3>
+                <h3 className="mt-3 font-semibold text-black text-sm">{r.title}</h3>
                 <p className="mt-1 text-xs text-slate-600 leading-relaxed">{r.description}</p>
                 <div className="mt-4 pt-3 border-t border-[#E1E9ED] flex flex-wrap gap-1.5">
                   {r.permissions.map((p) => (
@@ -440,11 +440,11 @@ export default function AdminUsersPage() {
 
         {/* Modal Novo Usuário */}
         {modalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-200/70 backdrop-blur-sm">
             <div className="bg-white border border-[#E1E9ED] rounded-2xl w-full max-w-lg p-6 shadow-2xl">
               <div className="flex justify-between items-center pb-4 border-b border-[#E1E9ED]">
-                <h3 className="text-lg font-bold text-[#14202B]">Criar Novo Usuário</h3>
-                <button onClick={() => setModalOpen(false)} className="text-slate-600 hover:text-[#14202B]">✕</button>
+                <h3 className="text-lg font-bold text-black">Criar Novo Usuário</h3>
+                <button onClick={() => setModalOpen(false)} className="text-slate-600 hover:text-black">✕</button>
               </div>
 
               <form onSubmit={handleCreateUser} className="mt-6 space-y-4">
@@ -456,7 +456,7 @@ export default function AdminUsersPage() {
                     value={novoNome}
                     onChange={(e) => setNovoNome(e.target.value)}
                     placeholder="Ex: Dra. Mariana Silva"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -468,7 +468,7 @@ export default function AdminUsersPage() {
                     value={novoEmail}
                     onChange={(e) => setNovoEmail(e.target.value)}
                     placeholder="mariana@escola.gov.br"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -477,7 +477,7 @@ export default function AdminUsersPage() {
                   <select
                     value={novoRole}
                     onChange={(e) => setNovoRole(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                   >
                     {roles.map((r) => (
                       <option key={r.role} value={r.role}>
@@ -499,7 +499,7 @@ export default function AdminUsersPage() {
                       value={novaEscola}
                       onChange={(e) => setNovaEscola(e.target.value)}
                       required
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     >
                       <option value="">Selecione a escola...</option>
                       {schoolsList.map((s) => (
@@ -520,7 +520,7 @@ export default function AdminUsersPage() {
                       value={novaSenha}
                       onChange={(e) => setNovaSenha(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -530,7 +530,7 @@ export default function AdminUsersPage() {
                       value={novoTelefone}
                       onChange={(e) => setNovoTelefone(e.target.value)}
                       placeholder="(11) 99999-9999"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -543,7 +543,7 @@ export default function AdminUsersPage() {
                       value={novoConselho}
                       onChange={(e) => setNovoConselho(e.target.value)}
                       placeholder="Ex: CRM-SP 12345"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
@@ -553,7 +553,7 @@ export default function AdminUsersPage() {
                       value={novaEspecialidade}
                       onChange={(e) => setNovaEspecialidade(e.target.value)}
                       placeholder="Ex: Psiquiatria Infantil"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export default function AdminUsersPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg disabled:opacity-50"
+                    className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg disabled:opacity-50"
                   >
                     {submitting ? "Criando..." : "Salvar Usuário"}
                   </button>
@@ -581,9 +581,9 @@ export default function AdminUsersPage() {
 
         {/* Modal Alterar Perfil */}
         {editingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-200/70 backdrop-blur-sm">
             <div className="bg-white border border-[#E1E9ED] rounded-2xl w-full max-w-md p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-[#14202B]">Alterar Perfil de Acesso</h3>
+              <h3 className="text-lg font-bold text-black">Alterar Perfil de Acesso</h3>
               <p className="mt-1 text-sm text-slate-600">
                 Usuário: <strong>{editingUser.name}</strong> ({editingUser.email})
               </p>
@@ -593,7 +593,7 @@ export default function AdminUsersPage() {
                 <select
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E1E9ED] text-sm text-[#14202B] focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                 >
                   {roles.map((r) => (
                     <option key={r.role} value={r.role}>
@@ -617,7 +617,7 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => handleUpdateRole(editingUser.id, editRole)}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg"
+                  className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg"
                 >
                   Confirmar Alteração
                 </button>

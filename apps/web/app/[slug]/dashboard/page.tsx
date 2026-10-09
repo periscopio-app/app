@@ -34,7 +34,7 @@ export default function DashboardIndexPage({ params }: { params: Promise<{ slug:
   }, [slug, router]);
 
   return (
-    <div className="flex items-center justify-center py-24 text-tinta-500 text-sm">
+    <div className="flex items-center justify-center py-24 text-neutral-800 text-sm">
       Redirecionando...
     </div>
   );

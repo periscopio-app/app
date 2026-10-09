@@ -180,16 +180,16 @@ export default function CourseCatalog() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E1E9ED] pb-4 gap-2">
         <div>
-          <h2 className="text-lg font-extrabold text-[#14202B] flex items-center gap-2 font-display">
-            <GraduationCap className="w-5 h-5 text-[#682880]" />
+          <h2 className="text-lg font-extrabold text-black flex items-center gap-2 font-display">
+            <GraduationCap className="w-5 h-5 text-black" />
             <span>Módulo de Formação Continuada & LMS do Periscópio</span>
           </h2>
-          <p className="text-xs text-[#5B6B78] mt-0.5">
+          <p className="text-xs text-neutral-800 mt-0.5">
             Consumo interativo de cursos e aulas vinculados às tabelas de formação pedagógica (`courses`, `lessons`, `enrollments`)
           </p>
         </div>
 
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#682880] bg-[#682880]/10 px-3 py-1 rounded-full border border-[#682880]/20 w-fit">
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-black bg-[#682880]/10 px-3 py-1 rounded-full border border-[#682880]/20 w-fit">
           <Award className="w-3.5 h-3.5" />
           <span>Certificação NEMT Ativa</span>
         </span>
@@ -209,19 +209,19 @@ export default function CourseCatalog() {
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#682880]/10 flex items-center justify-center text-[#682880] group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-[#682880]/10 flex items-center justify-center text-black group-hover:scale-105 transition-transform">
                     <BookOpen className="w-5 h-5" />
                   </div>
-                  <span className="text-[11px] font-bold text-[#5B6B78] flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-[#682880]" />
+                  <span className="text-[11px] font-bold text-neutral-800 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-black" />
                     {course.totalDuration}
                   </span>
                 </div>
 
-                <h3 className="text-sm font-bold text-[#14202B] mb-1.5 leading-snug group-hover:text-[#682880] transition-colors">
+                <h3 className="text-sm font-bold text-black mb-1.5 leading-snug group-hover:text-black transition-colors">
                   {course.title}
                 </h3>
-                <p className="text-xs text-[#5B6B78] leading-relaxed mb-4 line-clamp-3">
+                <p className="text-xs text-neutral-800 leading-relaxed mb-4 line-clamp-3">
                   {course.description}
                 </p>
               </div>
@@ -229,13 +229,13 @@ export default function CourseCatalog() {
               <div className="space-y-3 pt-3 border-t border-[#E1E9ED]">
                 {/* Progress Bar */}
                 <div>
-                  <div className="flex justify-between text-[11px] font-bold text-[#5B6B78] mb-1">
+                  <div className="flex justify-between text-[11px] font-bold text-neutral-800 mb-1">
                     <span>Progresso do Aluno</span>
-                    <span className="text-[#682880]">{progressPercent}%</span>
+                    <span className="text-black">{progressPercent}%</span>
                   </div>
                   <div className="w-full bg-[#E1E9ED] h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-[#682880] h-full transition-all duration-500 rounded-full"
+                      className="bg-roxo-100 border border-roxo h-full transition-all duration-500 rounded-full"
                       style={{ width: `${progressPercent}%` }}
                     ></div>
                   </div>
@@ -244,7 +244,7 @@ export default function CourseCatalog() {
                 <button
                   type="button"
                   onClick={() => handleOpenCourse(course)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#682880] text-white text-xs font-bold hover:bg-[#52206A] shadow-sm transition-all"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-roxo-100 border border-roxo text-black text-xs font-bold hover:bg-roxo-200 shadow-sm transition-all"
                 >
                   <PlayCircle className="w-4 h-4" />
                   <span>{progressPercent > 0 ? "Continuar Curso" : "Iniciar Formação"}</span>
@@ -257,21 +257,21 @@ export default function CourseCatalog() {
 
       {/* Lesson Player Modal / Drawer */}
       {selectedCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-200/70 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border border-[#E1E9ED] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[#E1E9ED] flex items-center justify-between bg-[#F6F9FB]">
               <div>
-                <span className="text-[10px] uppercase font-bold text-[#682880] tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-black tracking-wider">
                   Curso de Formação • NEMT
                 </span>
-                <h3 className="text-base font-extrabold text-[#14202B] leading-tight">
+                <h3 className="text-base font-extrabold text-black leading-tight">
                   {selectedCourse.title}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedCourse(null)}
-                className="p-1.5 rounded-lg text-[#5B6B78] hover:text-[#14202B] hover:bg-[#E1E9ED] transition"
+                className="p-1.5 rounded-lg text-neutral-800 hover:text-black hover:bg-[#E1E9ED] transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -284,10 +284,10 @@ export default function CourseCatalog() {
                 {activeLesson ? (
                   <>
                     {/* Simulated Player Screen */}
-                    <div className="w-full aspect-video rounded-2xl bg-[#14202B] flex flex-col items-center justify-center p-6 text-center text-white relative shadow-inner overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    <div className="w-full aspect-video rounded-2xl bg-[#EEF2F5] flex flex-col items-center justify-center p-6 text-center text-black relative shadow-inner overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent"></div>
                       <div className="relative z-10 space-y-2">
-                        <div className="w-12 h-12 rounded-full bg-[#682880] flex items-center justify-center mx-auto text-white shadow-lg">
+                        <div className="w-12 h-12 rounded-full bg-roxo-100 border border-roxo flex items-center justify-center mx-auto text-black shadow-lg">
                           <Video className="w-6 h-6" />
                         </div>
                         <h4 className="text-sm font-bold">{activeLesson.title}</h4>
@@ -298,14 +298,14 @@ export default function CourseCatalog() {
                     {/* Lesson Description & Actions */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-extrabold text-[#14202B]">{activeLesson.title}</h4>
+                        <h4 className="text-sm font-extrabold text-black">{activeLesson.title}</h4>
                         <button
                           type="button"
                           onClick={() => handleToggleLessonComplete(activeLesson.id)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
                             activeLesson.completed
                               ? "bg-[#EAF6F0] text-[#1E5A41] border-[#CFE8DB]"
-                              : "bg-[#F6F9FB] text-[#5B6B78] border-[#E1E9ED] hover:bg-[#F0F9FC]"
+                              : "bg-[#F6F9FB] text-neutral-800 border-[#E1E9ED] hover:bg-[#F0F9FC]"
                           }`}
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -313,19 +313,19 @@ export default function CourseCatalog() {
                         </button>
                       </div>
 
-                      <p className="text-xs text-[#5B6B78] leading-relaxed bg-[#F6F9FB] p-4 rounded-xl border border-[#E1E9ED]">
+                      <p className="text-xs text-neutral-800 leading-relaxed bg-[#F6F9FB] p-4 rounded-xl border border-[#E1E9ED]">
                         {activeLesson.content}
                       </p>
                     </div>
                   </>
                 ) : (
-                  <div className="p-8 text-center text-xs text-[#5B6B78]">Selecione uma aula para iniciar.</div>
+                  <div className="p-8 text-center text-xs text-neutral-800">Selecione uma aula para iniciar.</div>
                 )}
               </div>
 
               {/* Right Column: Syllabus & Lesson List (1/3) */}
               <div className="p-4 bg-[#FAFCFE] space-y-4">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#5B6B78]">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-neutral-800">
                   Conteúdo do Curso ({selectedCourse.lessons.length} Aulas)
                 </h4>
 
@@ -338,28 +338,28 @@ export default function CourseCatalog() {
                         onClick={() => setActiveLesson(les)}
                         className={`p-3 rounded-xl border cursor-pointer transition-all ${
                           isCurrent
-                            ? "bg-[#682880] text-white border-[#682880] shadow-sm"
-                            : "bg-white text-[#14202B] border-[#E1E9ED] hover:bg-[#F0F9FC]"
+                            ? "bg-roxo-100 border border-roxo text-black border-roxo shadow-sm"
+                            : "bg-white text-black border-[#E1E9ED] hover:bg-[#F0F9FC]"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span
                             className={`text-[10px] font-bold uppercase ${
-                              isCurrent ? "text-purple-200" : "text-[#682880]"
+                              isCurrent ? "text-purple-200" : "text-black"
                             }`}
                           >
                             Aula {index + 1} • {les.type}
                           </span>
                           {les.completed && (
                             <CheckCircle2
-                              className={`w-4 h-4 ${isCurrent ? "text-white" : "text-emerald-600"}`}
+                              className={`w-4 h-4 ${isCurrent ? "text-black" : "text-emerald-600"}`}
                             />
                           )}
                         </div>
                         <h5 className="text-xs font-bold leading-snug">{les.title}</h5>
                         <span
                           className={`text-[10px] font-mono mt-1 block ${
-                            isCurrent ? "text-purple-200" : "text-[#5B6B78]"
+                            isCurrent ? "text-purple-200" : "text-neutral-800"
                           }`}
                         >
                           {les.duration}
@@ -373,13 +373,13 @@ export default function CourseCatalog() {
 
             {/* Modal Footer */}
             <div className="px-6 py-3 border-t border-[#E1E9ED] bg-[#F6F9FB] flex items-center justify-between">
-              <span className="text-xs text-[#5B6B78]">
+              <span className="text-xs text-neutral-800">
                 Instrutor: <strong>{selectedCourse.instructor}</strong>
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedCourse(null)}
-                className="px-4 py-1.5 rounded-xl bg-[#682880] text-white text-xs font-bold hover:bg-[#52206A]"
+                className="px-4 py-1.5 rounded-xl bg-roxo-100 border border-roxo text-black text-xs font-bold hover:bg-roxo-200"
               >
                 Concluir & Voltar ao Painel
               </button>

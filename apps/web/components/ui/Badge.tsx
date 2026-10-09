@@ -3,11 +3,11 @@ import { cn } from "@/lib/cn";
 
 /** Estados do caso — mesma máquina de estados do backend (rascunho → encerrado). */
 const estados = {
-  rascunho: "bg-linha text-tinta-700",
-  enviado: "bg-ceu-100 text-ceu-800",
-  revisao: "bg-ouro-100 text-ouro-800",
-  delegado: "bg-roxo-100 text-roxo-800",
-  retorno: "bg-comunidade-100 text-comunidade-700",
+  rascunho: "bg-linha text-black",
+  enviado: "bg-ceu-100 text-black",
+  revisao: "bg-ouro-100 text-black",
+  delegado: "bg-roxo-100 text-black",
+  retorno: "bg-comunidade-100 text-black",
   encerrado: "bg-[#DFF1E8] text-[#1E5A41]",
 } as const;
 

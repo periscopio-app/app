@@ -59,7 +59,7 @@ export default function ReconhecimentosPage() {
           {items.map((item) => (
             <article key={item.org} className="rounded-3xl border border-border bg-card p-8">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold uppercase tracking-wider text-roxo">{item.org}</span>
+                <span className="font-semibold uppercase tracking-wider text-black">{item.org}</span>
                 <span className="rounded-full bg-primary/20 px-3 py-1 font-bold text-primary">{item.ano}</span>
               </div>
               <h2 className="mt-4 font-display text-2xl font-bold text-foreground">{item.titulo}</h2>

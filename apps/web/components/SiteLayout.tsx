@@ -57,19 +57,19 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 {l.label}
               </Link>
             ))}
-            <Link href="/login" className="font-medium text-foreground transition-colors hover:text-empatia">
+            <Link href="/login" className="font-medium text-foreground transition-colors hover:text-black">
               Entrar
             </Link>
             <a
               href="/#contato"
-              className="rounded-full bg-empatia px-5 py-2 font-medium text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+              className="rounded-full bg-roxo-100 border border-roxo px-5 py-2 font-medium text-black transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               Seja parceiro
             </a>
           </nav>
           <button
             type="button"
-            className="text-empatia md:hidden"
+            className="text-black md:hidden"
             onClick={() => setOpen(!open)}
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
@@ -98,7 +98,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <a
               href="/#contato"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-full bg-empatia px-4 py-2 text-center font-medium text-white"
+              className="mt-2 rounded-full bg-roxo-100 border border-roxo px-4 py-2 text-center font-medium text-black"
             >
               Seja parceiro
             </a>
@@ -116,7 +116,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
         target="_blank"
         rel="noreferrer"
         aria-label="Falar com a Dra. Ana Cecília no WhatsApp"
-        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-turquesa text-grafite shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-turquesa text-black shadow-lg transition-transform hover:scale-105"
       >
         <MessageCircle className="h-7 w-7" />
       </a>
@@ -140,13 +140,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="md:text-right">
             <p>Dra. Ana Cecília MD</p>
-            <a href={WHATSAPP} target="_blank" rel="noreferrer" className="hover:text-empatia">
+            <a href={WHATSAPP} target="_blank" rel="noreferrer" className="hover:text-black">
               +55 11 98444-4994
             </a>
             <p className="mt-2">
-              <Link href="/privacidade" className="hover:text-empatia">Privacidade</Link>
+              <Link href="/privacidade" className="hover:text-black">Privacidade</Link>
               {" · "}
-              <Link href="/termos" className="hover:text-empatia">Termos</Link>
+              <Link href="/termos" className="hover:text-black">Termos</Link>
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function PageHeader({
 }) {
   return (
     <section className="mx-auto max-w-6xl px-5 pb-10 pt-16 md:pt-24">
-      <p className="text-sm font-semibold uppercase tracking-widest text-empatia">{eyebrow}</p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-black">{eyebrow}</p>
       <h1 className="mt-4 max-w-3xl font-display text-[2rem] leading-tight text-foreground sm:text-4xl md:text-5xl">
         {title}
       </h1>

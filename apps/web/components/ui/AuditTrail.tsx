@@ -35,7 +35,7 @@ function formatDate(iso: string) {
 export function AuditTrail({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-tinta-500">
+      <p className="py-6 text-center text-sm text-neutral-800">
         Nenhum evento registrado ainda.
       </p>
     );
@@ -74,9 +74,9 @@ export function AuditTrail({ events }: { events: TimelineEvent[] }) {
             />
 
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold text-tinta-900">{label}</span>
+              <span className="text-sm font-semibold text-black">{label}</span>
 
-              <span className="text-xs text-tinta-500">
+              <span className="text-xs text-neutral-800">
                 {formatDate(ev.createdAt)}
                 {ev.actorName && (
                   <> · {ev.actorName}{actorRole && ` (${actorRole})`}</>
@@ -87,7 +87,7 @@ export function AuditTrail({ events }: { events: TimelineEvent[] }) {
                 <span className="mt-1 text-xs text-tinta-600 italic">"{reason}"</span>
               )}
               {decision && (
-                <span className="mt-1 inline-flex w-fit rounded-full bg-ceu-100 px-2 py-0.5 text-xs font-semibold text-ceu-800">
+                <span className="mt-1 inline-flex w-fit rounded-full bg-ceu-100 px-2 py-0.5 text-xs font-semibold text-black">
                   Decisão: {decision}
                 </span>
               )}

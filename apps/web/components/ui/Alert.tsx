@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const tons = {
-  info: "border-ceu-100 bg-ceu-50 text-ceu-800",
+  info: "border-ceu-100 bg-ceu-50 text-black",
   ok: "border-[#CFE8DB] bg-[#EAF6F0] text-[#1E5A41]",
-  atencao: "border-ouro-100 bg-ouro-50 text-ouro-800",
-  erro: "border-erro/20 bg-[#FDECEA] text-erro",
+  atencao: "border-ouro-100 bg-ouro-50 text-black",
+  erro: "border-erro/20 bg-[#FDECEA] text-black",
 } as const;
 
 export function Alert({

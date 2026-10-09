@@ -38,7 +38,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#F6F9FB] text-[#14202B] pt-12 pb-20 md:pt-16 md:pb-28 border-b border-[#E1E9ED]">
+    <section className="relative overflow-hidden bg-[#F6F9FB] text-black pt-12 pb-20 md:pt-16 md:pb-28 border-b border-[#E1E9ED]">
       {/* 3D Interactive Canvas Background */}
       <ThreeBackground />
 
@@ -55,8 +55,8 @@ export default function Hero() {
         >
           {/* Badge */}
           <motion.div variants={itemVariants} className="mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#682880]/10 border border-[#682880]/25 text-[#682880] text-xs sm:text-sm font-semibold tracking-wide uppercase shadow-sm backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-[#682880] animate-pulse" />
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#682880]/10 border border-[#682880]/25 text-black text-xs sm:text-sm font-semibold tracking-wide uppercase shadow-sm backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-roxo-100 border border-roxo animate-pulse" />
               Piloto Aberto para Novos Parceiros & Redes
             </span>
           </motion.div>
@@ -64,16 +64,16 @@ export default function Hero() {
           {/* Main Title */}
           <motion.h1
             variants={itemVariants}
-            className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#14202B] leading-[1.15] mb-6"
+            className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-black leading-[1.15] mb-6"
           >
             A escola percebe primeiro. <br className="hidden sm:inline" />
-            O <span className="bg-gradient-to-r from-[#682880] via-[#7B2585] to-[#3D6B6B] bg-clip-text text-transparent">Periscópio</span> mostra o caminho do cuidado.
+            O <span className="text-black">Periscópio</span> mostra o caminho do cuidado.
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p
             variants={itemVariants}
-            className="text-base sm:text-lg lg:text-xl text-[#5B6B78] max-w-3xl leading-relaxed mb-8 font-normal"
+            className="text-base sm:text-lg lg:text-xl text-neutral-800 max-w-3xl leading-relaxed mb-8 font-normal"
           >
             Uma plataforma completa que reúne escola, saúde e assistência social em um único fluxo integrativo.
             O professor observa, a equipe multidisciplinar avalia com segurança e a história da criança nunca se perde.
@@ -88,7 +88,7 @@ export default function Hero() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               href="#contato"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#682880] to-[#52206A] text-white font-semibold text-base shadow-lg shadow-[#682880]/25 hover:shadow-xl hover:shadow-[#682880]/35 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-roxo-100 border border-roxo text-black font-semibold text-base shadow-lg shadow-[#682880]/25 hover:shadow-xl hover:shadow-[#682880]/35 transition-all"
             >
               <span>Candidatar minha instituição</span>
               <ArrowRight className="w-4 h-4" />
@@ -98,7 +98,7 @@ export default function Hero() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               href="#como"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white border border-[#E1E9ED] text-[#14202B] font-semibold text-base shadow-sm hover:bg-[#F0F9FC] hover:border-[#3D6B6B]/40 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white border border-[#E1E9ED] text-black font-semibold text-base shadow-sm hover:bg-[#F0F9FC] hover:border-[#3D6B6B]/40 transition-all"
             >
               <span>Ver como funciona</span>
             </motion.a>
@@ -106,7 +106,7 @@ export default function Hero() {
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href="/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#3D6B6B]/10 text-[#3D6B6B] font-semibold text-base border border-[#3D6B6B]/30 hover:bg-[#3D6B6B]/20 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#3D6B6B]/10 text-black font-semibold text-base border border-[#3D6B6B]/30 hover:bg-[#3D6B6B]/20 transition-all"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Entrar no Sistema</span>
@@ -116,17 +116,17 @@ export default function Hero() {
 
           {/* Target Audience Chips */}
           <motion.div variants={itemVariants} className="w-full max-w-2xl pt-2 pb-6">
-            <p className="text-xs uppercase tracking-wider text-[#5B6B78] font-bold mb-3">
+            <p className="text-xs uppercase tracking-wider text-neutral-800 font-bold mb-3">
               Procuramos parceiros para o piloto:
             </p>
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-[#14202B] text-xs sm:text-sm font-medium shadow-xs">
+              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-black text-xs sm:text-sm font-medium shadow-xs">
                 🏛️ Prefeituras e Secretarias
               </span>
-              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-[#14202B] text-xs sm:text-sm font-medium shadow-xs">
+              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-black text-xs sm:text-sm font-medium shadow-xs">
                 🏫 Escolas Públicas e Privadas
               </span>
-              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-[#14202B] text-xs sm:text-sm font-medium shadow-xs">
+              <span className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E1E9ED] text-black text-xs sm:text-sm font-medium shadow-xs">
                 🤝 Instituições Sem Fins Lucrativos
               </span>
             </div>
@@ -161,12 +161,12 @@ export default function Hero() {
               animate="animate"
               className="absolute -top-4 -left-4 sm:top-6 sm:-left-6 bg-white/90 backdrop-blur-md border border-[#E1E9ED] p-3.5 sm:p-4 rounded-2xl shadow-xl flex items-center gap-3 hidden sm:flex"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#682880]/15 flex items-center justify-center text-[#682880]">
+              <div className="w-10 h-10 rounded-xl bg-[#682880]/15 flex items-center justify-center text-black">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-semibold text-[#14202B]">LGPD & Prontuário Seguro</p>
-                <p className="text-[11px] text-[#5B6B78]">Dados Pseudonimizados</p>
+                <p className="text-xs font-semibold text-black">LGPD & Prontuário Seguro</p>
+                <p className="text-[11px] text-neutral-800">Dados Pseudonimizados</p>
               </div>
             </motion.div>
 
@@ -176,12 +176,12 @@ export default function Hero() {
               animate="animate"
               className="absolute -bottom-4 -right-4 sm:bottom-8 sm:-right-6 bg-white/90 backdrop-blur-md border border-[#E1E9ED] p-3.5 sm:p-4 rounded-2xl shadow-xl flex items-center gap-3 hidden sm:flex"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#3D6B6B]/15 flex items-center justify-center text-[#3D6B6B]">
+              <div className="w-10 h-10 rounded-xl bg-[#3D6B6B]/15 flex items-center justify-center text-black">
                 <HeartHandshake className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-semibold text-[#14202B]">Rede Integrada de Cuidado</p>
-                <p className="text-[11px] text-[#5B6B78]">Escola + Saúde + Assistência</p>
+                <p className="text-xs font-semibold text-black">Rede Integrada de Cuidado</p>
+                <p className="text-[11px] text-neutral-800">Escola + Saúde + Assistência</p>
               </div>
             </motion.div>
           </div>

@@ -58,7 +58,7 @@ function CartaoPessoa({ pessoa }: { pessoa: Pessoa }) {
           href={pessoa.lattes}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-block text-sm font-semibold text-empatia hover:underline"
+          className="mt-3 inline-block text-sm font-semibold text-black hover:underline"
         >
           Currículo Lattes
         </a>
@@ -145,7 +145,7 @@ export function EquipeSection({
         >
           <span
             aria-hidden
-            className={`relative h-5 w-9 rounded-full transition-colors ${raw ? "bg-empatia" : "bg-border"}`}
+            className={`relative h-5 w-9 rounded-full transition-colors ${raw ? "bg-roxo-100 border border-roxo" : "bg-border"}`}
           >
             <span
               className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${raw ? "left-[1.1rem]" : "left-0.5"}`}
@@ -162,13 +162,13 @@ export function EquipeSection({
               <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
                 <div>
                   <p className="font-display text-sm font-semibold text-foreground">{p.nome}</p>
-                  <p className="text-xs font-semibold text-empatia">
+                  <p className="text-xs font-semibold text-black">
                     {p.cargo} · [{p.grupo}]
                   </p>
                 </div>
                 <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-xs text-muted-foreground">.json</span>
               </div>
-              <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-background p-3 font-mono text-xs leading-relaxed text-tinta-700">
+              <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-background p-3 font-mono text-xs leading-relaxed text-black">
                 <code>
                   {JSON.stringify(
                     { grupo: p.grupo, nome: p.nome, cargo: p.cargo, mini_bio: p.bio, lattes: p.lattes, foto: p.foto },

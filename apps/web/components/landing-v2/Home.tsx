@@ -9,27 +9,27 @@ import { VideoTaruma } from "./VideoTaruma";
 const stats = [
   ["50%", "dos transtornos mentais aparecem antes dos 14 anos", "bg-turquesa/10 text-turquesa"],
   ["90%", "deles não chegam a ter tratamento", "bg-amarelo/25 text-[oklch(0.5_0.11_70)]"],
-  ["1 em 4", "crianças e adolescentes tem algum transtorno mental", "bg-empatia/10 text-empatia"],
-  ["US$ 10", "retornam para cada dólar investido em prevenção", "bg-verde/15 text-verde"],
+  ["1 em 4", "crianças e adolescentes tem algum transtorno mental", "bg-empatia/10 text-black"],
+  ["US$ 10", "retornam para cada dólar investido em prevenção", "bg-verde/15 text-black"],
 ];
 
 const etapas = [
   {
     n: "1",
     t: "Escola",
-    c: "bg-turquesa text-grafite",
+    c: "bg-turquesa text-black",
     d: "Professor e um responsável da escola aplicam um projeto pedagógico especial ao aluno com dificuldades, acompanham a resposta e, se persistir, encaminham ao núcleo assistencial (1ª triagem).",
   },
   {
     n: "2",
     t: "Plataforma digital",
-    c: "bg-empatia text-white",
+    c: "bg-roxo-100 border border-roxo text-black",
     d: "A metodologia validada por 17 anos vira uma ferramenta escalável: integra escola, saúde, assistência social e família em tempo real, com registro seguro, indicadores e respeito à LGPD.",
   },
   {
     n: "3",
     t: "Piloto",
-    c: "bg-amarelo text-grafite",
+    c: "bg-amarelo text-black",
     d: "Teste em uma escola pública do Fundamental I sorteada, próxima a um CAPS IJ, AME ou AMA, com supervisão do Board de Experts Sêniores.",
   },
 ];
@@ -47,11 +47,11 @@ const fases = [
   ["Fase 3", "Integração escola e núcleo", "Priorização por gravidade, discussão de casos, apps de psicoeducação e relatório final do piloto."],
 ];
 
-const faseCores = ["bg-turquesa text-grafite", "bg-amarelo text-grafite", "bg-empatia text-white"];
+const faseCores = ["bg-turquesa text-black", "bg-amarelo text-black", "bg-roxo-100 border border-roxo text-black"];
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-empatia shadow-soft">
+    <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-black shadow-soft">
       <span className="h-1.5 w-1.5 rounded-full bg-amarelo" aria-hidden />
       {children}
     </p>
@@ -78,7 +78,7 @@ export function Home() {
             <div className="reveal reveal-4 mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/metodo"
-                className="rounded-full bg-empatia px-7 py-3.5 text-center font-semibold text-white shadow-lift transition hover:-translate-y-0.5"
+                className="rounded-full bg-roxo-100 border border-roxo px-7 py-3.5 text-center font-semibold text-black shadow-lift transition hover:-translate-y-0.5"
               >
                 Conheça o método
               </Link>
@@ -94,7 +94,7 @@ export function Home() {
             <ul className="reveal reveal-4 mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-turquesa" aria-hidden />Desde 2007</li>
               <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amarelo" aria-hidden />Premiado pela OPAS</li>
-              <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-empatia" aria-hidden />Recomendado pela OMS</li>
+              <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-roxo-100 border border-roxo" aria-hidden />Recomendado pela OMS</li>
             </ul>
           </div>
           <div className="reveal reveal-2 relative mx-auto w-full max-w-md md:max-w-none">
@@ -115,7 +115,7 @@ export function Home() {
               <p className="text-xs text-muted-foreground">de metodologia validada</p>
             </div>
             <div className="float-slow-2 absolute -right-2 -top-4 hidden rounded-2xl bg-white px-4 py-3 shadow-lift sm:block sm:-right-5">
-              <p className="font-display text-lg font-bold text-empatia">Intersetorial</p>
+              <p className="font-display text-lg font-bold text-black">Intersetorial</p>
               <p className="text-xs text-muted-foreground">escola · saúde · assistência</p>
             </div>
           </div>
@@ -128,11 +128,11 @@ export function Home() {
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm font-semibold sm:flex sm:flex-wrap sm:gap-x-8">
             {selos.map(([sl, d]) => (
               <li key={sl}>
-                <span className="text-empatia">{sl}</span> <span className="font-normal text-muted-foreground">· {d}</span>
+                <span className="text-black">{sl}</span> <span className="font-normal text-muted-foreground">· {d}</span>
               </li>
             ))}
           </ul>
-          <Link href="/reconhecimentos" className="shrink-0 text-sm font-semibold text-empatia hover:underline">
+          <Link href="/reconhecimentos" className="shrink-0 text-sm font-semibold text-black hover:underline">
             Ver reconhecimentos →
           </Link>
         </div>
@@ -171,7 +171,7 @@ export function Home() {
             className="mt-14 flex flex-col gap-5 rounded-[2rem] bg-gradient-to-br from-turquesa/15 via-white to-amarelo/20 p-8 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift md:flex-row md:items-center md:justify-between md:p-10"
           >
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-empatia">Organização Mundial da Saúde</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black">Organização Mundial da Saúde</p>
               <h3 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
                 A OMS conta a história do Periscópio em Tarumã
               </h3>
@@ -179,7 +179,7 @@ export function Home() {
                 Reportagem oficial sobre como a cidade enfrentou localmente os efeitos nocivos do álcool.
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-empatia px-6 py-3 text-center font-semibold text-white">Ler na OMS →</span>
+            <span className="shrink-0 rounded-full bg-roxo-100 border border-roxo px-6 py-3 text-center font-semibold text-black">Ler na OMS →</span>
           </a>
           <VideoTaruma />
         </div>
@@ -228,7 +228,7 @@ export function Home() {
             </p>
             <Link
               href="/metodo"
-              className="shrink-0 rounded-full bg-white px-6 py-3 text-center font-semibold text-empatia shadow-soft transition hover:-translate-y-0.5"
+              className="shrink-0 rounded-full bg-white px-6 py-3 text-center font-semibold text-black shadow-soft transition hover:-translate-y-0.5"
             >
               Ver o método completo →
             </Link>
@@ -271,7 +271,7 @@ export function Home() {
                   {i + 1}
                 </span>
                 <div className="mt-5 rounded-3xl border border-border/70 bg-white p-6 shadow-soft">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-empatia">{f}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black">{f}</p>
                   <h3 className="mt-2 font-display text-xl font-semibold text-foreground">{t}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d}</p>
                 </div>
@@ -297,7 +297,7 @@ export function Home() {
               href={WHATSAPP}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-block font-medium text-empatia underline underline-offset-4"
+              className="mt-1 inline-block font-medium text-black underline underline-offset-4"
             >
               +55 11 98444-4994
             </a>

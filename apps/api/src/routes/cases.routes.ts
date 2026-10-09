@@ -15,6 +15,7 @@ import {
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import { SPECIALIST_CLINICAL_ROLES } from "../security/roles";
+import { ageBracketOf, generateStudentCode, validateBirth } from "../services/student-code";
 import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
 import {
   FOGAP_FORM_CODE,
@@ -73,6 +74,30 @@ async function caseVisibleTo(actor: Actor, caseId: string) {
   return student ? { caseItem, student } : null;
 }
 
+async function insertStudent(school: { id: string; tenantId: string; slug: string | null }, birthYear: number, birthMonth: number) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const studentCode = generateStudentCode(school.slug);
+    try {
+      const [student] = await db
+        .insert(students)
+        .values({
+          tenantId: school.tenantId,
+          schoolId: school.id,
+          studentCode,
+          birthYear,
+          birthMonth,
+          ageBracket: ageBracketOf(birthYear, birthMonth),
+        })
+        .returning();
+      return student;
+    } catch (err) {
+      // colisão do código único: tenta outro (probabilidade desprezível)
+      if (attempt === 4) throw err;
+    }
+  }
+  throw new Error("Não foi possível gerar o código do aluno");
+}
+
 // ─── route handler ──────────────────────────────────────────────────────────
 
 export async function casesRoutes(app: FastifyInstance) {
@@ -83,25 +108,48 @@ export async function casesRoutes(app: FastifyInstance) {
     const actor = await requireActor(request, reply, schoolMgmtRoles);
     if (!actor) return;
 
-    const body = request.body as { schoolId?: string; birthYear?: number; birthMonth?: number };
+    const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number };
     if (!body.schoolId) return reply.status(400).send({ error: "ID da escola é obrigatório" });
 
     const school = await schoolVisibleTo(actor, body.schoolId);
     if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
 
-    if (body.birthMonth != null && (body.birthMonth < 1 || body.birthMonth > 12)) {
-      return reply.status(400).send({ error: "birthMonth deve ser entre 1 e 12" });
-    }
+    const birth = validateBirth(body);
+    if (!birth.ok) return reply.status(400).send({ error: birth.error });
 
-    const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const studentCode = `${(school.slug?.substring(0, 4) ?? "ESC").toUpperCase()}-${new Date().getFullYear()}-${suffix}`;
-
-    const [student] = await db
-      .insert(students)
-      .values({ tenantId: school.tenantId, schoolId: school.id, studentCode, birthYear: body.birthYear, birthMonth: body.birthMonth })
-      .returning();
-
+    const student = await insertStudent(school, birth.birthYear, birth.birthMonth);
     return reply.status(201).send({ success: true, student });
+  });
+
+  // Importação em lote (planilha/colar): só ano e mês de nascimento — nenhum dado de identificação.
+  app.post("/api/schools/:schoolId/students/bulk", async (request, reply) => {
+    const actor = await requireActor(request, reply, schoolMgmtRoles);
+    if (!actor) return;
+    const { schoolId } = request.params as { schoolId: string };
+    const school = await schoolVisibleTo(actor, schoolId);
+    if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
+
+    const rows = (request.body as { students?: Record<string, unknown>[] } | undefined)?.students;
+    if (!Array.isArray(rows) || rows.length === 0) return reply.status(400).send({ error: "Envie ao menos um aluno" });
+    if (rows.length > 500) return reply.status(400).send({ error: "Máximo de 500 alunos por importação" });
+
+    const errors: { row: number; error: string }[] = [];
+    const valid: { birthYear: number; birthMonth: number }[] = [];
+    rows.forEach((r, i) => {
+      const extra = Object.keys(r ?? {}).filter((k) => k !== "birthYear" && k !== "birthMonth");
+      if (extra.length > 0) {
+        errors.push({ row: i + 1, error: `Campo não permitido: ${extra.join(", ")}. Envie só ano e mês de nascimento.` });
+        return;
+      }
+      const b = validateBirth(r ?? {});
+      if (!b.ok) errors.push({ row: i + 1, error: b.error });
+      else valid.push({ birthYear: b.birthYear, birthMonth: b.birthMonth });
+    });
+    if (errors.length > 0) return reply.status(400).send({ error: "Planilha com erros; nada foi importado", errors: errors.slice(0, 20) });
+
+    const created = [];
+    for (const v of valid) created.push(await insertStudent(school, v.birthYear, v.birthMonth));
+    return reply.status(201).send({ success: true, imported: created.length, students: created });
   });
 
   app.get("/api/schools/:schoolId/students", async (request, reply) => {
