@@ -14,6 +14,7 @@ import {
   BRAZILIAN_STATES,
   COUNTRIES,
   fetchCitiesByState,
+  getCitiesByStateSync,
   getCountryFlag,
   type BrazilianState,
   type City,
@@ -46,20 +47,34 @@ export function LocationSelector({
   const [country, setCountry] = useState<string>(value?.countryCode ?? "BR");
   const [stateUf, setStateUf] = useState<string>(value?.stateUf ?? "");
   const [cityName, setCityName] = useState<string>(value?.cityName ?? "");
-  const [cities, setCities] = useState<City[]>([]);
+  const [cities, setCities] = useState<City[]>(() =>
+    value?.stateUf ? getCitiesByStateSync(value.stateUf) : []
+  );
   const [isLoadingCities, setIsLoadingCities] = useState<boolean>(false);
   const [, startTransition] = useTransition();
 
   // Atualiza estado interno quando o valor externo mudar
   useEffect(() => {
     if (value?.countryCode !== undefined) setCountry(value.countryCode);
-    if (value?.stateUf !== undefined) setStateUf(value.stateUf);
+    if (value?.stateUf !== undefined) {
+      setStateUf(value.stateUf);
+      const syncCities = getCitiesByStateSync(value.stateUf);
+      if (syncCities.length > 0) {
+        setCities(syncCities);
+      }
+    }
     if (value?.cityName !== undefined) setCityName(value.cityName);
   }, [value?.countryCode, value?.stateUf, value?.cityName]);
 
-  // Carrega cidades dinamicamente quando o estado (UF) é selecionado
+  // Carrega cidades a partir de cidade.json quando o estado (UF) é selecionado
   useEffect(() => {
     if (country === "BR" && stateUf) {
+      const syncCities = getCitiesByStateSync(stateUf);
+      if (syncCities.length > 0) {
+        setCities(syncCities);
+        setIsLoadingCities(false);
+        return;
+      }
       let isMounted = true;
       setIsLoadingCities(true);
       fetchCitiesByState(stateUf)
@@ -365,12 +380,20 @@ export function CitySelect({
   className?: string;
   disabled?: boolean;
 }) {
-  const [cities, setCities] = useState<City[]>([]);
+  const [cities, setCities] = useState<City[]>(() =>
+    stateUf ? getCitiesByStateSync(stateUf) : []
+  );
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (!stateUf) {
       setCities([]);
+      return;
+    }
+    const syncCities = getCitiesByStateSync(stateUf);
+    if (syncCities.length > 0) {
+      setCities(syncCities);
+      setLoading(false);
       return;
     }
     let active = true;

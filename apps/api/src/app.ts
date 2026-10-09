@@ -16,6 +16,7 @@ import { expertMeetingsRoutes } from "./routes/expert-meetings.routes";
 import { populationRoutes } from "./routes/population.routes";
 import { biRoutes } from "./routes/bi.routes";
 import { managementRoutes } from "./routes/management.routes";
+import { locationsRoutes } from "./routes/locations.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
 const app = Fastify({ logger: opts.logger ?? true, trustProxy: true });
@@ -65,6 +66,7 @@ app.register(expertMeetingsRoutes);
 app.register(populationRoutes);
 app.register(biRoutes);
 app.register(managementRoutes);
+app.register(locationsRoutes);
 
 return app;
 }
