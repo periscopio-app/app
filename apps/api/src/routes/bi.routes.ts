@@ -226,7 +226,10 @@ interface RagReply {
 
 async function callRag(body: unknown): Promise<RagReply | null> {
   const base = process.env.BI_RAG_URL;
-  if (!base) return null;
+  if (!base) {
+    console.warn("[bi-rag] BI_RAG_URL não configurada no ambiente.");
+    return null;
+  }
   try {
     const res = await fetch(`${base.replace(/\/$/, "")}/plan`, {
       method: "POST",
@@ -234,9 +237,14 @@ async function callRag(body: unknown): Promise<RagReply | null> {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(45_000), // serviço gratuito pode estar "dormindo"
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`[bi-rag] Chamada a ${base}/plan falhou: HTTP ${res.status} ${res.statusText} - ${errText}`);
+      return null;
+    }
     return (await res.json()) as RagReply;
-  } catch {
+  } catch (err) {
+    console.error(`[bi-rag] Erro na conexão com ${base}:`, err);
     return null;
   }
 }

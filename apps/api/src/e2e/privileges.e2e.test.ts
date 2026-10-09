@@ -216,6 +216,18 @@ describe("Privilégios por ator (E2E)", { skip }, () => {
     }
   });
 
+  test("só o médico lista os especialistas do núcleo para delegar, e só os do próprio município", async () => {
+    const r = await call("GET", "/api/nucleo/professionals", "md");
+    assert.equal(r.status, 200);
+    assert.ok(r.body.professionals.some((p: any) => p.name === "esp" && p.specialty === "neuropsicologia"));
+    assert.ok(r.body.professionals.every((p: any) => p.role === "specialist"), "só especialistas");
+    assert.ok(!JSON.stringify(r.body).includes("@"), "sem e-mail");
+    for (const who of ["reA", "esp", "board", "municipalB", "dirA", "pesq", "prof"]) {
+      assert.equal((await call("GET", "/api/nucleo/professionals", who)).status, 403, who);
+    }
+    assert.equal((await call("GET", "/api/nucleo/professionals")).status, 401);
+  });
+
   test("especialista não lista casos; só usa as próprias seções delegadas", async () => {
     assert.equal((await call("GET", "/api/cases", "esp")).status, 403);
     assert.equal((await call("GET", "/api/cases/my-delegated-sections", "esp")).status, 200);

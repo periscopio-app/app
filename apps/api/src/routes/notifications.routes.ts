@@ -7,9 +7,7 @@ import { requireActor } from "../security/actor";
 export async function notificationsRoutes(app: FastifyInstance) {
   // GET /api/notifications — lista pendentes do usuário autenticado
   app.get("/api/notifications", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi", "md1", "specialist", "school_manager", "board",
-    ]);
+    const actor = await requireActor(request, reply);
     if (!actor) return;
 
     const list = await db
@@ -31,9 +29,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
 
   // POST /api/notifications/:id/read — marca como lida
   app.post("/api/notifications/:id/read", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi", "md1", "specialist", "school_manager", "board",
-    ]);
+    const actor = await requireActor(request, reply);
     if (!actor) return;
 
     const { id } = request.params as { id: string };
@@ -56,9 +52,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
 
   // POST /api/notifications/read-all — marca todas como lidas
   app.post("/api/notifications/read-all", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi", "md1", "specialist", "school_manager", "board",
-    ]);
+    const actor = await requireActor(request, reply);
     if (!actor) return;
 
     await db
@@ -77,9 +71,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
 
   // POST /api/notifications/:id/dismiss — descarta (remove da central)
   app.post("/api/notifications/:id/dismiss", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi", "md1", "specialist", "school_manager", "board",
-    ]);
+    const actor = await requireActor(request, reply);
     if (!actor) return;
 
     const { id } = request.params as { id: string };
