@@ -4,7 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { api, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
-import { AlertCircle, MapPinned, Users } from "lucide-react";
+import { AlertCircle, MapPinned } from "lucide-react";
+import {
+  ColumnChart,
+  HBarChart,
+  KpiGrid,
+  SchoolServiceHeatmap,
+  ServiceDemand,
+  type Datum,
+  type Heatmap,
+  type Kpi,
+  type ServiceRow,
+} from "@/components/dashboard/TarumaCharts";
 
 type Cell = number | null;
 
@@ -20,6 +31,7 @@ interface Planning {
 interface SchoolPoint {
   schoolId: string;
   name: string;
+  label: string;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -32,15 +44,29 @@ interface SchoolPoint {
   semInformacao: string[];
 }
 
+interface Dashboard {
+  scope: "municipio" | "escola";
+  totalCases: Cell;
+  kpis: Kpi[];
+  casesBySchool: Datum[];
+  pilotBySchool: Datum[];
+  ageBands: Datum[];
+  complaints: Datum[];
+  services: ServiceRow[];
+  heatmap: Heatmap;
+  notes: string[];
+}
+
 interface MapData {
+  municipality: string;
+  center: { latitude: number; longitude: number };
   source: string | null;
   referenceYear: number | null;
   capacity: Record<string, number>;
   serviceLabels: Record<string, string>;
   services: string[];
-  network: { total: Cell; ageBands: Record<string, Cell>; planning: Planning } | null;
+  dashboard: Dashboard;
   schools: SchoolPoint[];
-  unlinked: { schoolCode: string; schoolLabel: string | null; planning: Planning; ageBands: Record<string, Cell> }[];
   notice: string;
 }
 
@@ -63,7 +89,7 @@ export default function MapaPage() {
   const load = useCallback(async (cap?: Record<string, number>) => {
     try {
       const qs = cap && Object.keys(cap).length ? `?capacity=${encodeURIComponent(JSON.stringify(cap))}` : "";
-      const d = await api.get<MapData>(`/api/population/map${qs}`);
+      const d = await api.get<MapData>(`/api/population/taruma${qs}`);
       setData(d);
       setCapacity((prev) => (Object.keys(prev).length ? prev : d.capacity));
       setError(null);
@@ -89,8 +115,8 @@ export default function MapaPage() {
         mapRef.current = new mapboxgl.Map({
           container: mapEl.current,
           style: "mapbox://styles/mapbox/light-v11",
-          center: [-47.9, -15.8],
-          zoom: 3.4,
+          center: [data.center.longitude, data.center.latitude],
+          zoom: 10.5,
         });
         mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
       }
@@ -114,6 +140,7 @@ export default function MapaPage() {
         bounds.extend([s.longitude!, s.latitude!]);
       }
       if (placed.length > 0) mapRef.current.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 0 });
+      else mapRef.current.jumpTo({ center: [data.center.longitude, data.center.latitude], zoom: 10.5 });
     })();
     return () => {
       cancelled = true;
@@ -181,10 +208,10 @@ export default function MapaPage() {
       {me && <RoleBanner me={me} />}
       <div>
         <h1 className="text-2xl font-bold text-black flex items-center gap-2">
-          <MapPinned className="h-6 w-6" /> Mapa de prevalência e profissionais necessários
+          <MapPinned className="h-6 w-6" /> Tarumã: painel de prevalência e profissionais necessários
         </h1>
-        <p className="text-sm text-neutral-800 mt-0.5">
-          {data?.source ? `Base: ${data.source} (${data.referenceYear}). ` : ""}
+        <p className="text-sm text-black mt-0.5">
+          {data?.source ? `Base NEMT ${data.referenceYear} (${data.source}). ` : ""}
           {data?.notice}
         </p>
       </div>
@@ -195,24 +222,53 @@ export default function MapaPage() {
         </div>
       )}
 
-      {data?.network && (
-        <section className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-          <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2"><Users className="h-4 w-4" /> Rede inteira: {data.network.total} casos registrados</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {data.services.map((k) => (
-              <div key={k} className="rounded-xl border border-linha p-3">
-                <div className="text-xs text-neutral-800">{data.serviceLabels[k]}</div>
-                <div className="text-xl font-bold text-black">{data.network!.planning.professionals[k] ?? "—"}</div>
-                <div className="text-[11px] text-neutral-800">profissionais (1 para {capacity[k] ?? data.capacity[k]} casos)</div>
-              </div>
-            ))}
+      {!data && !error && <p className="text-sm text-black" role="status">Carregando os dados de Tarumã…</p>}
+
+      {data && (
+        <>
+          <KpiGrid kpis={data.dashboard.kpis} />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            {data.dashboard.scope === "municipio" && (
+              <HBarChart
+                title="Casos registrados por escola"
+                subtitle="Ordenado do maior para o menor número de casos."
+                data={data.dashboard.casesBySchool}
+              />
+            )}
+            <ColumnChart
+              title="Casos por faixa etária"
+              subtitle="A faixa do piloto (6 a 9 anos e 11 meses) está destacada."
+              data={data.dashboard.ageBands}
+            />
+            <HBarChart
+              title="Queixas mais registradas"
+              subtitle="Percentual sobre o total de casos; uma criança pode ter mais de uma queixa."
+              data={data.dashboard.complaints}
+              showShare
+              color="ceu"
+            />
+            {data.dashboard.scope === "municipio" && (
+              <HBarChart
+                title="Casos na faixa do piloto (6 a 9 anos) por escola"
+                subtitle="Onde o piloto alcança mais crianças."
+                data={data.dashboard.pilotBySchool}
+              />
+            )}
           </div>
-        </section>
+
+          <ServiceDemand rows={data.dashboard.services} />
+          {data.dashboard.scope === "municipio" && <SchoolServiceHeatmap heat={data.dashboard.heatmap} />}
+
+          <ul className="list-disc space-y-1 pl-5 text-xs text-black">
+            {data.dashboard.notes.slice(1).map((n) => (<li key={n}>{n}</li>))}
+          </ul>
+        </>
       )}
 
       <section className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
         <h2 className="text-sm font-bold text-black mb-1">Capacidade por profissional (parâmetro provisório)</h2>
-        <p className="text-xs text-neutral-800 mb-3">Casos acompanhados por profissional. Valores iniciais de planejamento, a validar com a equipe clínica; altere para simular outro cenário.</p>
+        <p className="text-xs text-black mb-3">Casos acompanhados por profissional. Valores iniciais de planejamento, a validar com a equipe clínica; altere para simular outro cenário.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {data?.services.map((k) => (
             <label key={k} className="text-xs font-semibold text-black">
@@ -239,14 +295,14 @@ export default function MapaPage() {
 
       <section className="rounded-2xl bg-white border border-linha p-2 shadow-suave">
         {MAPBOX_TOKEN ? (
-          <div ref={mapEl} className="h-[420px] w-full rounded-xl" aria-label="Mapa das escolas" />
+          <div ref={mapEl} className="h-[420px] w-full rounded-xl" aria-label="Mapa das escolas de Tarumã" />
         ) : (
           <p className="p-4 text-sm text-black">
             Mapa indisponível: falta configurar o token público do Mapbox (NEXT_PUBLIC_MAPBOX_TOKEN). A tabela abaixo continua funcionando.
           </p>
         )}
-        <p className="px-3 py-2 text-xs text-neutral-800">
-          Círculo lilás = escola com dados (número = casos registrados). Círculo cinza tracejado = escola sem dados da base. Escolas sem localização aparecem só na tabela.
+        <p className="px-3 py-2 text-xs text-black">
+          Círculo lilás = escola com dados (número = casos registrados). Escolas sem localização cadastrada aparecem nos gráficos e na tabela; informe o endereço para colocá-las no mapa.
         </p>
       </section>
 
@@ -269,7 +325,7 @@ export default function MapaPage() {
                 onClick={() => setSelected(s)}
                 className={`border-b border-linha cursor-pointer hover:bg-roxo-50 ${current?.schoolId === s.schoolId ? "bg-roxo-100" : ""}`}
               >
-                <td className="py-2 pr-3 font-semibold">{s.name}</td>
+                <td className="py-2 pr-3 font-semibold">{s.label}</td>
                 <td className="py-2 pr-3">{s.planning ? show(s.planning.casesRegistered) : "—"}</td>
                 <td className="py-2 pr-3">{s.planning?.ratePer1000 ?? "—"}</td>
                 <td className="py-2 pr-3">
@@ -283,17 +339,10 @@ export default function MapaPage() {
               </tr>
             ))}
             {data && data.schools.length === 0 && (
-              <tr><td colSpan={5} className="py-6 text-center text-neutral-800">Nenhuma escola cadastrada para este perfil.</td></tr>
+              <tr><td colSpan={5} className="py-6 text-center text-black">Nenhuma escola cadastrada para este perfil.</td></tr>
             )}
           </tbody>
         </table>
-        {data && data.unlinked.length > 0 && (
-          <div className="mt-4 rounded-xl border border-dashed border-neutral-500 p-3 text-xs text-black">
-            <strong>Dados da base ainda sem escola cadastrada:</strong>{" "}
-            {data.unlinked.map((u) => `${u.schoolLabel ?? u.schoolCode} (${show(u.planning.casesRegistered)} casos)`).join("; ")}.
-            Ao cadastrar a escola com a sigla correspondente, ela entra no mapa automaticamente.
-          </div>
-        )}
       </section>
 
       {current && (
