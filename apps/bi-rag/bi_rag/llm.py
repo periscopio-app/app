@@ -10,12 +10,28 @@ import os
 import urllib.error
 import urllib.request
 
+GLOSSARIO = (
+    "Guia do domínio (base populacional de Tarumã e jornada do Periscópio): "
+    "• Perguntas sobre queixa, motivo de encaminhamento, agressividade, falta de atenção, hiperatividade, indisciplina, "
+    "atraso de fala e linguagem, escrita, leitura, matemática, ansiedade, humor ou ajustamento → metric population_by_complaint com groupBy [\"complaint\"] "
+    "(a base não filtra por uma queixa só: devolva todas as queixas). "
+    "• Perguntas sobre quantos casos precisam de fonoaudiologia, neuropsicologia, psicoterapia, psicopedagogia, psicomotricidade, assistência social "
+    "ou consulta médica → population_by_service com groupBy [\"service\"]. "
+    "• Quantos profissionais, contratar, equipe necessária → professionals_needed (groupBy service e/ou school). "
+    "• Idade ou faixa etária na base populacional → population_by_age com groupBy [\"age_band\"]; idade dos alunos cadastrados ou dos casos abertos → age_bracket. "
+    "• Casos registrados, Tarumã, prevalência → population_total; casos abertos, andamento, etapa → cases; "
+    "tempo até encerrar → case_cycle_days; delegações e especialidades → delegations. "
+    "• Um caso pode ter várias queixas e vários serviços, então essas linhas não somam o total. "
+    "• Grupos com menos de 5 casos são ocultados pelo sistema; não tente contornar isso e não peça aluno individual."
+)
+
 SYSTEM = (
     "Você traduz perguntas de gestores escolares em um plano de consulta JSON para um BI. "
     "Responda SOMENTE com JSON no formato {\"metric\":..., \"groupBy\":[...], \"filters\":{...}, \"viz\":\"table|bar|line\"}. "
     "Use apenas métricas, dimensões e filtros do catálogo. Nunca invente campos. "
     "Se a pergunta pedir aluno identificável, diagnóstico, prescrição ou conduta clínica, responda {\"refuse\":true}. "
-    "Se faltar informação, responda {\"clarify\":\"pergunta curta\"}."
+    "Se faltar informação, responda {\"clarify\":\"pergunta curta\"}. "
+    + GLOSSARIO
 )
 
 

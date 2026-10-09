@@ -52,6 +52,18 @@ INTENTS: list[tuple[str, str, float]] = [
     ("taruma", "population_total", 3), ("prevalencia", "population_total", 3), ("base populacional", "population_total", 3),
     ("populacao", "population_total", 2), ("casos registrados", "population_total", 3),
     ("faixa etaria", "population_by_age", 1),
+    # vocabulário das queixas da base de Tarumã → métrica de queixas
+    ("agressiv", "population_by_complaint", 5), ("falta de atencao", "population_by_complaint", 5),
+    ("hiperativ", "population_by_complaint", 5), ("indisciplin", "population_by_complaint", 5),
+    ("atraso de fala", "population_by_complaint", 5), ("linguagem", "population_by_complaint", 4),
+    ("escrita", "population_by_complaint", 4), ("leitura", "population_by_complaint", 4),
+    ("matematica", "population_by_complaint", 4), ("ansiedade", "population_by_complaint", 5),
+    ("tiques", "population_by_complaint", 4), ("humor", "population_by_complaint", 4),
+    ("ajustamento", "population_by_complaint", 5),
+    # serviços que a base de Tarumã registra → demanda por serviço
+    ("precisam de", "population_by_service", 2), ("fonoaudiolog", "population_by_service", 3),
+    ("psicopedagog", "population_by_service", 2), ("psicomotricidade", "population_by_service", 3),
+    ("assistencia social", "population_by_service", 3), ("consulta medica", "population_by_service", 3),
 ]
 
 GROUP_PHRASES: list[tuple[str, str]] = [

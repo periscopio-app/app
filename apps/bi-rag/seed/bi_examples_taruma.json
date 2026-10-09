@@ -1,0 +1,739 @@
+{
+ "version": 1,
+ "source": "seed-taruma",
+ "note": "Pares pergunta → plano de consulta. Sem dado de aluno, sem id de escola (a escola vem da pergunta).",
+ "examples": [
+  {
+   "question": "Quantos casos tem na base do Tarumã?",
+   "plan": {
+    "metric": "population_total",
+    "groupBy": [],
+    "filters": {}
+   }
+  },
+  {
+   "question": "Total de casos registrados no Tarumã",
+   "plan": {
+    "metric": "population_total",
+    "groupBy": [],
+    "filters": {}
+   }
+  },
+  {
+   "question": "Casos registrados por escola no Tarumã",
+   "plan": {
+    "metric": "population_total",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Ranking de escolas por casos registrados",
+   "plan": {
+    "metric": "population_total",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quais escolas concentram mais casos na base populacional?",
+   "plan": {
+    "metric": "population_total",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Distribuição por faixa etária na base populacional",
+   "plan": {
+    "metric": "population_by_age",
+    "groupBy": [
+     "age_band"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantas crianças e adolescentes por faixa etária no Tarumã?",
+   "plan": {
+    "metric": "population_by_age",
+    "groupBy": [
+     "age_band"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Faixa etária dos casos por escola na base populacional",
+   "plan": {
+    "metric": "population_by_age",
+    "groupBy": [
+     "school",
+     "age_band"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Quantos casos de adolescentes de 13 a 17 anos existem por escola no Tarumã?",
+   "plan": {
+    "metric": "population_by_age",
+    "groupBy": [
+     "school",
+     "age_band"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Quais são as queixas mais registradas?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Ranking de queixas registradas no Tarumã",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Queixas registradas por escola",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "school",
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Motivos de encaminhamento mais comuns",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de agressividade?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de falta de atenção?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de atraso de fala e linguagem?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm dificuldade de escrita e leitura?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm dificuldade em matemática?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de hiperatividade?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de indisciplina?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm ansiedade ou tiques?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm queixa de transtorno de ajustamento?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos têm humor deprimido registrado?",
+   "plan": {
+    "metric": "population_by_complaint",
+    "groupBy": [
+     "complaint"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Qual a demanda por serviço na base populacional?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos demandam cada serviço?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Demanda por serviço em cada escola",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "school",
+     "service"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de fonoaudiologia?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de neuropsicologia?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de psicoterapia?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de psicopedagogia?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de psicomotricidade?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de assistência social?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos casos precisam de consulta médica?",
+   "plan": {
+    "metric": "population_by_service",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos profissionais são necessários?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos profissionais precisamos contratar por serviço?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Profissionais necessários por escola",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Equipe necessária por escola e por serviço",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "school",
+     "service"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Quantos fonoaudiólogos são necessários?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos neuropsicólogos são necessários?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos psicopedagogos são necessários?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos psicólogos para psicoterapia são necessários?",
+   "plan": {
+    "metric": "professionals_needed",
+    "groupBy": [
+     "service"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Quantos alunos estão cadastrados?",
+   "plan": {
+    "metric": "students",
+    "groupBy": [],
+    "filters": {}
+   }
+  },
+  {
+   "question": "Alunos cadastrados por escola",
+   "plan": {
+    "metric": "students",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Alunos cadastrados por faixa etária",
+   "plan": {
+    "metric": "students",
+    "groupBy": [
+     "age_bracket"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Evolução mensal de alunos cadastrados",
+   "plan": {
+    "metric": "students",
+    "groupBy": [
+     "month"
+    ],
+    "filters": {},
+    "viz": "line"
+   }
+  },
+  {
+   "question": "Quantos casos abertos temos?",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [],
+    "filters": {}
+   }
+  },
+  {
+   "question": "Casos por escola",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Casos por etapa da jornada",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "journey_state"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Casos por mês",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "month"
+    ],
+    "filters": {},
+    "viz": "line"
+   }
+  },
+  {
+   "question": "Casos por faixa etária do aluno",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "age_bracket"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Casos por escola e etapa da jornada",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "school",
+     "journey_state"
+    ],
+    "filters": {},
+    "viz": "table"
+   }
+  },
+  {
+   "question": "Quantos casos estão aguardando revisão médica?",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [],
+    "filters": {
+     "journeyState": "revisao_medica"
+    }
+   }
+  },
+  {
+   "question": "Quantos casos estão delegados a especialistas?",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [],
+    "filters": {
+     "journeyState": "delegado"
+    }
+   }
+  },
+  {
+   "question": "Quantos casos foram encerrados?",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [],
+    "filters": {
+     "journeyState": "encerrado"
+    }
+   }
+  },
+  {
+   "question": "Quantos casos ainda estão em rascunho?",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [],
+    "filters": {
+     "journeyState": "rascunho"
+    }
+   }
+  },
+  {
+   "question": "Casos enviados pelo RE por escola",
+   "plan": {
+    "metric": "cases",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {
+     "journeyState": "enviado_re"
+    },
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Tempo médio até o encerramento",
+   "plan": {
+    "metric": "case_cycle_days",
+    "groupBy": [],
+    "filters": {}
+   }
+  },
+  {
+   "question": "Tempo médio até o encerramento por escola",
+   "plan": {
+    "metric": "case_cycle_days",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Tempo médio até o encerramento por mês",
+   "plan": {
+    "metric": "case_cycle_days",
+    "groupBy": [
+     "month"
+    ],
+    "filters": {},
+    "viz": "line"
+   }
+  },
+  {
+   "question": "Quantos dias levam os casos para serem encerrados por faixa etária?",
+   "plan": {
+    "metric": "case_cycle_days",
+    "groupBy": [
+     "age_bracket"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações por especialidade",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "specialty"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações por situação",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "delegation_status"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações por escola",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {},
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações por mês",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "month"
+    ],
+    "filters": {},
+    "viz": "line"
+   }
+  },
+  {
+   "question": "Delegações de fonoaudiologia por situação",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "delegation_status"
+    ],
+    "filters": {
+     "specialty": "fonoaudiologia"
+    },
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações de psicologia por escola",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "school"
+    ],
+    "filters": {
+     "specialty": "psicologia"
+    },
+    "viz": "bar"
+   }
+  },
+  {
+   "question": "Delegações de psicopedagogia por situação",
+   "plan": {
+    "metric": "delegations",
+    "groupBy": [
+     "delegation_status"
+    ],
+    "filters": {
+     "specialty": "psicopedagogia"
+    },
+    "viz": "bar"
+   }
+  }
+ ]
+}

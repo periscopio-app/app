@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "seed:masters": "tsx scripts/seed-masters.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "taruma:load": "tsx scripts/taruma/load-aggregates.ts"
+    "taruma:load": "tsx scripts/taruma/load-aggregates.ts",
+    "taruma:seed-bi": "tsx scripts/taruma/seed-bi-examples.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
