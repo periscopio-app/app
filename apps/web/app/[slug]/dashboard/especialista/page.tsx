@@ -7,8 +7,67 @@ import { RoleBanner } from "@/components/ui/RoleBanner";
 import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
 
 interface AssignedSection extends CaseSection {
+  caseId: string;
   studentCode: string;
   birthYear: number | null;
+}
+
+interface CaseContext {
+  fogap: { status: string; payload: Record<string, unknown> } | null;
+  peerSections: { specialty: string; summary: unknown; completedAt: string | null }[];
+  medicalFinalSummary: { decision?: string; followUp?: string; reason?: string; closedAt?: string } | null;
+}
+
+function textOf(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  const o = v as Record<string, unknown>;
+  return String(o.clinicalNotes ?? o.texto ?? JSON.stringify(v));
+}
+
+function CaseContextPanel({ ctx }: { ctx: CaseContext }) {
+  const fogapEntries = Object.entries(ctx.fogap?.payload ?? {}).filter(
+    ([, v]) => v !== "" && v != null && typeof v !== "object"
+  );
+  return (
+    <div className="rounded-xl border border-linha bg-fundo p-4 space-y-3 text-xs text-tinta-700">
+      <h3 className="text-sm font-bold text-tinta-900">Contexto do caso (somente leitura)</h3>
+      <div>
+        <p className="font-semibold">FOGAP / avaliação do RE</p>
+        {fogapEntries.length === 0 ? (
+          <p className="text-tinta-500">Sem registro enviado.</p>
+        ) : (
+          <ul className="mt-1 space-y-0.5">
+            {fogapEntries.map(([k, v]) => (
+              <li key={k}><span className="text-tinta-500">{k}:</span> {String(v)}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="font-semibold">Pareceres concluídos de outras especialidades</p>
+        {ctx.peerSections.length === 0 ? (
+          <p className="text-tinta-500">Nenhum parecer concluído até o momento.</p>
+        ) : (
+          ctx.peerSections.map((p) => (
+            <p key={p.specialty} className="mt-1"><span className="font-medium">{p.specialty}:</span> {textOf(p.summary)}</p>
+          ))
+        )}
+      </div>
+      <div>
+        <p className="font-semibold">Resumo final do médico</p>
+        {ctx.medicalFinalSummary ? (
+          <p className="mt-1">
+            {ctx.medicalFinalSummary.decision}
+            {ctx.medicalFinalSummary.followUp ? ` (${ctx.medicalFinalSummary.followUp})` : ""}
+            {ctx.medicalFinalSummary.reason ? ` — ${ctx.medicalFinalSummary.reason}` : ""}
+          </p>
+        ) : (
+          <p className="text-tinta-500">Disponível após o encerramento do caso.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function EspecialistaDashboardPage({
@@ -28,6 +87,16 @@ export default function EspecialistaDashboardPage({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [ctx, setCtx] = useState<CaseContext | null>(null);
+
+  useEffect(() => {
+    setCtx(null);
+    if (!activeSection) return;
+    api
+      .get<CaseContext>(`/api/cases/${activeSection.caseId}/specialist-view`)
+      .then(setCtx)
+      .catch(() => setCtx(null));
+  }, [activeSection?.caseId]);
 
   useEffect(() => {
     async function boot() {
@@ -275,6 +344,8 @@ export default function EspecialistaDashboardPage({
                     </div>
                   </div>
                 )}
+
+                {ctx && <CaseContextPanel ctx={ctx} />}
 
                 <p className="text-[11px] text-tinta-500 border-t border-linha pt-3">
                   🔒 Assegure que nenhum identificador direto não autorizado conste no texto livre.

@@ -15,6 +15,7 @@ import {
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import { SPECIALIST_CLINICAL_ROLES } from "../security/roles";
+import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
 import {
   FOGAP_FORM_CODE,
   FOGAP_VERSION,
@@ -601,6 +602,73 @@ export async function casesRoutes(app: FastifyInstance) {
       );
 
     return { assignedSections: sections };
+  });
+
+  // Contexto do caso para o especialista: FOGAP + resumo final do médico e dos demais (ver specialist-view.service)
+  app.get("/api/cases/:caseId/specialist-view", async (request, reply) => {
+    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
+    if (!actor) return;
+
+    const { caseId } = request.params as { caseId: string };
+
+    const sections = await db
+      .select({
+        id: caseSummaries.id,
+        specialty: caseSummaries.specialty,
+        status: caseSummaries.status,
+        summary: caseSummaries.summary,
+        completedAt: caseSummaries.completedAt,
+        assignedProfessionalId: caseSummaries.assignedProfessionalId,
+      })
+      .from(caseSummaries)
+      .where(and(eq(caseSummaries.caseId, caseId), eq(caseSummaries.tenantId, actor.tenantId)));
+
+    // Só quem tem seção atribuída neste caso (mesmo tenant) enxerga o contexto
+    if (!sections.some((s) => s.assignedProfessionalId === actor.id)) {
+      return reply.status(403).send({ error: "Sem seção atribuída neste caso" });
+    }
+
+    const [caseItem] = await db
+      .select({ id: cases.id, studentId: cases.studentId, journeyState: cases.journeyState })
+      .from(cases)
+      .where(and(eq(cases.id, caseId), eq(cases.tenantId, actor.tenantId)))
+      .limit(1);
+    if (!caseItem) return reply.status(404).send({ error: "Caso não encontrado" });
+
+    const [student] = await db
+      .select({ studentCode: students.studentCode, birthYear: students.birthYear })
+      .from(students)
+      .where(eq(students.id, caseItem.studentId))
+      .limit(1);
+
+    const [assessment] = await db
+      .select({ payload: reAssessments.payload, status: reAssessments.status })
+      .from(reAssessments)
+      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId)))
+      .limit(1);
+
+    const [closed] = await db
+      .select({ payload: caseTimeline.payload, createdAt: caseTimeline.createdAt })
+      .from(caseTimeline)
+      .where(and(eq(caseTimeline.caseId, caseId), eq(caseTimeline.tenantId, actor.tenantId), eq(caseTimeline.event, "case:closed")))
+      .orderBy(desc(caseTimeline.createdAt))
+      .limit(1);
+
+    await db.insert(auditLogs).values({
+      tenantId: actor.tenantId,
+      actorId: actor.id,
+      action: "specialist-view:read",
+      entity: "case",
+      entityId: caseId,
+    });
+
+    return {
+      student,
+      journeyState: caseItem.journeyState,
+      fogap: assessment ? { status: assessment.status, payload: assessment.payload } : null,
+      peerSections: filterPeerSections(sections, actor.id),
+      medicalFinalSummary: closed ? { ...medicalFinalSummary(closed.payload), closedAt: closed.createdAt } : null,
+    };
   });
 
   const sectionPatchSchema = z.object({
