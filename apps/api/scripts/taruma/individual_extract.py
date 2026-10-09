@@ -196,8 +196,8 @@ def suggest(path, sheet):
             "birthDate": take(find(r"nasc")),
             "currentAge": take(find(r"^id atual$", r"^idade")),
             "entryYear": take(find(r"^ano$")),
-            "guardian": {"column": take(find(r"respons", r"familiar")), "as": "pseudonym",
-                         "_todo": "'pseudonym' se a coluna traz o NOME do familiar; 'text' se traz só o parentesco (mãe, pai...)"},
+            "guardian": {"column": take(find(r"respons", r"familiar")), "as": "pseudonym", "relationColumn": take(find(r"parentesco", r"grau")),
+                         "_todo": "'pseudonym' = coluna traz o NOME (vira UUID) e o parentesco sai de relationColumn, ou da própria célula se ela citar mãe/pai/avó...; 'text' = coluna traz só o parentesco"},
             "religion": take(find(r"relig")),
             "parentsOccupation": take(find(r"trabalho", r"profiss", r"ocupa")),
             "economicClass": take(find(r"classif.*econ", r"econom")),
@@ -291,6 +291,37 @@ class Geocoder:
 
 
 # ── extração ─────────────────────────────────────────────────────────────────────────
+
+KINSHIP = [  # (regex sobre texto sem acento e minúsculo, rótulo gravado)
+    (r"\bmadrasta\b", "madrasta"), (r"\bpadrasto\b", "padrasto"),
+    (r"\b(mae|mamae|mãe)\b", "mãe"), (r"\b(pai|papai)\b", "pai"),
+    (r"\b(avo|vovo)\s*(materna|paterna)?\b", "avó/avô"), (r"\b(tia|tio)\b", "tia/tio"),
+    (r"\b(irma|irmao)\b", "irmã/irmão"), (r"\b(tutor|tutora|responsavel legal|guardiao|guardia)\b", "responsável legal"),
+]
+
+
+def split_guardian(value, as_mode, relation_value=None):
+    """Devolve (ref_uuid_base | None, parentesco | None). O NOME nunca sai daqui; só o texto-base para o HMAC."""
+    text = to_text(value)
+    rel = to_text(relation_value, 60)
+    if not text:
+        return None, rel
+    if as_mode == "text":
+        return None, (rel or text[:60])
+    plain = unicodedata.normalize("NFD", text).encode("ascii", "ignore").decode().lower()
+    found = None
+    name_part = plain
+    for rx, label in KINSHIP:
+        if re.search(rx, plain):
+            found = found or label
+            name_part = re.sub(rx, " ", name_part)
+    name_part = re.sub(r"[^a-z0-9]+", " ", name_part).strip()
+    # célula só com parentesco ("mãe"): não há nome para pseudonimizar; vira parentesco
+    if found and not name_part:
+        return None, (rel or found)
+    return (name_part or plain), (rel or found)
+
+
 def build_manifest_and_lines(path, mapping_path, geocoder, secret):
     with open(mapping_path, encoding="utf-8") as fh:
         m = json.load(fh)
@@ -314,7 +345,7 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
     # todas as colunas citadas precisam existir no cabeçalho (só nomes de coluna aparecem na mensagem)
     cited = [name_col, (m.get("school") or {}).get("column"), m.get("rowFilterColumn"), *addr_cols, *drop, *pseudo_cols,
              pat.get("recordNumber"), pat.get("birthDate"), pat.get("currentAge"), pat.get("entryYear"),
-             guardian.get("column"), pat.get("religion"), pat.get("parentsOccupation"), pat.get("economicClass"),
+             guardian.get("column"), guardian.get("relationColumn"), pat.get("religion"), pat.get("parentsOccupation"), pat.get("economicClass"),
              *(pat.get("extraColumns") or []), *list((m.get("complaints") or {}).get("columns", {}).keys()),
              *[c for cols in (m.get("services") or {}).values() for c in cols],
              *[(v or {}).get("column") for v in (m.get("items") or {}).values()]]
@@ -366,12 +397,11 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
             "parentsOccupation": to_text(cell(r, pat.get("parentsOccupation")), 2000),
             "economicClass": to_text(cell(r, pat.get("economicClass")), 60),
         }
-        g = to_text(cell(r, guardian.get("column")))
-        if g:
-            if guardian.get("as") == "text":
-                patient["guardianRelation"] = g[:60]
-            else:
-                patient["guardianRef"] = pseudo_uuid(secret, "guardian", g)
+        g_base, g_rel = split_guardian(cell(r, guardian.get("column")), guardian.get("as"), cell(r, guardian.get("relationColumn")))
+        if g_base:
+            patient["guardianRef"] = pseudo_uuid(secret, "guardian", g_base)
+        if g_rel:
+            patient["guardianRelation"] = g_rel
         if pat.get("extraColumns"):
             patient["extra"] = {c: jsonable(cell(r, c)) for c in pat["extraColumns"] if not empty(cell(r, c))} or None
 
@@ -416,7 +446,8 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
                 continue
             v = r[ix[h]]
             if h == guardian.get("column") and guardian.get("as") == "pseudonym":
-                v = pseudo_uuid(secret, "guardian", to_text(v)) if not empty(v) else None
+                gb, _ = split_guardian(v, "pseudonym")
+                v = pseudo_uuid(secret, "guardian", gb) if gb else (patient.get("guardianRelation") if not empty(v) else None)
             elif h in pseudo_cols:
                 v = pseudo_uuid(secret, "person", to_text(v)) if not empty(v) else None
             raw[h] = jsonable(v)

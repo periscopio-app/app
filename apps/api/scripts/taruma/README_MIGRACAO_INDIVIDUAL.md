@@ -23,3 +23,8 @@ Nenhuma rota da API lê essas tabelas (há teste que garante).
 7. Apagar o `individual.ndjson` e o cache do geocoder.
 
 Antes do passo 5 aplicar a migração `0013_base_individual.sql` no Neon (não aplicada até aqui).
+
+## Responsável e parentesco (decisão de 09/10)
+- O **nome** do familiar responsável vira UUID (mesmo nome = mesmo UUID, irmãos ficam ligados) em `legacy_patients.guardian_ref`.
+- O **parentesco** fica escrito em `legacy_patients.guardian_relation`: vem de `guardian.relationColumn` (coluna separada, se existir) ou é reconhecido na própria célula (mãe, pai, avó/avô, tia/tio, irmã/irmão, madrasta, padrasto, responsável legal). Célula só com parentesco vira apenas parentesco.
+- Texto livre (hipóteses, fármacos, antecedentes, trabalho dos pais) migra como está. Regras e guardrails de conteúdo ficam para depois do MVP; o carregador continua barrando só CPF, e-mail e telefone (`--allow-pii-patterns` para falso positivo).

@@ -162,3 +162,25 @@ def test_registros_identicos_recebem_uuid_distinto(env):
     manifest, lines = run(tmp, xlsx, mp, base, geocode=False)
     assert len({l["patientId"] for l in lines}) == 5
     assert any("duplicado" in w for w in manifest["manifest"]["warnings"])
+
+
+def test_responsavel_nome_vira_uuid_e_parentesco_fica_escrito(env):
+    tmp, xlsx, base = env
+    _, mp = make_mapping(tmp, xlsx)
+    manifest, lines = run(tmp, xlsx, mp, base, geocode=False)
+    a, d = lines[0], lines[3]
+    assert a["patient"]["guardianRelation"] == "mãe" and d["patient"]["guardianRelation"] == "pai"
+    assert a["patient"]["guardianRef"] and a["patient"]["guardianRef"] != d["patient"]["guardianRef"]
+    assert lines[2]["patient"].get("guardianRef") is None
+
+
+def test_split_guardian_casos():
+    sg = ex.split_guardian
+    ref, rel = sg("Maria da Silva (mãe)", "pseudonym")
+    ref2, _ = sg("MARIA DA SILVA - Mãe", "pseudonym")
+    assert rel == "mãe" and ref == ref2 and "maria" in ref  # base do HMAC, nunca gravada
+    assert sg("mãe", "pseudonym") == (None, "mãe")  # só parentesco: não há nome
+    assert sg("João Souza", "pseudonym") == ("joao souza", None)  # nome sem parentesco
+    assert sg("João Souza", "pseudonym", "tio") == ("joao souza", "tio")  # coluna de parentesco separada
+    assert sg("avó", "text") == (None, "avó")
+    assert sg(None, "pseudonym", "pai") == (None, "pai")
