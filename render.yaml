@@ -14,8 +14,6 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: REDIS_URL
-        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_PROJECT_REF

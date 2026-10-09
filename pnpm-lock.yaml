@@ -32,18 +32,12 @@ importers:
       better-auth:
         specifier: ^1.0.0
         version: 1.7.5(drizzle-kit@0.31.11)(drizzle-orm@0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1))(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      bullmq:
-        specifier: ^5.12.0
-        version: 5.81.5
       drizzle-orm:
         specifier: ^0.36.0
         version: 0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1)
       fastify:
         specifier: ^5.0.0
         version: 5.12.5
-      ioredis:
-        specifier: ^5.4.1
-        version: 5.11.1
       pg:
         specifier: ^8.13.0
         version: 8.23.0
@@ -80,7 +74,7 @@ importers:
     dependencies:
       '@neondatabase/neon-js':
         specifier: 0.7.0-beta
-        version: 0.7.0-beta(uhicjdla36m2akm324g75jzyty)
+        version: 0.7.0-beta(ybzttwdrhebck2pip74a7sjnki)
       '@periscopio/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -101,10 +95,7 @@ importers:
         version: 4.5.0(@types/three@0.186.0)(three@0.186.1)
       better-auth:
         specifier: ^1.0.0
-        version: 1.7.5(drizzle-kit@0.31.11)(drizzle-orm@0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1))(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      framer-motion:
-        specifier: ^13.4.6
-        version: 13.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       lucide-react:
         specifier: ^1.49.0
         version: 1.49.0(@types/react@18.3.31)(react@18.3.1)
@@ -126,9 +117,6 @@ importers:
       resend:
         specifier: ^4.0.0
         version: 4.8.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      three:
-        specifier: ^0.186.1
-        version: 0.186.1
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -136,9 +124,6 @@ importers:
       '@types/animejs':
         specifier: ^4.0.0
         version: 4.0.0(@types/three@0.186.0)(three@0.186.1)
-      '@types/three':
-        specifier: ^0.186.0
-        version: 0.186.0
       autoprefixer:
         specifier: '10'
         version: 10.6.1(postcss@8.4.31)
@@ -1385,9 +1370,6 @@ packages:
   '@instantdb/version@1.0.67':
     resolution: {integrity: sha512-V7nCs+DcuM+rNkvSxllBUJ/XTxlas6tsmws7EpnhZrF4tEJAfSQQfQOj4LcaOfwg9ItWWOAZJCkbDJ/iZSUQhA==}
 
-  '@ioredis/commands@1.10.0':
-    resolution: {integrity: sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==}
-
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -1432,36 +1414,6 @@ packages:
     peerDependencies:
       react: ^17.0.2 || ^18.0.0 || ^19.0
       react-dom: ^17.0.2 || ^18.0.0 || ^19.0
-
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
-    resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
-    resolution: {integrity: sha512-zExlW9zUJKZH/tOtVMttwjKa4Xm/3KcNjnE3dPN92uCktwavMxpgCA3MoJK/DOnTWsQgo224OaST27/mPNAf+w==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
-    resolution: {integrity: sha512-dgX0P/9wGPJeHFBG+ZmhgE6bmtMt7NP5CRBGyyktpopdk/mW4POnrpQsSLtKI1dwpc+pPLuXHDh6vvskyQE/sw==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
-    resolution: {integrity: sha512-Tg3yX65f5GbtXLkrYEHE5oibZG9epyYWas7FogTTEJeDEF9JlXJzKgXaNhT3UXlTOeA+AfZpYZYZ0uPj7Cfquw==}
-    cpu: [arm]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
-    resolution: {integrity: sha512-8TNXMEjJc3QEy7R/x1INhgiU+XakDAFUzBhaz7+Rbrs8NH5UQeHQxxmzsSBJGyV6I1jW79undiQm8tOI+D+8FQ==}
-    cpu: [x64]
-    os: [linux]
-
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
-    resolution: {integrity: sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==}
-    cpu: [x64]
-    os: [win32]
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -2781,15 +2733,6 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
-  bullmq@5.81.5:
-    resolution: {integrity: sha512-pW7pFc/X+9AEIx91TWTdIpZ1icfbJnA0unsyzD7VICjCUw8a3qedSjej5dxxn6LjfM1kr2jvalOCGbCmoA5Kxg==}
-    engines: {node: '>=12.22.0'}
-    peerDependencies:
-      redis: '>=5.0.0'
-    peerDependenciesMeta:
-      redis:
-        optional: true
-
   bundle-require@5.1.0:
     resolution: {integrity: sha512-3WrrOuZiyaaZPWiEt4G3+IffISVC9HYlWueJEBWED4ZH4aIAC2PnkdnuRrR94M+w6yGWn4AglWtJtBI8YqvgoA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -2831,10 +2774,6 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
-  cluster-key-slot@1.1.1:
-    resolution: {integrity: sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw==}
-    engines: {node: '>=0.10.0'}
-
   comlink@4.4.2:
     resolution: {integrity: sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==}
 
@@ -2859,11 +2798,6 @@ packages:
 
   core-js@3.50.0:
     resolution: {integrity: sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==}
-
-  cron-parser@4.9.0:
-    resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
-    engines: {node: '>=12.0.0'}
-    deprecated: v4 is no longer maintained, upgrade to v5
 
   csscolorparser@1.0.3:
     resolution: {integrity: sha512-umPSgYwZkdFoUrH5hIq5kf0wPSXiro51nPw0j2K/c83KflkPSTBGMz6NJvMB+07VlL0y7VPo6QJcDjcgKTTm3w==}
@@ -2891,10 +2825,6 @@ packages:
 
   defu@6.1.7:
     resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
-
-  denque@2.1.0:
-    resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
-    engines: {node: '>=0.10'}
 
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
@@ -3139,17 +3069,6 @@ packages:
   fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
-  framer-motion@13.4.6:
-    resolution: {integrity: sha512-TwKWt2CC8rjhARzwV00TZIh04ipumSAqyKM/JZmS+urdncSHg6wTF/mfj/Fd6Oi2W01TZSWsiA3uxXDrXZtKyw==}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -3208,10 +3127,6 @@ packages:
     peerDependencies:
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
-
-  ioredis@5.11.1:
-    resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
-    engines: {node: '>=12.22.0'}
 
   ipaddr.js@2.5.0:
     resolution: {integrity: sha512-aq+t5NAc+cS6rZQQVWC2x98CPqGtKKTMDd4Gaodv0wShnItdKg/51djkGJ1hqH+Oy0ivDftCbSLCQob8zso01w==}
@@ -3305,10 +3220,6 @@ packages:
       '@types/react':
         optional: true
 
-  luxon@3.7.2:
-    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
-    engines: {node: '>=12'}
-
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -3338,21 +3249,8 @@ packages:
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
 
-  motion-dom@13.4.5:
-    resolution: {integrity: sha512-p63p2Doq+US/O5wADauIPUVx0/eONHMLPzsudBM9XMWRuBQLXogdxH0vwIA8WYQZw864pyzoV723xoDqakwWTg==}
-
-  motion-utils@13.3.0:
-    resolution: {integrity: sha512-sgSschQp7EseHInIlR7hBbMuvet3RA0bs28KPZAXJcGKGdxHGvh1ogpYDilY3bOMtl73EqPNmp75sAKHYPU5sg==}
-
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
-
-  msgpackr-extract@3.0.4:
-    resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
-    hasBin: true
-
-  msgpackr@2.0.5:
-    resolution: {integrity: sha512-cef05H/dSYpLpqp3sj/qyZh5vhUYCalnaLO7j1yOmpsR0y/XwLVtK7r5gn+U/F7CTEfMowcGhlUQJDLcLf7jcA==}
 
   murmurhash-js@1.0.0:
     resolution: {integrity: sha512-TvmkNhkv8yct0SVBSy+o8wYzXjE4Zz3PCesbfs8HiCXXdcTuocApFv11UWlNFWKYsP2okqrhb7JNlSm9InBhIw==}
@@ -3404,13 +3302,6 @@ packages:
         optional: true
       sass:
         optional: true
-
-  node-abort-controller@3.1.1:
-    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
-
-  node-gyp-build-optional-packages@5.2.2:
-    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
-    hasBin: true
 
   node-releases@2.0.57:
     resolution: {integrity: sha512-kQK9LGGFiHtrWiNhZtA7Qbw17AQz+dmsEKODRIVTXA9+e5MS/2gZEBhYJt13GrAz5/IOZKddH/0Z3TP/Zgo+yw==}
@@ -3733,14 +3624,6 @@ packages:
   real-require@1.0.0:
     resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
-  redis-errors@1.2.0:
-    resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
-    engines: {node: '>=4'}
-
-  redis-parser@3.0.0:
-    resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
-    engines: {node: '>=4'}
-
   reflect-metadata@0.2.2:
     resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
@@ -3867,9 +3750,6 @@ packages:
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
-
-  standard-as-callback@2.1.0:
-    resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
 
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
@@ -4248,9 +4128,9 @@ snapshots:
 
   '@babel/runtime@7.29.7': {}
 
-  '@better-auth/api-key@1.7.7(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@2.0.2(zod@4.6.5))':
+  '@better-auth/api-key@1.7.7(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@2.0.2(zod@4.6.5))':
     dependencies:
-      '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
+      '@better-auth/core': 1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
       '@better-auth/utils': 0.4.2
       better-auth: 1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       better-call: 2.0.2(zod@4.6.5)
@@ -4274,7 +4154,7 @@ snapshots:
       '@better-fetch/fetch': 1.3.2
       '@opentelemetry/semantic-conventions': 1.43.0
       '@standard-schema/spec': 1.1.0
-      better-call: 1.4.0(zod@4.6.5)
+      better-call: 1.4.0(zod@3.25.76)
       jose: 6.2.12
       kysely: 0.29.6
       nanostores: 1.5.3
@@ -4326,15 +4206,15 @@ snapshots:
       '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
       '@better-auth/utils': 0.4.2
 
-  '@better-auth/passkey@1.6.23(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.4.0(zod@4.6.5))(nanostores@1.5.3)':
+  '@better-auth/passkey@1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.3.7(zod@4.6.5))(nanostores@1.5.3)':
     dependencies:
-      '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
+      '@better-auth/core': 1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
       '@better-auth/utils': 0.4.2
-      '@better-fetch/fetch': 1.3.2
+      '@better-fetch/fetch': 1.3.1
       '@simplewebauthn/browser': 13.3.0
       '@simplewebauthn/server': 13.3.3
-      better-auth: 1.7.5(drizzle-kit@0.31.11)(drizzle-orm@0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1))(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      better-call: 1.4.0(zod@4.6.5)
+      better-auth: 1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      better-call: 1.3.7(zod@4.6.5)
       nanostores: 1.5.3
       zod: 4.6.5
 
@@ -4386,14 +4266,14 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.104.0
       '@tanstack/react-query': 5.104.0(react@18.3.1)
-      better-auth: 1.7.5(drizzle-kit@0.31.11)(drizzle-orm@0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1))(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      better-auth: 1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@daveyplate/better-auth-ui@3.4.0(cmdlozsurlozp7kxm4uzt7atiu)':
+  '@daveyplate/better-auth-ui@3.4.0(nah2lfnqqkdha5uuyg4bt5uqbe)':
     dependencies:
-      '@better-auth/api-key': 1.7.7(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@2.0.2(zod@4.6.5))
-      '@better-auth/passkey': 1.6.23(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.4.0(zod@4.6.5))(nanostores@1.5.3)
+      '@better-auth/api-key': 1.7.7(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@2.0.2(zod@4.6.5))
+      '@better-auth/passkey': 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.3.7(zod@4.6.5))(nanostores@1.5.3)
       '@better-fetch/fetch': 1.3.2
       '@captchafox/react': 1.13.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@daveyplate/better-auth-tanstack': 1.3.6(@tanstack/query-core@5.104.0)(@tanstack/react-query@5.104.0(react@18.3.1))(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -4444,7 +4324,8 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@dimforge/rapier3d-compat@0.12.0': {}
+  '@dimforge/rapier3d-compat@0.12.0':
+    optional: true
 
   '@drizzle-team/brocli@0.10.2': {}
 
@@ -4959,8 +4840,6 @@ snapshots:
 
   '@instantdb/version@1.0.67': {}
 
-  '@ioredis/commands@1.10.0': {}
-
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -4998,36 +4877,18 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
-    optional: true
-
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
-    optional: true
-
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
-  '@neondatabase/auth-ui@0.3.0-beta(yamgt4tpgmlydfnzkfc6dn7os4)':
+  '@neondatabase/auth-ui@0.3.0-beta(u6wo7fhfobdienokb4shnr2zli)':
     dependencies:
-      '@better-auth/passkey': 1.6.23(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.4.0(zod@4.6.5))(nanostores@1.5.3)
+      '@better-auth/passkey': 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(better-call@1.3.7(zod@4.6.5))(nanostores@1.5.3)
       '@captchafox/react': 1.13.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@daveyplate/better-auth-ui': 3.4.0(cmdlozsurlozp7kxm4uzt7atiu)
+      '@daveyplate/better-auth-ui': 3.4.0(nah2lfnqqkdha5uuyg4bt5uqbe)
       '@hcaptcha/react-hcaptcha': 1.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hookform/resolvers': 5.9.1(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.89.0(@types/react@18.3.31)(react@18.3.1))(zod@4.6.5)
       '@marsidev/react-turnstile': 1.6.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@neondatabase/auth': 0.5.0-beta(6et2coj3b3o2c673qquwj35afy)
+      '@neondatabase/auth': 0.5.0-beta(o5qvonxstzmbwhvytlaxiszhoy)
       '@radix-ui/react-avatar': 1.2.6(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-checkbox': 1.3.11(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-context': 1.2.2(@types/react@18.3.31)(react@18.3.1)
@@ -5117,10 +4978,10 @@ snapshots:
       - vue
       - yup
 
-  '@neondatabase/auth@0.5.0-beta(6et2coj3b3o2c673qquwj35afy)':
+  '@neondatabase/auth@0.5.0-beta(o5qvonxstzmbwhvytlaxiszhoy)':
     dependencies:
       '@better-fetch/fetch': 1.3.1
-      '@neondatabase/auth-ui': 0.3.0-beta(yamgt4tpgmlydfnzkfc6dn7os4)
+      '@neondatabase/auth-ui': 0.3.0-beta(u6wo7fhfobdienokb4shnr2zli)
       '@supabase/auth-js': 2.79.0
       better-auth: 1.6.23(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       jose: 6.2.5
@@ -5183,9 +5044,9 @@ snapshots:
       - vue
       - yup
 
-  '@neondatabase/neon-js@0.7.0-beta(uhicjdla36m2akm324g75jzyty)':
+  '@neondatabase/neon-js@0.7.0-beta(ybzttwdrhebck2pip74a7sjnki)':
     dependencies:
-      '@neondatabase/auth': 0.5.0-beta(6et2coj3b3o2c673qquwj35afy)
+      '@neondatabase/auth': 0.5.0-beta(o5qvonxstzmbwhvytlaxiszhoy)
       '@neondatabase/postgrest-js': 0.2.0-beta
       meow: 14.0.0
       pg: 8.23.0
@@ -6163,7 +6024,8 @@ snapshots:
       - typescript
       - uuidv7
 
-  '@tweenjs/tween.js@23.1.3': {}
+  '@tweenjs/tween.js@23.1.3':
+    optional: true
 
   '@types/animejs@4.0.0(@types/three@0.186.0)(three@0.186.1)':
     dependencies:
@@ -6211,7 +6073,8 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
-  '@types/stats.js@0.17.4': {}
+  '@types/stats.js@0.17.4':
+    optional: true
 
   '@types/supercluster@7.1.3':
     dependencies:
@@ -6225,8 +6088,10 @@ snapshots:
       '@types/webxr': 0.5.24
       fflate: 0.8.3
       meshoptimizer: 1.1.1
+    optional: true
 
-  '@types/webxr@0.5.24': {}
+  '@types/webxr@0.5.24':
+    optional: true
 
   '@wojtekmaj/react-recaptcha-v3@0.1.4(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -6335,7 +6200,7 @@ snapshots:
       '@better-fetch/fetch': 1.3.2
       '@noble/ciphers': 2.4.0
       '@noble/hashes': 2.4.0
-      better-call: 1.4.0(zod@4.6.5)
+      better-call: 1.4.0(zod@3.25.76)
       defu: 6.1.7
       jose: 6.2.12
       kysely: 0.29.6
@@ -6351,6 +6216,34 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
+  better-auth@1.7.5(drizzle-kit@0.31.11)(next@15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3)
+      '@better-auth/drizzle-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(drizzle-orm@0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(kysely@0.29.6)(pg@8.23.0)(react@18.3.1))
+      '@better-auth/kysely-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(kysely@0.29.6)
+      '@better-auth/memory-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)
+      '@better-auth/mongo-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)
+      '@better-auth/prisma-adapter': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)
+      '@better-auth/telemetry': 1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)
+      '@better-auth/utils': 0.4.2
+      '@better-fetch/fetch': 1.3.2
+      '@noble/ciphers': 2.4.0
+      '@noble/hashes': 2.4.0
+      better-call: 1.4.0(zod@4.6.5)
+      defu: 6.1.7
+      jose: 6.2.12
+      kysely: 0.29.6
+      nanostores: 1.5.3
+      zod: 4.6.5
+    optionalDependencies:
+      drizzle-kit: 0.31.11
+      next: 15.5.26(@types/node@22.20.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      pg: 8.23.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+
   better-call@1.3.7(zod@4.6.5):
     dependencies:
       '@better-auth/utils': 0.4.2
@@ -6359,6 +6252,15 @@ snapshots:
       set-cookie-parser: 3.1.2
     optionalDependencies:
       zod: 4.6.5
+
+  better-call@1.4.0(zod@3.25.76):
+    dependencies:
+      '@better-auth/utils': 0.5.0
+      '@better-fetch/fetch': 1.3.2
+      rou3: 0.9.2
+      set-cookie-parser: 3.1.2
+    optionalDependencies:
+      zod: 3.25.76
 
   better-call@1.4.0(zod@4.6.5):
     dependencies:
@@ -6395,17 +6297,6 @@ snapshots:
       update-browserslist-db: 1.3.3(browserslist@4.29.3)
 
   buffer-from@1.1.2: {}
-
-  bullmq@5.81.5:
-    dependencies:
-      cron-parser: 4.9.0
-      ioredis: 5.11.1
-      msgpackr: 2.0.5
-      node-abort-controller: 3.1.1
-      semver: 7.8.5
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
 
   bundle-require@5.1.0(esbuild@0.27.7):
     dependencies:
@@ -6446,8 +6337,6 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  cluster-key-slot@1.1.1: {}
-
   comlink@4.4.2: {}
 
   commander@4.1.1: {}
@@ -6462,10 +6351,6 @@ snapshots:
 
   core-js@3.50.0: {}
 
-  cron-parser@4.9.0:
-    dependencies:
-      luxon: 3.7.2
-
   csscolorparser@1.0.3: {}
 
   cssesc@3.0.0: {}
@@ -6479,8 +6364,6 @@ snapshots:
   deepmerge@4.3.1: {}
 
   defu@6.1.7: {}
-
-  denque@2.1.0: {}
 
   dequal@2.0.3: {}
 
@@ -6719,7 +6602,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
-  fflate@0.8.3: {}
+  fflate@0.8.3:
+    optional: true
 
   fill-range@7.1.1:
     dependencies:
@@ -6738,15 +6622,6 @@ snapshots:
       rollup: 4.63.5
 
   fraction.js@5.3.4: {}
-
-  framer-motion@13.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      motion-dom: 13.4.5
-      motion-utils: 13.3.0
-      tslib: 2.8.1
-    optionalDependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   fsevents@2.3.3:
     optional: true
@@ -6804,18 +6679,6 @@ snapshots:
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-
-  ioredis@5.11.1:
-    dependencies:
-      '@ioredis/commands': 1.10.0
-      cluster-key-slot: 1.1.1
-      debug: 4.4.3
-      denque: 2.1.0
-      redis-errors: 1.2.0
-      redis-parser: 3.0.0
-      standard-as-callback: 2.1.0
-    transitivePeerDependencies:
-      - supports-color
 
   ipaddr.js@2.5.0: {}
 
@@ -6885,8 +6748,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.31
 
-  luxon@3.7.2: {}
-
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -6928,7 +6789,8 @@ snapshots:
 
   merge2@1.4.1: {}
 
-  meshoptimizer@1.1.1: {}
+  meshoptimizer@1.1.1:
+    optional: true
 
   micromatch@4.0.8:
     dependencies:
@@ -6942,29 +6804,7 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.4
 
-  motion-dom@13.4.5:
-    dependencies:
-      motion-utils: 13.3.0
-
-  motion-utils@13.3.0: {}
-
   ms@2.1.3: {}
-
-  msgpackr-extract@3.0.4:
-    dependencies:
-      node-gyp-build-optional-packages: 5.2.2
-    optionalDependencies:
-      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
-    optional: true
-
-  msgpackr@2.0.5:
-    optionalDependencies:
-      msgpackr-extract: 3.0.4
 
   murmurhash-js@1.0.0: {}
 
@@ -7010,13 +6850,6 @@ snapshots:
       - '@babel/core'
       - '@types/node'
       - babel-plugin-macros
-
-  node-abort-controller@3.1.1: {}
-
-  node-gyp-build-optional-packages@5.2.2:
-    dependencies:
-      detect-libc: 2.1.2
-    optional: true
 
   node-releases@2.0.57: {}
 
@@ -7292,12 +7125,6 @@ snapshots:
 
   real-require@1.0.0: {}
 
-  redis-errors@1.2.0: {}
-
-  redis-parser@3.0.0:
-    dependencies:
-      redis-errors: 1.2.0
-
   reflect-metadata@0.2.2: {}
 
   require-from-string@2.0.2: {}
@@ -7454,8 +7281,6 @@ snapshots:
 
   split2@4.2.0: {}
 
-  standard-as-callback@2.1.0: {}
-
   std-env@4.3.0: {}
 
   styled-jsx@5.1.6(react@18.3.1):
@@ -7526,7 +7351,8 @@ snapshots:
     dependencies:
       real-require: 1.0.0
 
-  three@0.186.1: {}
+  three@0.186.1:
+    optional: true
 
   tinyexec@0.3.2: {}
 
