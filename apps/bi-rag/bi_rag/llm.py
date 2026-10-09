@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
 import urllib.request
 
 SYSTEM = (
@@ -73,27 +74,39 @@ def _call_gemini(prompt: str) -> str:
 
 
 def _call_groq(prompt: str) -> str:
-    """Groq (API compatível com OpenAI). O ID do modelo vem de BI_LLM_MODEL (copie de console.groq.com/docs/models)."""
+    """Groq (API compatível com OpenAI). O ID do modelo vem de BI_LLM_MODEL (ex.: openai/gpt-oss-120b)."""
+    model = os.environ["BI_LLM_MODEL"]
     body = {
-        "model": os.environ["BI_LLM_MODEL"],
+        "model": model,
         "temperature": 0,
-        "max_tokens": 400,
+        # modelos de raciocínio gastam parte do limite pensando: folga para o JSON não sair cortado
+        "max_completion_tokens": 1500,
         "response_format": {"type": "json_object"},
         "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
     }
-    req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(body).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
-            "User-Agent": "periscopio-bi-rag/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310 - URL fixa
-        data = json.loads(resp.read())
-    return data["choices"][0]["message"]["content"] or ""
+    if "gpt-oss" in model:
+        body["reasoning_effort"] = "low"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
+        "User-Agent": "periscopio-bi-rag/1.0",
+    }
+
+    def post(payload: dict) -> dict:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode(), headers=headers, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=25) as resp:  # noqa: S310 - URL fixa
+            return json.loads(resp.read())
+
+    try:
+        data = post(body)
+    except urllib.error.HTTPError as e:
+        if e.code != 400:
+            raise
+        body.pop("response_format")  # modelo sem modo JSON: o _parse extrai o JSON do texto
+        data = post(body)
+    return data["choices"][0]["message"].get("content") or ""
 
 
 def _call_anthropic(prompt: str) -> str:

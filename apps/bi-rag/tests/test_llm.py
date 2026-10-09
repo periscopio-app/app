@@ -87,6 +87,7 @@ def test_groq_exige_chave_e_modelo_e_envia_requisicao_compativel_openai(monkeypa
     assert seen["url"] == "https://api.groq.com/openai/v1/chat/completions"
     assert "gsk_segredo" not in seen["url"] and seen["headers"]["authorization"] == "Bearer gsk_segredo"
     assert seen["body"]["model"] == "modelo-groq" and seen["body"]["response_format"] == {"type": "json_object"}
+    assert "reasoning_effort" not in seen["body"]
     assert seen["body"]["messages"][0]["role"] == "system"
 
 
@@ -96,3 +97,26 @@ def test_groq_vence_gemini_e_provedor_forcado_respeita(monkeypatch):
     assert llm.provider() == "groq"
     monkeypatch.setenv("BI_LLM_PROVIDER", "gemini")
     assert llm.provider() == "gemini"
+
+
+def test_groq_gpt_oss_usa_raciocinio_baixo_e_cai_para_sem_modo_json_no_400(monkeypatch):
+    import io, urllib.error
+    _clear(monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "q"); monkeypatch.setenv("BI_LLM_MODEL", "openai/gpt-oss-120b")
+    bodies = []
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return json.dumps({"choices": [{"message": {"content": 'texto {"metric":"cases"} fim'}}]}).encode()
+
+    def fake(req, timeout=0):
+        bodies.append(json.loads(req.data))
+        if len(bodies) == 1:
+            raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, io.BytesIO(b"{}"))
+        return Resp()
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", fake)
+    assert llm.plan_with_llm("x", {}, []) == {"metric": "cases"}
+    assert bodies[0]["reasoning_effort"] == "low" and bodies[0]["max_completion_tokens"] >= 1000
+    assert "response_format" in bodies[0] and "response_format" not in bodies[1]
