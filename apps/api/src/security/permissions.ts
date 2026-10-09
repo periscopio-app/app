@@ -23,6 +23,9 @@ export const REGISTRY_ROLES: readonly Role[] = ["ppi", "admin_platform"];
 /** Diretório de profissionais da escola (nome, papel, especialidade): dado administrativo, não clínico. */
 export const STAFF_DIRECTORY_ROLES: readonly Role[] = ["admin_platform", "municipal_manager", "school_manager", "ppi"];
 
+/** Diretório dos especialistas do núcleo (nome, especialidade): o médico precisa dele para delegar. Dado administrativo, não clínico. */
+export const NUCLEO_DIRECTORY_ROLES: readonly Role[] = ["md1"];
+
 /** Lista os casos e lê a avaliação do RE: RE (da própria escola) e médico (da rede). */
 export const CASE_LIST_ROLES: readonly Role[] = ["ppi", "md1"];
 

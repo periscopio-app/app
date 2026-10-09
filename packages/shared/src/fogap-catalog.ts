@@ -251,13 +251,15 @@ export function prontoParaRevisao(payload: FogapPayload): { pronto: boolean; pen
   }
 
   const itens = getItensGrupo(payload.grupo);
-  const devPendentes = itens.filter((item) => !payload.respostas_desenvolvimento[item.id]);
+  const respostasDev = payload.respostas_desenvolvimento ?? {};
+  const respostasComp = payload.respostas_comportamentos ?? {};
+  const devPendentes = itens.filter((item) => !respostasDev[item.id]);
   if (devPendentes.length > 0) {
     avisos.push(`${devPendentes.length} item(s) de desenvolvimento em branco`);
   }
 
-  const hiInsuf = payload.historico_insuficiente;
-  const compPendentes = FOGAP_COMPORTAMENTOS.filter((c) => !payload.respostas_comportamentos[c.id]);
+  const hiInsuf = payload.historico_insuficiente ?? { marcado: false, fonte: null, periodo_observado: null };
+  const compPendentes = FOGAP_COMPORTAMENTOS.filter((c) => !respostasComp[c.id]);
   if (compPendentes.length > 0 && !hiInsuf.marcado) {
     avisos.push(`${compPendentes.length} comportamento(s) em branco`);
   }

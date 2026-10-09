@@ -153,6 +153,8 @@ describe("jornada clínica (E2E)", { skip }, () => {
   test("RE: rascunho incompleto não envia; completo envia e trava", async () => {
     const draft = fogapPronto();
     const parcial = { ...draft, fogap_state: "aguardando_idade", grupo: null };
+    const malformado = await call("POST", `/api/cases/${caseId}/re-assessment`, "re", { payload: { ...parcial, respostas_comportamentos: { c1: "inadequada" } } });
+    assert.equal(malformado.status, 400, "rascunho com valor fora do contrato é recusado na criação, como na edição");
     const c = await call("POST", `/api/cases/${caseId}/re-assessment`, "re", { payload: parcial });
     assert.equal(c.status, 201, JSON.stringify(c.body));
 

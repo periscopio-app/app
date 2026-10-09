@@ -106,17 +106,12 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   useEffect(() => {
     async function boot() {
       try {
-        const [meData, schoolData] = await Promise.all([
-          api.get<{ user: Me }>("/api/me"),
-          api.get<{ school: { id: string } }>(`/api/schools/by-slug/${encodeURIComponent(slug)}`),
-        ]);
+        const meData = await api.get<{ user: Me }>("/api/me");
         setMe(meData.user);
 
         const [casesData, profsData] = await Promise.all([
           api.get<{ cases: CaseItem[] }>("/api/cases?states=revisao_medica,delegado,retornado"),
-          api.get<{ professionals: Professional[] }>(
-            `/api/schools/${schoolData.school.id}/professionals`
-          ),
+          api.get<{ professionals: Professional[] }>("/api/nucleo/professionals"),
         ]);
         setCases(casesData.cases ?? []);
         setProfessionals(profsData.professionals ?? []);
@@ -375,7 +370,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   </span>
                 </div>
                 {/* Action tabs */}
-                <nav className="flex gap-1">
+                <nav className="flex flex-wrap gap-1">
                   {[
                     { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
                     { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },
@@ -509,9 +504,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                   p.specialty === spec.id ||
                                   p.role === spec.id
                               )
+                              .sort((a, b) => Number(b.specialty === spec.id) - Number(a.specialty === spec.id))
                               .map((p) => (
                                 <option key={p.id} value={p.id}>
                                   {p.name}
+                                  {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
                                   {p.classCode ? ` · ${p.classCode}` : ""}
                                 </option>
                               ))}
