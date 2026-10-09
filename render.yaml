@@ -83,5 +83,9 @@ services:
       - key: BI_RAG_TOKEN
         sync: false
       # Opcional e desligado por padrão: ver apps/bi-rag/README.md (Privacidade) antes de definir.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: BI_LLM_MODEL
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false

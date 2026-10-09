@@ -24,7 +24,11 @@ BI_RAG_TOKEN=um-segredo uvicorn app:app --port 8765
 Na API: `BI_RAG_URL=http://localhost:8765` e `BI_RAG_TOKEN=um-segredo` (mesmo valor).
 
 ## Privacidade e modelo de linguagem (opcional, desligado)
-Sem `ANTHROPIC_API_KEY`, tudo roda por regras + exemplos aprovados, sem custo e sem sair do seu ambiente.
-Se a chave for definida, perguntas de baixa confiança passam por um modelo; nesse caso o **texto da pergunta e o catálogo**
+Sem chave de provedor, tudo roda por regras + exemplos aprovados, sem custo e sem sair do seu ambiente.
+Se houver chave, perguntas de baixa confiança (< 0.6) passam por um modelo; nesse caso o **texto da pergunta e o catálogo**
 (nunca dados de alunos) são enviados ao provedor. Isso é uma decisão de LGPD/contrato: só ligue depois de aprovada.
-Modelo configurável por `BI_LLM_MODEL` (padrão: `claude-haiku-4-5-20251001`, o mais barato).
+
+**Gemini (Google AI Studio):** defina `GEMINI_API_KEY` e `BI_LLM_MODEL` (copie o ID exato do modelo no AI Studio, em "Get code").
+Use projeto com faturamento ativo: no nível gratuito o Google pode usar os prompts para melhorar produtos.
+**Anthropic:** defina `ANTHROPIC_API_KEY` (modelo padrão `claude-haiku-4-5-20251001`, ou `BI_LLM_MODEL`).
+`BI_LLM_PROVIDER=gemini|anthropic` força o provedor; sem isso vale o que tiver chave. Qualquer falha cai nas regras.
