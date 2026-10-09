@@ -434,6 +434,23 @@ export const legacyImportBatches = pgTable("legacy_import_batches", {
   uniqueIndex("legacy_import_batches_file_unique").on(t.tenantId, t.source, t.fileSha256),
 ]);
 
+/** Dicionário de variáveis da planilha (aba "Variáveis"): decodifica os códigos da camada bruta. Não contém dado de paciente. */
+export const legacyVariableDictionary = pgTable("legacy_variable_dictionary", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  batchId: uuid("batch_id").notNull().references(() => legacyImportBatches.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  position: integer("position").notNull(), // nº da linha na aba do dicionário
+  sheetColumn: varchar("sheet_column", { length: 10 }),
+  variable: varchar("variable", { length: 160 }), // nome da variável vigente (herdado nas linhas de valores)
+  columnName: varchar("column_name", { length: 160 }),
+  description: text("description"),
+  value: varchar("value", { length: 160 }),
+  label: text("label"),
+}, (t) => [
+  uniqueIndex("legacy_variable_dictionary_pos").on(t.batchId, t.position),
+  index("legacy_variable_dictionary_var").on(t.batchId, t.variable),
+]);
+
 /** Camada sem perda: uma linha por registro da planilha, cada coluna por nome. */
 export const legacyImportRows = pgTable("legacy_import_rows", {
   id: uuid("id").primaryKey().defaultRandom(),

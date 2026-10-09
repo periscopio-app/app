@@ -40,6 +40,24 @@ export const manifestSchema = z
         columnNonNull: z.record(int.min(0)),
         geocoder: z.string().max(40).nullable(),
         warnings: z.array(z.string()).optional(),
+        /** Colunas revisadas por humano cujo NOME parece identificador mas o conteúdo não é (ex.: CELULAR = "usa celular", 0/1). */
+        allowedColumns: z.array(z.string().min(1).max(120)).optional(),
+        /** Aba de dicionário de variáveis da planilha (sem dado de paciente). */
+        dictionary: z
+          .array(
+            z
+              .object({
+                position: int.min(1),
+                sheetColumn: z.string().max(10).nullable(),
+                variable: z.string().max(160).nullable(),
+                columnName: z.string().max(160).nullable(),
+                description: z.string().nullable(),
+                value: z.string().max(160).nullable(),
+                label: z.string().nullable(),
+              })
+              .strict(),
+          )
+          .optional(),
       })
       .strict(),
   })
@@ -115,8 +133,9 @@ export const norm = (s: string) =>
 /** Cabeçalhos que indicam identificador direto. Nome e endereço precisam ter sido trocados antes do arquivo chegar aqui. */
 const DENIED_KEY = /\b(nome|name|endereco|address|logradouro|rua|cep|cpf|rg|cns|telefone|celular|fone|email|e mail)\b/;
 
-export function deniedColumns(keys: string[]): string[] {
-  return keys.filter((k) => DENIED_KEY.test(norm(k)));
+export function deniedColumns(keys: string[], allowed: string[] = []): string[] {
+  const ok = new Set(allowed);
+  return keys.filter((k) => !ok.has(k) && DENIED_KEY.test(norm(k)));
 }
 
 const PII_VALUE: { name: string; re: RegExp }[] = [

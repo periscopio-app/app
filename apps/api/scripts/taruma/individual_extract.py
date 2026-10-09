@@ -322,6 +322,40 @@ def split_guardian(value, as_mode, relation_value=None):
     return (name_part or plain), (rel or found)
 
 
+def decode_entry_year(v, year_map):
+    """Se a planilha guarda um CÓDIGO de período (ex.: 13 = 2024), usa o mapa do dicionário; senão lê o ano."""
+    n = to_int(v)
+    if year_map:
+        return year_map.get(str(n)) if n is not None else None
+    return n
+
+
+def decode_label(v, labels, limit=None):
+    t = to_text(v, limit)
+    if t is not None and labels:
+        key = str(to_int(v)) if to_int(v) is not None else t
+        return labels.get(key, t)
+    return t
+
+
+def read_dictionary(path, sheet):
+    """Aba de dicionário de variáveis: colunas A=letra, B=nome, C=descrição, D=valor, F=rótulo. Sem dado de paciente."""
+    ws = open_sheet(path, sheet)
+    out, variable = [], None
+    for n, r in enumerate(ws.iter_rows(values_only=True), start=1):
+        cells = [to_text(c, 4000) for c in (list(r) + [None] * 6)[:6]]
+        letter, colname, desc, value, _, label = cells
+        if not any(cells):
+            continue
+        if n < 5:  # título e cabeçalho da aba
+            continue
+        if colname:
+            variable = colname
+        out.append({"position": n, "sheetColumn": letter, "variable": (variable or "")[:160] or None,
+                    "columnName": (colname or "")[:160] or None, "description": desc, "value": (value or "")[:160] or None, "label": label})
+    return out
+
+
 def build_manifest_and_lines(path, mapping_path, geocoder, secret):
     with open(mapping_path, encoding="utf-8") as fh:
         m = json.load(fh)
@@ -348,7 +382,9 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
              guardian.get("column"), guardian.get("relationColumn"), pat.get("religion"), pat.get("parentsOccupation"), pat.get("economicClass"),
              *(pat.get("extraColumns") or []), *list((m.get("complaints") or {}).get("columns", {}).keys()),
              *[c for cols in (m.get("services") or {}).values() for c in cols],
-             *[(v or {}).get("column") for v in (m.get("items") or {}).values()]]
+             *[(v or {}).get("column") for v in (m.get("items") or {}).values()],
+             *[c for v in (m.get("items") or {}).values() for c in ((v or {}).get("flags") or {})],
+             *(m.get("allowColumns") or [])]
     missing = sorted({c for c in cited if c and c not in ix})
     if missing:
         raise ExtractError("Colunas do mapeamento que não existem na planilha: " + "; ".join(missing))
@@ -392,8 +428,9 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
         school_code = str(sc if sc is not None else 0)
         patient = {
             "recordNumber": rec, "birthDate": birth,
-            "currentAge": to_int(cell(r, pat.get("currentAge"))), "entryYear": to_int(cell(r, pat.get("entryYear"))),
-            "religion": to_text(cell(r, pat.get("religion")), 80),
+            "currentAge": to_int(cell(r, pat.get("currentAge"))),
+            "entryYear": decode_entry_year(cell(r, pat.get("entryYear")), pat.get("entryYearMap")),
+            "religion": decode_label(cell(r, pat.get("religion")), pat.get("religionLabels"), 80),
             "parentsOccupation": to_text(cell(r, pat.get("parentsOccupation")), 2000),
             "economicClass": to_text(cell(r, pat.get("economicClass")), 60),
         }
@@ -433,12 +470,19 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
                     services.append({"service": svc, "column": col, "valueNum": None, "valueText": to_text(v)})
         items = []
         for kind, spec in items_map.items():
-            text = to_text(cell(r, (spec or {}).get("column")))
-            if not text:
-                continue
-            split = (spec or {}).get("split")
-            for pos, piece in enumerate([p for p in (re.split(split, text) if split else [text]) if p and p.strip()]):
-                items.append({"kind": kind, "position": pos, "text": piece.strip()})
+            spec = spec or {}
+            pos = 0
+            text = to_text(cell(r, spec.get("column")))
+            if text:
+                split = spec.get("split")
+                for piece in [p for p in (re.split(split, text) if split else [text]) if p and p.strip()]:
+                    items.append({"kind": kind, "position": pos, "text": piece.strip()})
+                    pos += 1
+            # colunas "uma por opção" (HD-0..HD-18, ANTEC-FAM-0..9...): cada coluna marcada vira um item com o rótulo do dicionário
+            for col, label in (spec.get("flags") or {}).items():
+                if cell(r, col) == spec.get("flagValue", 1):
+                    items.append({"kind": kind, "position": pos, "text": label})
+                    pos += 1
 
         raw = {}
         for h in header:
@@ -475,6 +519,10 @@ def build_manifest_and_lines(path, mapping_path, geocoder, secret):
         "fileSha256": sha256_file(path), "mappingSha256": mapping_sha, "rowCount": len(lines),
         "columns": header, "transformedColumns": sorted(set(transformed)), "columnNonNull": nonnull,
         "geocoder": "mapbox-geocoding-v6" if geocoder else None, "warnings": warnings}}
+    if m.get("allowColumns"):
+        manifest["manifest"]["allowedColumns"] = sorted(m["allowColumns"])
+    if m.get("dictionarySheet"):
+        manifest["manifest"]["dictionary"] = read_dictionary(path, m["dictionarySheet"])
     return manifest, lines
 
 

@@ -184,3 +184,32 @@ def test_split_guardian_casos():
     assert sg("João Souza", "pseudonym", "tio") == ("joao souza", "tio")  # coluna de parentesco separada
     assert sg("avó", "text") == (None, "avó")
     assert sg(None, "pseudonym", "pai") == (None, "pai")
+
+
+def test_flags_dicionario_e_coluna_liberada(tmp_path):
+    wb = openpyxl.Workbook()
+    ws = wb.active; ws.title = "Dados"
+    ws.append(["seq", "NOME", "Escola", "FAM R", "CELULAR", "HD-0", "HD-1", "ANTEC-FAM-1"])
+    ws.append([1, "Aluno Sintético A", 2, "Maria Sintética", 1, 0, 1, 1])
+    ws.append([2, "Aluno Sintético B", 3, None, 0, 1, 1, 0])
+    dic = wb.create_sheet("Variáveis")
+    dic.append([None, None, "Dicionário"]); dic.append([None, None, "ATUALIZADO"]); dic.append([])
+    dic.append(["Coluna", "Nome da Coluna", "Variável", "Valor", None, "Rótulo"]); dic.append([])
+    dic.append(["E", "CELULAR", "Paciente usa o celular", 0, None, "Não"])
+    dic.append([None, None, None, 1, None, "Sim"])
+    path = tmp_path / "f.xlsx"; wb.save(path)
+    m = {"schemaVersion": 1, "source": "t", "referenceYear": 2024, "sheet": "Dados", "rowFilterColumn": "seq",
+         "school": {"column": "Escola", "labels": {}}, "patient": {"nameColumn": "NOME", "guardian": {"column": "FAM R", "as": "pseudonym"}},
+         "complaints": {"columns": {}}, "services": {}, "allowColumns": ["CELULAR"], "dictionarySheet": "Variáveis",
+         "items": {"hypothesis": {"flags": {"HD-0": "Normal", "HD-1": "Hipótese Um"}, "flagValue": 1},
+                   "family_history": {"flags": {"ANTEC-FAM-1": "Doença mental"}, "flagValue": 1}}}
+    mp = tmp_path / "m.json"; mp.write_text(json.dumps(m, ensure_ascii=False))
+    manifest, lines = ex.build_manifest_and_lines(str(path), str(mp), None, SECRET)
+    assert [i["text"] for i in lines[0]["items"] if i["kind"] == "hypothesis"] == ["Hipótese Um"]
+    assert [i["text"] for i in lines[1]["items"] if i["kind"] == "hypothesis"] == ["Normal", "Hipótese Um"]
+    assert [i["text"] for i in lines[0]["items"] if i["kind"] == "family_history"] == ["Doença mental"]
+    assert lines[0]["patient"]["guardianRef"] and lines[1]["patient"].get("guardianRef") is None
+    mf = manifest["manifest"]
+    assert mf["allowedColumns"] == ["CELULAR"] and lines[0]["raw"]["CELULAR"] == 1
+    d = mf["dictionary"]
+    assert [x["variable"] for x in d] == ["CELULAR", "CELULAR"] and [x["label"] for x in d] == ["Não", "Sim"]
