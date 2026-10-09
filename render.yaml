@@ -32,6 +32,10 @@ services:
         sync: false
       - key: MAPBOX_TOKEN
         sync: false
+      - key: BI_RAG_URL
+        sync: false
+      - key: BI_RAG_TOKEN
+        sync: false
       - key: BETTER_AUTH_SECRET
         sync: false
       - key: BETTER_AUTH_URL
@@ -63,3 +67,21 @@ services:
     name: periscopio-redis
     plan: starter
     ipAllowList: []
+
+  # Assistente do BI (Python). Sem banco e sem dado de aluno; plano gratuito basta (pode "dormir" e acordar sob demanda).
+  - type: web
+    name: periscopio-bi-rag
+    runtime: python
+    plan: free
+    rootDir: apps/bi-rag
+    healthCheckPath: /health
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: BI_RAG_TOKEN
+        sync: false
+      # Opcional e desligado por padrão: ver apps/bi-rag/README.md (Privacidade) antes de definir.
+      - key: ANTHROPIC_API_KEY
+        sync: false
