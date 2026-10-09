@@ -12,6 +12,8 @@ import {
   doublePrecision,
   real,
   smallint,
+  primaryKey,
+  index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -401,6 +403,114 @@ export const populationAggregates = pgTable("population_aggregates", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("population_aggregates_unique").on(t.tenantId, t.source, t.schoolCode),
+]);
+
+/**
+ * ── Base individual legada (ex.: planilha NEMT de Tarumã) ───────────────────────────────
+ * Dado de saúde de crianças. Regras do desenho:
+ *  - O nome da criança NUNCA entra: vira `legacy_patients.id` (UUID derivado por HMAC com segredo guardado fora do banco).
+ *  - O endereço NUNCA entra: vira latitude/longitude em `legacy_patient_locations` (só a coordenada e a qualidade).
+ *  - `legacy_import_rows.data` guarda, sem perda, cada coluna da planilha (menos nome e endereço), por linha.
+ *  - Nenhuma rota da API lê estas tabelas (há teste que garante). Acesso só por quem a controladora autorizar.
+ */
+export const legacyImportBatches = pgTable("legacy_import_batches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  source: varchar("source", { length: 60 }).notNull(),
+  referenceYear: integer("reference_year").notNull(),
+  fileSha256: varchar("file_sha256", { length: 64 }).notNull(), // da planilha original (prova de qual arquivo foi migrado)
+  mappingSha256: varchar("mapping_sha256", { length: 64 }).notNull(),
+  rowCount: integer("row_count").notNull(),
+  columns: jsonb("columns").notNull(), // só os NOMES das colunas da planilha
+  transformedColumns: jsonb("transformed_columns").notNull(), // colunas que viraram UUID/coordenada e não entram em claro
+  columnNonNull: jsonb("column_non_null").notNull(), // por coluna: células preenchidas na planilha (base da conferência)
+  geocoder: varchar("geocoder", { length: 40 }),
+  legalBasis: text("legal_basis").notNull(),
+  authorizedBy: text("authorized_by").notNull(),
+  authorizationRef: text("authorization_ref"),
+  status: varchar("status", { length: 20 }).default("applied").notNull(), // applied | replaced
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("legacy_import_batches_file_unique").on(t.tenantId, t.source, t.fileSha256),
+]);
+
+/** Camada sem perda: uma linha por registro da planilha, cada coluna por nome. */
+export const legacyImportRows = pgTable("legacy_import_rows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  batchId: uuid("batch_id").notNull().references(() => legacyImportBatches.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  sourceRow: integer("source_row").notNull(), // nº da linha na planilha (rastreio)
+  patientId: uuid("patient_id").notNull(),
+  data: jsonb("data").notNull(),
+}, (t) => [
+  uniqueIndex("legacy_import_rows_batch_row").on(t.batchId, t.sourceRow),
+]);
+
+/** Paciente pseudonimizado: `id` é o UUID que substitui o nome. */
+export const legacyPatients = pgTable("legacy_patients", {
+  id: uuid("id").primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  batchId: uuid("batch_id").notNull().references(() => legacyImportBatches.id, { onDelete: "cascade" }),
+  schoolId: uuid("school_id").references(() => schools.id),
+  schoolCode: varchar("school_code", { length: 30 }).notNull(),
+  sourceRow: integer("source_row").notNull(),
+  recordNumber: varchar("record_number", { length: 60 }), // nº de prontuário da clínica
+  birthDate: date("birth_date"),
+  currentAge: integer("current_age"), // "ID ATUAL" da planilha
+  entryYear: integer("entry_year"), // "ANO" (ingresso)
+  guardianRef: uuid("guardian_ref"), // familiar responsável, quando é nome: vira UUID
+  guardianRelation: varchar("guardian_relation", { length: 60 }), // quando a coluna é o parentesco (mãe, pai...)
+  religion: varchar("religion", { length: 80 }),
+  parentsOccupation: text("parents_occupation"),
+  economicClass: varchar("economic_class", { length: 60 }),
+  extra: jsonb("extra"), // colunas mapeadas como complementares
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("legacy_patients_tenant_school").on(t.tenantId, t.schoolCode),
+  index("legacy_patients_tenant_entry_year").on(t.tenantId, t.entryYear),
+]);
+
+/** Localização da residência como coordenada (o endereço em texto nunca é guardado). */
+export const legacyPatientLocations = pgTable("legacy_patient_locations", {
+  patientId: uuid("patient_id").primaryKey().references(() => legacyPatients.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  status: varchar("status", { length: 20 }).notNull(), // ok | low_confidence | not_found | out_of_area | no_address | skipped
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  accuracy: varchar("accuracy", { length: 30 }), // rooftop, parcel, street, locality...
+  confidence: varchar("confidence", { length: 20 }), // exact, high, medium, low
+  addressKey: varchar("address_key", { length: 64 }), // HMAC do endereço normalizado: agrupa moradores do mesmo endereço sem guardar o texto
+  provider: varchar("provider", { length: 40 }),
+  permanent: boolean("permanent"),
+  geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
+});
+
+export const legacyPatientComplaints = pgTable("legacy_patient_complaints", {
+  patientId: uuid("patient_id").notNull().references(() => legacyPatients.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  complaint: varchar("complaint", { length: 120 }).notNull(),
+}, (t) => [primaryKey({ columns: [t.patientId, t.complaint] })]);
+
+/** Cada coluna de serviço (avaliação, terapia, sessões...) com o valor original. */
+export const legacyPatientServices = pgTable("legacy_patient_services", {
+  patientId: uuid("patient_id").notNull().references(() => legacyPatients.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  service: varchar("service", { length: 30 }).notNull(), // fonoaudiologia, psicopedagogia, psicoterapia, psicomotricidade, neuropsicologia, assistencia_social, consulta_medica
+  sourceColumn: varchar("source_column", { length: 80 }).notNull(),
+  valueNum: doublePrecision("value_num"),
+  valueText: text("value_text"),
+}, (t) => [primaryKey({ columns: [t.patientId, t.sourceColumn] })]);
+
+/** Texto clínico registrado pelos profissionais, um item por linha: hipótese, fármaco, antecedente familiar. */
+export const legacyPatientItems = pgTable("legacy_patient_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").notNull().references(() => legacyPatients.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  kind: varchar("kind", { length: 20 }).notNull(), // hypothesis | medication | family_history
+  position: integer("position").notNull(),
+  text: text("text").notNull(),
+}, (t) => [
+  uniqueIndex("legacy_patient_items_unique").on(t.patientId, t.kind, t.position),
 ]);
 
 

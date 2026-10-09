@@ -92,6 +92,13 @@
       "when": 1791506400000,
       "tag": "0012_bi_questions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791592800000,
+      "tag": "0013_base_individual",
+      "breakpoints": true
     }
   ]
 }
