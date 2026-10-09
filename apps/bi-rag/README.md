@@ -14,6 +14,16 @@ semântica do Periscópio. Quem valida e executa o plano é a API Node, com o es
    respeitando escola/idade/período citados na nova pergunta.
 3. Não há treino de modelo sobre dados pessoais: o aprendizado é um conjunto curado de pares pergunta → consulta.
 
+## Aprendizado inicial com o vocabulário de Tarumã (seed)
+`seed/bi_examples_taruma.json` tem 67 pares pergunta → plano (queixas, serviços, faixa etária, profissionais, jornada, delegações),
+escritos com o vocabulário da base de Tarumã. Não há número, id de escola nem dado de aluno: só a forma da consulta.
+- Carregar como perguntas **já aprovadas** do tenant (simula por padrão; idempotente):
+  `pnpm --filter api taruma:seed-bi -- --tenant <uuid>` e, para gravar, `... --apply`.
+- A API passa a enviar esses exemplos ao serviço; perguntas parecidas voltam com `source: example`.
+- Além disso, o prompt do modelo (`SYSTEM` em `bi_rag/llm.py`) traz um guia do domínio (qual métrica responde a cada tipo de pergunta)
+  e as regras (`rules.py`) reconhecem as queixas e serviços da base. Nenhum dado de paciente vai ao provedor.
+- Daí em diante o aprendizado continua pela tela do BI: cada pergunta útil aprovada vira exemplo novo.
+
 ## Rodar local
 ```
 cd apps/bi-rag
