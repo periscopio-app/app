@@ -9,6 +9,7 @@ try {
 
 import { buildApp } from "./app";
 import { healCredentialAccounts } from "./auth/credentials";
+import { ensureSchema } from "./services/schema-guard.service";
 
 const app = await buildApp();
 const port = Number(process.env.PORT ?? 3001);
@@ -16,6 +17,7 @@ const port = Number(process.env.PORT ?? 3001);
 app
   .listen({ port, host: "0.0.0.0" })
   .then(async () => {
+    await ensureSchema().catch((err) => app.log.error({ err: String(err) }, "falha no schema-guard"));
     try {
       const fixed = await healCredentialAccounts();
       if (fixed > 0) app.log.info({ fixed }, "credenciais de login corrigidas (accountId = id do usuário)");

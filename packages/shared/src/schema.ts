@@ -556,3 +556,66 @@ export const biQuestions = pgTable("bi_questions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Termos de consentimento livre e esclarecido (LGPD / Art. 14 e Art. 7, I).
+ */
+export const consentTerms = pgTable("consent_terms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  version: varchar("version", { length: 20 }).notNull(),
+  type: varchar("type", { length: 40 }).notNull().default("responsavel_legal"),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  content: text("content").notNull(),
+  active: boolean("active").default(true).notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("consent_terms_tenant_ver_type_unique").on(t.tenantId, t.version, t.type),
+]);
+
+/**
+ * Provas de aceite do consentimento — Imutável e rastreável com hash SHA-256 (LGPD, Art. 8º § 2º).
+ */
+export const consentAcceptances = pgTable("consent_acceptances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  termId: uuid("term_id").notNull().references(() => consentTerms.id),
+  studentId: uuid("student_id").references(() => students.id),
+  caseId: uuid("case_id").references(() => cases.id),
+  userId: uuid("user_id").references(() => users.id),
+  signerName: text("signer_name").notNull(),
+  signerDocument: varchar("signer_document", { length: 20 }),
+  signerRole: varchar("signer_role", { length: 40 }).notNull(),
+  signerEmail: varchar("signer_email", { length: 255 }),
+  signerPhone: varchar("signer_phone", { length: 30 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  evidenceSha256: varchar("evidence_sha256", { length: 64 }).notNull(),
+  status: varchar("status", { length: 20 }).default("accepted").notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokedReason: text("revoked_reason"),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Anexos e documentos clínicos vinculados ao prontuário.
+ * Armazenamento opaco em bucket S3/Supabase sem PII no path (Task 02B).
+ */
+export const clinicalAttachments = pgTable("clinical_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  studentId: uuid("student_id").references(() => students.id),
+  uploaderId: uuid("uploader_id").notNull().references(() => users.id),
+  storageKey: varchar("storage_key", { length: 255 }).notNull().unique(),
+  originalName: varchar("original_name", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 120 }).notNull(),
+  fileSizeBytes: integer("file_size_bytes").notNull(),
+  sha256: varchar("sha256", { length: 64 }).notNull(),
+  category: varchar("category", { length: 50 }).default("relatorio_clinico").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+

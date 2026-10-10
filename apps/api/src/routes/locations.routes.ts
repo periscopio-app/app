@@ -67,59 +67,145 @@ const REGIOES: Record<string, string> = {
 };
 
 export async function locationsRoutes(app: FastifyInstance) {
-  // Lista todos os 27 estados brasileiros
-  app.get("/api/locations/states", async () => {
-    const dataset = getCidadeDataset();
-    return {
-      total: dataset.estados.length,
-      estados: dataset.estados.map((e) => ({
-        sigla: e.sigla,
-        nome: e.nome,
-        regiao: REGIOES[e.sigla] ?? "Sudeste",
-        totalCidades: e.cidades.length,
-      })),
-    };
-  });
-
-  // Lista cidades de uma UF (ex: /api/locations/cities/SP)
-  app.get<{ Params: { uf: string } }>("/api/locations/cities/:uf", async (request, reply) => {
-    const uf = request.params.uf.toUpperCase().trim();
-    const dataset = getCidadeDataset();
-    const estado = dataset.estados.find((e) => e.sigla === uf);
-
-    if (!estado) {
-      return reply.status(404).send({ error: `Estado com sigla "${uf}" não encontrado` });
+  // 1. Lista todos os 27 estados brasileiros
+  app.get(
+    "/api/locations/states",
+    {
+      schema: {
+        description: "Lista todas as 27 Unidades Federativas (estados e DF) do Brasil com nome, sigla e região geográfica.",
+        tags: ["Localização & CEP"],
+        response: {
+          200: {
+            description: "Lista de estados brasileiros",
+            type: "object",
+            properties: {
+              total: { type: "number", example: 27 },
+              estados: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    sigla: { type: "string", example: "SP" },
+                    nome: { type: "string", example: "São Paulo" },
+                    regiao: { type: "string", example: "Sudeste" },
+                    totalCidades: { type: "number", example: 645 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async () => {
+      const dataset = getCidadeDataset();
+      return {
+        total: dataset.estados.length,
+        estados: dataset.estados.map((e) => ({
+          sigla: e.sigla,
+          nome: e.nome,
+          regiao: REGIOES[e.sigla] ?? "Sudeste",
+          totalCidades: e.cidades.length,
+        })),
+      };
     }
+  );
 
-    return {
-      sigla: estado.sigla,
-      nome: estado.nome,
-      regiao: REGIOES[estado.sigla] ?? "Sudeste",
-      totalCidades: estado.cidades.length,
-      cidades: estado.cidades,
-    };
-  });
+  // 2. Lista cidades de uma UF (ex: /api/locations/cities/SP)
+  app.get<{ Params: { uf: string } }>(
+    "/api/locations/cities/:uf",
+    {
+      schema: {
+        description: "Recupera todas as cidades de uma Unidade Federativa a partir da sigla (ex: SP, RJ, PR).",
+        tags: ["Localização & CEP"],
+        params: {
+          type: "object",
+          required: ["uf"],
+          properties: {
+            uf: { type: "string", description: "Sigla da UF com 2 caracteres", example: "SP" },
+          },
+        },
+        response: {
+          200: {
+            description: "Cidades do estado selecionado",
+            type: "object",
+            properties: {
+              sigla: { type: "string", example: "SP" },
+              nome: { type: "string", example: "São Paulo" },
+              regiao: { type: "string", example: "Sudeste" },
+              totalCidades: { type: "number", example: 645 },
+              cidades: {
+                type: "array",
+                items: { type: "string" },
+                example: ["Tarumã", "Assis", "Cândido Mota", "Marília", "Ourinhos", "São Paulo"],
+              },
+            },
+          },
+          404: {
+            description: "Estado não encontrado",
+            type: "object",
+            properties: {
+              error: { type: "string", example: 'Estado com sigla "XX" não encontrado' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const uf = request.params.uf.toUpperCase().trim();
+      const dataset = getCidadeDataset();
+      const estado = dataset.estados.find((e) => e.sigla === uf);
 
-  // Query parameter alternativo: /api/locations/cities?uf=SP
-  app.get<{ Querystring: { uf?: string } }>("/api/locations/cities", async (request, reply) => {
-    const uf = request.query.uf?.toUpperCase().trim();
-    if (!uf) {
-      return reply.status(400).send({ error: "Parâmetro 'uf' é obrigatório (ex: ?uf=SP)" });
+      if (!estado) {
+        return reply.status(404).send({ error: `Estado com sigla "${uf}" não encontrado` });
+      }
+
+      return {
+        sigla: estado.sigla,
+        nome: estado.nome,
+        regiao: REGIOES[estado.sigla] ?? "Sudeste",
+        totalCidades: estado.cidades.length,
+        cidades: estado.cidades,
+      };
     }
+  );
 
-    const dataset = getCidadeDataset();
-    const estado = dataset.estados.find((e) => e.sigla === uf);
+  // 3. Query parameter alternativo: /api/locations/cities?uf=SP
+  app.get<{ Querystring: { uf?: string } }>(
+    "/api/locations/cities",
+    {
+      schema: {
+        description: "Recupera todas as cidades de uma UF via query string (?uf=SP).",
+        tags: ["Localização & CEP"],
+        querystring: {
+          type: "object",
+          required: ["uf"],
+          properties: {
+            uf: { type: "string", description: "Sigla da UF com 2 caracteres", example: "SP" },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const uf = request.query.uf?.toUpperCase().trim();
+      if (!uf) {
+        return reply.status(400).send({ error: "Parâmetro 'uf' é obrigatório (ex: ?uf=SP)" });
+      }
 
-    if (!estado) {
-      return reply.status(404).send({ error: `Estado com sigla "${uf}" não encontrado` });
+      const dataset = getCidadeDataset();
+      const estado = dataset.estados.find((e) => e.sigla === uf);
+
+      if (!estado) {
+        return reply.status(404).send({ error: `Estado com sigla "${uf}" não encontrado` });
+      }
+
+      return {
+        sigla: estado.sigla,
+        nome: estado.nome,
+        regiao: REGIOES[estado.sigla] ?? "Sudeste",
+        totalCidades: estado.cidades.length,
+        cidades: estado.cidades,
+      };
     }
-
-    return {
-      sigla: estado.sigla,
-      nome: estado.nome,
-      regiao: REGIOES[estado.sigla] ?? "Sudeste",
-      totalCidades: estado.cidades.length,
-      cidades: estado.cidades,
-    };
-  });
+  );
 }

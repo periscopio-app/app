@@ -61,7 +61,7 @@ const config: Config = {
         grafite,
         linha: "#E1E9ED",
         fundo: "#F6F9FB",
-        sucesso: "#2F7D5B",
+        sucesso: "#388E3C",
         erro: "#B42318",
         // aliases semânticos
         background: "#F6F9FB",
@@ -75,8 +75,8 @@ const config: Config = {
         secondary: { DEFAULT: "#F0F9FC", foreground: "#000000" },
       },
       fontFamily: {
-        display: ["Montserrat", "sans-serif"],
-        sans: ["Public Sans", "system-ui", "sans-serif"],
+        display: ["Montserrat", "Roboto", "sans-serif"],
+        sans: ["Roboto", "Public Sans", "Inter", "system-ui", "sans-serif"],
       },
       borderRadius: { "2xl": "20px", "3xl": "28px" },
       boxShadow: {

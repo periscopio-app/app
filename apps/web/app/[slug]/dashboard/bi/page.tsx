@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Clock,
   Download,
+  Edit3,
   MessageSquare,
   RefreshCw,
   School,
@@ -566,8 +567,8 @@ export default function BiPage() {
           title="Tempo Médio de Atendimento"
           icon={Clock}
           r={ov?.cycle}
-          overrideValue="48,5 dias"
-          sub="média calculada no protocolo NEMT"
+          overrideValue={ov?.cycle?.total != null ? `${ov.cycle.total} dias` : undefined}
+          sub="tempo médio na Janela Terapêutica (NEMT)"
         />
         <KpiCard
           title="Serviços / Especialidades"
@@ -684,14 +685,11 @@ export default function BiPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => feedback(m.id, m.reply!.questionId, -1)}
-                                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 transition ${
-                                  m.rated === -1
-                                    ? "bg-rose-50 border-rose-500 text-rose-800 font-bold"
-                                    : "border-linha hover:bg-neutral-50 text-black"
-                                }`}
+                                onClick={() => feedback(m.id, m.reply!.questionId, -1, true)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 hover:bg-amber-100 transition font-medium"
+                                title="Solicitar ajuste ou sugerir correção para o plano de consulta"
                               >
-                                <ThumbsDown className="h-3 w-3" /> Não
+                                <Edit3 className="h-3 w-3" /> Corrigir Consulta
                               </button>
                             </div>
                           </div>

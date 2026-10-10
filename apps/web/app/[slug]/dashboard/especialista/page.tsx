@@ -4,7 +4,26 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { api, type CaseSection, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
+
+const SPECIALTY_NAMES: Record<string, string> = {
+  assistente_social: "Assistente Social (AS)",
+  servico_social: "Assistente Social (AS)",
+  as: "Assistente Social (AS)",
+  neuropsicologia: "Neuropsicólogo(a)",
+  neuropsicologo: "Neuropsicólogo(a)",
+  psicomotricidade: "Psicomotricista",
+  psicomotricista: "Psicomotricista",
+  psicoterapia: "Psicoterapeuta / Psicólogo(a)",
+  psicologia: "Psicoterapeuta / Psicólogo(a)",
+  fonoaudiologia: "Fonoaudiólogo(a)",
+  fonoaudiologa: "Fonoaudiólogo(a)",
+  psicologia_familiar: "Psicólogo(a) Familiar",
+  psicopedagogia: "Psicopedagogo(a) Clínico(a)",
+  psicopedagogo_clinico: "Psicopedagogo(a) Clínico(a)",
+};
+
 
 interface AssignedSection extends CaseSection {
   caseId: string;
@@ -237,8 +256,8 @@ export default function EspecialistaDashboardPage({
                       {sec.status}
                     </span>
                   </div>
-                  <div className="text-[11px] text-neutral-800 mt-0.5 capitalize">
-                    {sec.specialty}
+                  <div className="text-[11px] text-neutral-800 mt-0.5">
+                    <strong>Especialidade:</strong> {SPECIALTY_NAMES[sec.specialty] ?? sec.specialty}
                     {sec.birthYear ? ` · nasc. ${sec.birthYear}` : ""}
                   </div>
                 </button>
@@ -255,31 +274,37 @@ export default function EspecialistaDashboardPage({
               </div>
             ) : (
               <div className="rounded-2xl bg-white border border-linha p-6 shadow-suave space-y-5">
+                {/* Prontuário Oficial - 5 Colunas Padronizadas */}
+                <ProntuarioHeaderCard
+                  studentCode={activeSection.studentCode}
+                  studentName={`Aluno (${activeSection.studentCode.slice(-6)})`}
+                  schoolName={slug}
+                  ageText={activeSection.birthYear ? `${new Date().getFullYear() - activeSection.birthYear} anos` : "7–9 anos (Piloto)"}
+                  professionalName={activeSection.professionalName || me?.name || "Especialista do Núcleo"}
+                  professionalRole={activeSection.specialty}
+                  journeyState={activeSection.status === "concluido" ? "encerrado" : "delegado"}
+                />
+
                 {/* Section header */}
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between border-t border-linha pt-3">
                   <div>
-                    <span className="text-xs font-bold text-black bg-roxo-100 rounded-full px-2.5 py-0.5 capitalize">
-                      {activeSection.specialty}
+                    <span className="text-xs font-bold text-roxo-900 bg-roxo-50 border border-roxo-200 rounded-full px-2.5 py-0.5">
+                      {SPECIALTY_NAMES[activeSection.specialty] ?? activeSection.specialty}
                     </span>
-                    <h2 className="mt-2 text-lg font-bold text-black">
-                      Aluno: {activeSection.studentCode}
+                    <h2 className="mt-2 text-base font-bold text-black">
+                      Parecer Clínico Multiprofissional
                     </h2>
-                    {activeSection.birthYear && (
-                      <p className="text-xs text-neutral-800">
-                        Ano de nascimento: {activeSection.birthYear}
-                      </p>
-                    )}
                   </div>
                   <span
                     className={`text-xs font-bold rounded-full px-2.5 py-1 ${
                       activeSection.status === "concluido"
-                        ? "bg-sucesso/10 text-black"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                         : activeSection.status === "em_andamento"
-                        ? "bg-ceu-100 text-black"
-                        : "bg-ouro-100 text-black"
+                        ? "bg-sky-50 text-sky-800 border border-sky-200"
+                        : "bg-amber-50 text-amber-900 border border-amber-200"
                     }`}
                   >
-                    {activeSection.status}
+                    {activeSection.status === "concluido" ? "Concluído" : activeSection.status === "em_andamento" ? "Em andamento" : "Pendente"}
                   </span>
                 </div>
 

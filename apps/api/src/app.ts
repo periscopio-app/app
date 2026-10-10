@@ -21,9 +21,21 @@ import { locationsRoutes } from "./routes/locations.routes";
 import { viacepRoutes } from "./routes/viacep.routes";
 import { rndsRoutes } from "./routes/rnds.routes";
 import { intersectoralRoutes } from "./routes/intersectoral.routes";
+import { consentRoutes } from "./routes/consent.routes";
+import { lgpdRoutes } from "./routes/lgpd.routes";
+import { identityVaultRoutes } from "./routes/identity-vault.routes";
+import { attachmentsRoutes } from "./routes/attachments.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
-  const app = Fastify({ logger: opts.logger ?? true, trustProxy: true });
+  const app = Fastify({
+    logger: opts.logger ?? true,
+    trustProxy: true,
+    ajv: {
+      customOptions: {
+        strict: false,
+      },
+    },
+  });
   const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
     .split(",")
     .map((origin) => origin.trim())
@@ -75,6 +87,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
         { name: "Localização & CEP", description: "Busca de CEP oficial (ViaCEP), Estados e Cidades do Brasil" },
         { name: "RNDS / SUS", description: "Protocolo RNDS HL7 FHIR (REL) do Ministério da Saúde para Registro Eletrônico em Saúde" },
         { name: "Rede Intersetorial", description: "Encaminhamentos e Acolhimento: CRAS, CAPS (AJ/IJ), UBS e Monitoramento de 90 dias (Lei 13.509 / ECA art. 19 § 2º)" },
+        { name: "Proteção de Dados & LGPD (Art. 18)", description: "Canal público para titulares, gestão de SLA pelo DPO e política de retenção" },
+        { name: "Termos de Consentimento (TCLE)", description: "Termos versionados com prova criptográfica SHA-256 e auditoria" },
+        { name: "Cofre de Identidade do Aluno", description: "Armazenamento cifrado com AES-256 GCM e revelação clínica auditada" },
+        { name: "Anexos Clínicos", description: "Upload e download seguro com chaves opacas e URLs assinadas de 600 segundos" },
         { name: "Casos Clínicos", description: "Jornada multiprofissional e prontuário médico" },
         { name: "BI Municipal", description: "Inteligência populacional de saúde e educação" },
       ],
@@ -111,6 +127,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(viacepRoutes);
   app.register(rndsRoutes);
   app.register(intersectoralRoutes);
+  app.register(consentRoutes);
+  app.register(lgpdRoutes);
+  app.register(identityVaultRoutes);
+  app.register(attachmentsRoutes);
 
   return app;
 }

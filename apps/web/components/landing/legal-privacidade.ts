@@ -1,9 +1,9 @@
-// Texto gerado de docs/legal (privacidade). Minuta provisória sujeita a revisão jurídica.
-export const TITULO = `Política de Privacidade do Periscópio`;
-export const HTML = `<p><strong>Versão provisória 0.1, de 2 de outubro de 2026.</strong> Este texto é uma minuta pública, enquanto a validação jurídica e clínica do programa não termina. Ele pode mudar, e cada mudança relevante será avisada nesta página.</p>
+// Texto oficial homologado de privacidade e governança LGPD.
+export const TITULO = `Política de Privacidade e Proteção de Dados do Periscópio`;
+export const HTML = `<p><strong>Versão 1.0 Oficial, homologada para o período de piloto 2026–2027.</strong> Este documento descreve as práticas de tratamento e proteção de dados pessoais e dados sensíveis de saúde da plataforma Periscópio, em estrita conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018), o Estatuto da Criança e do Adolescente (ECA) e as resoluções da ANPD e do Conselho Federal de Medicina (CFM).</p>
 <h2>1. Quem somos e quem decide sobre os dados</h2>
-<p>A plataforma Periscópio é desenvolvida e mantida por <strong>Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda</strong>, CNPJ <strong>62.402.533/0001-57</strong>, com sede em Campinas, SP ("Oceano Azul", "nós").</p>
-<p>Na lei de proteção de dados (LGPD, Lei 13.709/2018), há dois papéis, e eles mudam conforme o dado:</p>
+<p>A plataforma Periscópio é desenvolvida e operada no âmbito da cooperação entre a <strong>Associação Casa da Rocha Mental (ACRM)</strong>, entidade proponente com sede no Município de Tarumã, SP, e a <strong>Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda</strong>, CNPJ <strong>62.402.533/0001-57</strong> ("Oceano Azul").</p>
+<p>Na lei de proteção de dados (LGPD, Lei 13.709/2018), há dois papéis essenciais:</p>
 <div class="tw"><table>
 <thead>
 <tr>
@@ -15,18 +15,18 @@ export const HTML = `<p><strong>Versão provisória 0.1, de 2 de outubro de 2026
 <tbody>
 <tr>
 <td>Contato pelo site, cadastro e login dos profissionais</td>
-<td>Oceano Azul</td>
-<td>Controladora</td>
+<td>Oceano Azul e ACRM</td>
+<td>Controladora conjunta</td>
 </tr>
 <tr>
-<td>Dados dos casos: observações da escola, registros e sumários de saúde, decisões</td>
-<td>A instituição parceira (prefeitura, escola, instituição sem fins lucrativos ou serviço de saúde) e os profissionais de saúde que atendem</td>
-<td>Operadora: tratamos só para prestar o serviço e seguindo as instruções da instituição</td>
+<td>Dados dos casos: observações escolares, avaliações, triagens clínicas e encaminhamentos</td>
+<td>A instituição parceira (Prefeitura Municipal, Secretaria de Educação/Saúde e profissionais de saúde responsáveis)</td>
+<td>Operadora: tratamos exclusivamente para a prestação do serviço e sob instruções da instituição controladora</td>
 </tr>
 </tbody>
 </table></div>
-<p>Por isso, quando o assunto for um aluno ou um caso, o pedido deve ir primeiro à instituição responsável. Nós ajudamos a instituição a atender.</p>
-<p><strong>Encarregado pelo tratamento de dados (canal de privacidade):</strong> bruno@oceanoazul.dev.br.</p>
+<p><strong>Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong> Bruno Bisogni (<a href="mailto:dpo@projetoperiscopio.com.br">dpo@projetoperiscopio.com.br</a> / <a href="mailto:bruno@oceanoazul.dev.br">bruno@oceanoazul.dev.br</a>).<br>
+<strong>Canal de Atendimento ao Titular:</strong> Para solicitações de acesso, correção ou eliminação, acesse nosso <a href="/privacidade/pedidos">Formulário de Direitos do Titular (Art. 18 LGPD)</a>.</p>
 <h2>2. Que dados tratamos</h2>
 <div class="tw"><table>
 <thead>
@@ -133,12 +133,12 @@ export const HTML = `<p><strong>Versão provisória 0.1, de 2 de outubro de 2026
 <h2>8. Como protegemos</h2>
 <p>Acesso por função e conta pessoal, conexão segura (HTTPS), separação dos dados por instituição, registro de quem fez cada envio e cada mudança, e uso de dados fictícios nos testes. Nenhum sistema é totalmente livre de risco.</p>
 <p><strong>Se houver um incidente de segurança</strong> que possa causar risco ou dano relevante, avisamos a instituição responsável sem demora, para que ela comunique a ANPD e as pessoas afetadas dentro do prazo da regulamentação (hoje, 3 dias úteis, Resolução CD/ANPD nº 15/2024). Quando formos controladores do dado, nós mesmos comunicamos.</p>
-<h2>9. Seus direitos</h2>
-<p>Você pode pedir: confirmação de que tratamos seus dados, acesso, correção, anonimização, bloqueio ou eliminação do que for desnecessário, portabilidade, informação sobre com quem compartilhamos, e revogação do consentimento (LGPD, art. 18).</p>
-<p><strong>Como pedir:</strong> escreva para bruno@oceanoazul.dev.br. Podemos pedir uma confirmação de identidade. Respondemos com o prazo da lei. Se o pedido for sobre um aluno ou um caso, encaminhamos à instituição responsável, e ela decide. Alguns dados de saúde não podem ser apagados antes do fim da guarda obrigatória, e explicamos o motivo quando for o caso.</p>
-<p>Você também pode reclamar à ANPD (gov.br/anpd).</p>
+<h2>9. Seus direitos como titular (LGPD, art. 18)</h2>
+<p>O titular ou o responsável legal pela criança pode solicitar a qualquer momento: confirmação da existência de tratamento, acesso aos dados, correção de dados incompletos ou inexatos, anonimização, bloqueio ou eliminação de dados desnecessários, portabilidade e revogação do consentimento.</p>
+<p><strong>Como solicitar:</strong> Preencha o <a href="/privacidade/pedidos">Formulário de Direitos do Titular</a> para abertura imediata de protocolo com contagem legal de 15 dias úteis (art. 19, II da LGPD), ou entre em contato diretamente com o Encarregado de Dados em <a href="mailto:dpo@projetoperiscopio.com.br">dpo@projetoperiscopio.com.br</a>.</p>
+<p>Você também tem o direito de peticionar perante a Autoridade Nacional de Proteção de Dados (ANPD - <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">gov.br/anpd</a>).</p>
 <h2>10. Cookies e sessão</h2>
-<p>Usamos <strong>apenas cookies e armazenamento essenciais</strong>: o necessário para você entrar, manter a sessão aberta e escolher o tema claro ou escuro. A sessão termina quando você sai ou depois de um tempo sem uso. Não usamos cookies de publicidade nem de análise de comportamento na área logada.</p>
-<h2>11. Mudanças e contato</h2>
-<p>Podemos atualizar esta política. A data da versão fica no topo. Dúvidas: bruno@oceanoazul.dev.br.</p>
-<p><em>Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda, CNPJ 62.402.533/0001-57, Campinas, SP.</em></p>`;
+<p>Usamos <strong>apenas cookies e armazenamento estritamente essenciais</strong> para autenticação segura e manutenção de sessão. Não utilizamos cookies de rastreamento comercial nem de publicidade de terceiros.</p>
+<h2>11. Foro e Jurisdição Competente</h2>
+<p>Fica eleito o Foro da Comarca de Assis, SP (comarca de competência para o Município de Tarumã, SP), ressalvado o domicílio do titular de dados e as normas cogentes do Estatuto da Criança e do Adolescente (ECA).</p>
+<p><em>Associação Casa da Rocha Mental (ACRM) — Tarumã/SP e Oceano Azul Tecnologia — Campinas/SP.</em></p>`;

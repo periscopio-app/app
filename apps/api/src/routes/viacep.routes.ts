@@ -32,16 +32,17 @@ export async function viacepRoutes(app: FastifyInstance) {
         },
         response: {
           200: {
+            description: "Endereço localizado com sucesso nos Correios / ViaCEP",
             type: "object",
             properties: {
-              cep: { type: "string" },
-              logradouro: { type: "string" },
-              complemento: { type: "string" },
-              bairro: { type: "string" },
-              localidade: { type: "string" },
-              uf: { type: "string" },
-              ibge: { type: "string" },
-              ddd: { type: "string" },
+              cep: { type: "string", example: "19820-000" },
+              logradouro: { type: "string", example: "Avenida das Nações" },
+              complemento: { type: "string", example: "Próximo à Secretaria de Educação" },
+              bairro: { type: "string", example: "Centro" },
+              localidade: { type: "string", example: "Tarumã" },
+              uf: { type: "string", example: "SP" },
+              ibge: { type: "string", example: "3553904" },
+              ddd: { type: "string", example: "18" },
             },
           },
           400: {

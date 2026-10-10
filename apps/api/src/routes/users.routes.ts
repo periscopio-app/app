@@ -6,6 +6,7 @@ import { db } from "../db/client";
 import { users, schools, tenants } from "@periscopio/shared";
 import { requireActor } from "../security/actor";
 import { isRole, type Role } from "../security/roles";
+import { recordAudit } from "../services/audit.service";
 
 export const SYSTEM_ROLES_CATALOG = [
   {
@@ -262,8 +263,27 @@ export async function usersRoutes(app: FastifyInstance) {
         })
         .returning();
 
+      await recordAudit(
+        {
+          tenantId,
+          userId: actor.id,
+          userEmail: actor.email,
+          action: "user.created",
+          entityType: "user",
+          entityId: newUser.id,
+          payload: {
+            createdUserId: newUser.id,
+            email: newUser.email,
+            role: newUser.role,
+            schoolId: newUser.schoolId,
+          },
+        },
+        request
+      );
+
       return {
         user: newUser,
+        temporaryPassword: initialPassword,
         message:
           "Usuário criado com sucesso. Comunique a senha inicial por canal seguro fora do sistema.",
       };
@@ -318,6 +338,24 @@ export async function usersRoutes(app: FastifyInstance) {
       return { error: "Usuário não encontrado." };
     }
 
+    await recordAudit(
+      {
+        tenantId: updated.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "user.updated",
+        entityType: "user",
+        entityId: updated.id,
+        payload: {
+          updatedUserId: updated.id,
+          updatedFields: Object.keys(body),
+          newRole: body.role,
+          schoolId: body.schoolId,
+        },
+      },
+      request
+    );
+
     return { user: updated, message: "Privilégios e dados atualizados com sucesso." };
   });
 
@@ -335,7 +373,27 @@ export async function usersRoutes(app: FastifyInstance) {
       return { error: "Não é permitido excluir o próprio usuário autenticado." };
     }
 
+    const [targetUser] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+
     await db.delete(users).where(eq(users.id, id));
+
+    await recordAudit(
+      {
+        tenantId: targetUser?.tenantId || actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "user.deleted",
+        entityType: "user",
+        entityId: id,
+        payload: {
+          deletedUserId: id,
+          email: targetUser?.email,
+          role: targetUser?.role,
+        },
+      },
+      request
+    );
+
     return { success: true, message: "Usuário removido da plataforma." };
   });
 }

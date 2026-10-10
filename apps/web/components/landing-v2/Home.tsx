@@ -281,8 +281,9 @@ export function Home() {
         </div>
       </section>
 
-      {/* CONTATO */}
-      <section id="contato" className="px-5 pb-20">
+      {/* CONTATO & PILOTO */}
+      <section id="contato" className="px-5 pb-20 relative">
+        <div id="piloto" className="absolute -top-24 left-0 pointer-events-none" />
         <div className="mx-auto grid max-w-6xl gap-10 rounded-[2.5rem] bg-gradient-to-br from-turquesa/20 via-white to-amarelo/25 px-8 py-14 shadow-lift md:grid-cols-2 md:px-14">
           <div>
             <Eyebrow>Vamos juntos</Eyebrow>

@@ -13,6 +13,11 @@ import {
 } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
+import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { ConsentCard } from "@/components/dashboard/ConsentCard";
+import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
+import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
+import { FogapViewer } from "@/components/dashboard/FogapViewer";
 import {
   ClipboardList,
   Users,
@@ -51,12 +56,16 @@ const CLOSE_LABELS: Record<string, string> = {
 };
 
 const SPECIALTIES = [
-  { id: "fonoaudiologia", label: "Fonoaudiologia" },
-  { id: "neuropsicologia", label: "Neuropsicologia" },
-  { id: "psicologia", label: "Psicologia" },
-  { id: "psicomotricidade", label: "Psicomotricidade" },
-  { id: "servico_social", label: "Serviço Social" },
+  { id: "assistente_social", label: "Assistente Social (AS) — Diagnóstico Social e Acompanhamento Familiar" },
+  { id: "neuropsicologia", label: "Neuropsicólogo(a) — Avaliação Neuropsicológica" },
+  { id: "psicomotricidade", label: "Psicomotricista" },
+  { id: "psicologia", label: "Psicoterapeuta / Psicólogo(a) Clínico(a)" },
+  { id: "fonoaudiologia", label: "Fonoaudiólogo(a)" },
+  { id: "psicologia_familiar", label: "Psicólogo(a) Familiar" },
+  { id: "psicopedagogia", label: "Psicopedagogo(a) Clínico(a)" },
+  { id: "servico_social", label: "Serviço Social (AS)" },
 ];
+
 
 type ActiveView = "queue" | "re" | "delegate" | "consolidated" | "close" | "trail" | "return";
 
@@ -318,31 +327,40 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 Nenhum caso aguardando revisão médica.
               </p>
             )}
-            {cases.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => openCase(c)}
-                className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
-                  activeCase?.id === c.id
-                    ? "border-roxo bg-roxo-100"
-                    : "border-linha hover:bg-fundo"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-black">{c.studentCode}</span>
-                  <span
-                    className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"
-                    }`}
-                  >
-                    {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
-                  </span>
-                </div>
-                <div className="text-[11px] text-neutral-800 mt-0.5">
-                  {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-                </div>
-              </button>
-            ))}
+            {cases.map((c) => {
+              const currentYear = new Date().getFullYear();
+              const idade = c.birthYear ? currentYear - c.birthYear : null;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => openCase(c)}
+                  className={`w-full text-left rounded-xl border p-3 transition space-y-1.5 ${
+                    activeCase?.id === c.id
+                      ? "border-roxo bg-roxo-50 ring-1 ring-roxo/40"
+                      : "border-linha hover:bg-fundo"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-black">{c.studentCode}</span>
+                    <span
+                      className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                        JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"
+                      }`}
+                    >
+                      {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
+                    <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
+                    <span>•</span>
+                    <span><strong>Idade:</strong> {idade ? `${idade} anos` : "—"}</span>
+                  </div>
+                  <div className="text-[10px] text-neutral-500 truncate">
+                    <strong>Escola:</strong> {c.schoolName || slug} · <strong>Profissional:</strong> {c.assignedToName || "Responsável Escolar"}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -357,20 +375,35 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
             </div>
           ) : (
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
-              {/* Case header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-linha">
+              {/* Prontuário Oficial - 5 Colunas Padronizadas */}
+              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50 space-y-4">
+                <ProntuarioHeaderCard
+                  studentCode={activeCase.studentCode}
+                  studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
+                  schoolName={activeCase.schoolName || slug}
+                  ageText={activeCase.birthYear ? `${new Date().getFullYear() - activeCase.birthYear} anos` : "7–9 anos (Piloto)"}
+                  professionalName={activeCase.assignedToName || me?.name || "Médico(a) Avaliador(a)"}
+                  professionalRole={me?.role || "md1"}
+                  journeyState={activeCase.journeyState}
+                />
+
+                {/* Proteção de Dados, Consentimento e Anexos Clínicos (LGPD) */}
+                <div className="grid grid-cols-1 gap-4 pt-1">
+                  <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
+                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
+                  <CaseAttachmentsCard caseId={activeCase.id} />
+                </div>
+              </div>
+
+              {/* Case action tabs header */}
+              <div className="flex items-center justify-between px-6 py-3.5 border-b border-linha">
                 <div>
-                  <h2 className="text-base font-bold text-black">{activeCase.studentCode}</h2>
-                  <span
-                    className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"
-                    }`}
-                  >
-                    {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
-                  </span>
+                  <h3 className="text-sm font-bold text-black">Ações Médicas e Multiprofissionais</h3>
+                  <p className="text-[11px] text-neutral-500">Revisão diagnóstica, delegação ao núcleo e encerramento clínico</p>
                 </div>
                 {/* Action tabs */}
                 <nav className="flex flex-wrap gap-1">
+
                   {[
                     { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
                     { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },
@@ -422,37 +455,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         Nenhuma avaliação enviada para este caso ainda.
                       </p>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`text-xs font-bold rounded-full px-2.5 py-0.5 ${
-                              reAssessment.status === "enviado"
-                                ? "bg-sucesso/10 text-black"
-                                : reAssessment.status === "devolvido"
-                                ? "bg-erro/10 text-black"
-                                : "bg-ouro-100 text-black"
-                            }`}
-                          >
-                            {reAssessment.status.toUpperCase()}
-                          </span>
-                          {reAssessment.submittedAt && (
-                            <span className="text-xs text-neutral-800">
-                              Enviado em{" "}
-                              {new Date(reAssessment.submittedAt).toLocaleDateString("pt-BR")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-xl border border-linha divide-y divide-linha">
-                          {Object.entries(reAssessment.payload as Record<string, string>)
-                            .filter(([, v]) => Boolean(v))
-                            .map(([key, value]) => (
-                              <div key={key} className="px-4 py-2.5 grid grid-cols-2 gap-4">
-                                <span className="text-xs font-semibold text-black">{key}</span>
-                                <span className="text-xs text-neutral-800">{value}</span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
+                      <FogapViewer
+                        payload={reAssessment.payload}
+                        status={reAssessment.status}
+                        submittedAt={reAssessment.submittedAt}
+                      />
                     )}
                   </div>
                 )}

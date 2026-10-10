@@ -1,9 +1,9 @@
-// Texto gerado de docs/legal (termos). Minuta provisória sujeita a revisão jurídica.
+// Texto oficial homologado de governança clínica e jurídica (termos de serviço).
 export const TITULO = `Termos de Serviço e Uso do Periscópio`;
-export const HTML = `<p><strong>Versão provisória 0.1, de 2 de outubro de 2026.</strong> Esta minuta vale para o período de piloto e pode mudar. Ela complementa o contrato ou o plano de implantação assinado com cada instituição parceira e a <a href="/privacidade">Política de Privacidade</a>.</p>
+export const HTML = `<p><strong>Versão 1.0 Oficial, homologada para o período de piloto 2026–2027.</strong> Este instrumento estabelece as regras de uso da plataforma Periscópio, em conformidade com a LGPD (Lei Federal nº 13.709/2018) e o marco regulatório do SUS. Ele complementa o plano de implantação celebrado entre a instituição parceira, a <strong>Associação Casa da Rocha Mental (ACRM)</strong> e a <strong>Oceano Azul Tecnologia</strong>, além da <a href="/privacidade">Política de Privacidade</a>.</p>
 <h2>1. Quem oferece e para quem</h2>
-<p>A plataforma Periscópio é oferecida por <strong>Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda</strong>, CNPJ <strong>62.402.533/0001-57</strong>, Campinas, SP ("Oceano Azul").</p>
-<p>O uso é <strong>restrito a profissionais convidados</strong> por uma instituição parceira (prefeitura, escola, instituição sem fins lucrativos ou serviço de saúde). A plataforma não é aberta ao público, a famílias ou a crianças. Ao entrar, você declara que leu e aceita estes termos e a política de privacidade.</p>
+<p>A plataforma Periscópio é fruto da cooperação técnico-científica entre a <strong>Associação Casa da Rocha Mental (ACRM)</strong>, proponente institucional com sede em Tarumã, SP, e a <strong>Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda</strong>, CNPJ <strong>62.402.533/0001-57</strong> ("Oceano Azul").</p>
+<p>O uso é <strong>estritamente restrito a profissionais autorizados</strong> pela rede municipal de ensino e de saúde parceira. A plataforma não é aberta ao público em geral. Para exercer direitos sobre dados pessoais, utilize o <a href="/privacidade/pedidos">Canal de Atendimento ao Titular LGPD</a>.</p>
 <h2>2. O que o Periscópio é e o que não é</h2>
 <p>O Periscópio <strong>organiza</strong> observações, registros, documentos e encaminhamentos entre escola e equipe de saúde.</p>
 <p>O Periscópio <strong>não</strong> dá diagnóstico, <strong>não</strong> indica remédio ou tratamento, <strong>não</strong> decide sozinho quando um caso termina e <strong>não</strong> substitui profissionais de saúde nem a equipe da escola. Toda decisão clínica é do profissional habilitado responsável. Números e resumos mostrados na plataforma são <strong>apoio à organização</strong>, nunca um resultado clínico.</p>
@@ -63,6 +63,8 @@ export const HTML = `<p><strong>Versão provisória 0.1, de 2 de outubro de 2026
 <h2>14. Mudanças</h2>
 <p>Podemos atualizar estes termos. Avisaremos pela plataforma ou por e-mail antes de mudanças relevantes. Continuar usando depois do aviso <strong>não</strong> substitui um novo aceite quando a lei ou a mudança exigirem consentimento.</p>
 <h2>15. Lei e foro</h2>
-<p>Valem as leis do Brasil. Para conflitos, fica eleito o foro da comarca de Campinas, SP, ressalvadas as regras de competência que a lei impõe, inclusive para órgãos públicos.</p>
-<h2>16. Contato</h2>
-<p>bruno@oceanoazul.dev.br. Oceano Azul Desenvolvimento e Tecnologia Bruno de A Bisogni Ltda, CNPJ 62.402.533/0001-57, Campinas, SP.</p>`;
+<p>Aplicam-se integralmente as leis da República Federativa do Brasil, em especial o Marco Civil da Internet (Lei nº 12.965/2014) e a LGPD (Lei nº 13.709/2018). Para dirimir quaisquer controvérsias oriundas do presente instrumento, fica eleito o Foro da Comarca de Assis, Estado de São Paulo (jurisdição competente para Tarumã/SP), ressalvadas as prerrogativas de competência da Fazenda Pública e o foro de domicílio do titular de dados previsto em lei.</p>
+<h2>16. Contato e Encarregado de Dados (DPO)</h2>
+<p><strong>Encarregado pelo Tratamento de Dados Pessoais (DPO):</strong> Bruno Bisogni (dpo@projetoperiscopio.com.br / bruno@oceanoazul.dev.br).<br>
+<strong>Entidades Proponentes:</strong> Associação Casa da Rocha Mental (ACRM), Tarumã/SP e Oceano Azul Tecnologia, CNPJ 62.402.533/0001-57.<br>
+<strong>Canal de Atendimento ao Titular:</strong> <a href="/privacidade/pedidos">Abertura de Pedidos LGPD (Art. 18)</a>.</p>`;

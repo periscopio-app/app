@@ -314,6 +314,7 @@ export default function SchoolOnboardingPage({
                   >
                     <option value="psicopedagogia">Psicopedagogo (PpI)</option>
                     <option value="medicina">Médico Triador (MD1)</option>
+                    <option value="neuropsicologia">Neuropsicólogo(a)</option>
                     <option value="fonoaudiologia">Fonoaudiólogo</option>
                     <option value="psicologia">Psicólogo</option>
                     <option value="psicomotricidade">Psicomotricista</option>
