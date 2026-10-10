@@ -6,6 +6,7 @@ import {
   auditLogs,
   caseSummaries,
   caseTimeline,
+  caseTransitions,
   cases,
   reAssessments,
   schools,
@@ -353,7 +354,24 @@ export async function casesRoutes(app: FastifyInstance) {
       .orderBy(desc(reAssessments.createdAt))
       .limit(1);
 
-    return { assessment: assessment ?? null };
+    let returnReason: string | null = null;
+    if (assessment?.status === "devolvido") {
+      const [lastTransition] = await db
+        .select({ reason: caseTransitions.reason })
+        .from(caseTransitions)
+        .where(
+          and(
+            eq(caseTransitions.caseId, caseId),
+            eq(caseTransitions.tenantId, actor.tenantId),
+            eq(caseTransitions.toState, "rascunho")
+          )
+        )
+        .orderBy(desc(caseTransitions.createdAt))
+        .limit(1);
+      returnReason = lastTransition?.reason ?? null;
+    }
+
+    return { assessment: assessment ?? null, returnReason };
   });
 
   app.post("/api/cases/:caseId/re-assessment", async (request, reply) => {

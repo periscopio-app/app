@@ -16,6 +16,41 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       schema: {
         description: "Painel analítico do cumprimento do prazo legal de 90 dias para acolhimento e contrarreferência intersetorial (CRAS, CAPS AJ/IJ, UBS)",
         tags: ["Rede Intersetorial"],
+        response: {
+          200: {
+            description: "Métricas consolidadas de monitoramento da Lei 90d",
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              totalCasosEncaminhados: { type: "number", example: 4 },
+              taxaConformidadeLei90d: { type: "number", example: 100 },
+              distribuicaoPorRede: {
+                type: "object",
+                additionalProperties: true,
+                properties: {
+                  CAPS_IJ: { type: "number", example: 1 },
+                  CRAS: { type: "number", example: 1 },
+                  UBS: { type: "number", example: 1 },
+                  CAPS_AJ: { type: "number", example: 1 },
+                },
+              },
+              alertaPrazos90d: {
+                type: "object",
+                additionalProperties: true,
+                properties: {
+                  no_prazo: { type: "number", example: 2 },
+                  atencao: { type: "number", example: 1 },
+                  urgente: { type: "number", example: 1 },
+                  prazo_estourado_90d: { type: "number", example: 0 },
+                },
+              },
+              casosCriticos: {
+                type: "array",
+                items: { type: "object", additionalProperties: true },
+              },
+            },
+          },
+        },
       },
     },
     async () => {
@@ -24,17 +59,46 @@ export async function intersectoralRoutes(app: FastifyInstance) {
   );
 
   // 2. Listagem de encaminhamentos com filtros e métricas de SLA
-  app.get<{ Querystring: { destination?: IntersectoralDestination; status?: ReferralStatus } }>(
+  app.get<{ Querystring: { destination?: string; status?: string } }>(
     "/api/intersectoral/referrals",
     {
       schema: {
         description: "Lista encaminhamentos com cálculo em tempo real de dias decorridos, dias restantes e alerta de SLA de 90 dias",
         tags: ["Rede Intersetorial"],
+        querystring: {
+          type: "object",
+          properties: {
+            destination: {
+              type: "string",
+              description: "Filtrar por equipamento público de destino (CRAS, CAPS_IJ, CAPS_AJ, UBS, etc.)",
+              example: "CAPS_IJ",
+            },
+            status: {
+              type: "string",
+              description: "Filtrar por status do encaminhamento",
+              example: "solicitado",
+            },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              total: { type: "number", example: 4 },
+              referrals: {
+                type: "array",
+                items: { type: "object", additionalProperties: true },
+              },
+            },
+          },
+        },
       },
     },
     async (request) => {
       const { destination, status } = request.query;
-      const referrals = listReferrals({ destination, status });
+      const destNorm = destination ? (destination.toUpperCase() as IntersectoralDestination) : undefined;
+      const referrals = listReferrals({ destination: destNorm, status: status as ReferralStatus });
       return {
         total: referrals.length,
         referrals,
@@ -48,7 +112,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       caseId: string;
       studentCode: string;
       schoolName: string;
-      destination: IntersectoralDestination;
+      destination: string;
       destinationName?: string;
       reason: string;
       specialtyRequired: string;
@@ -60,8 +124,48 @@ export async function intersectoralRoutes(app: FastifyInstance) {
     "/api/intersectoral/referrals",
     {
       schema: {
-        description: "Emite um novo encaminhamento para CRAS, CAPS IJ, CAPS AJ, UBS ou Conselho Tutelar",
+        description: "Emite um novo encaminhamento para CRAS, CAPS IJ, CAPS AJ, UBS ou Conselho Tutelar com contagem de 90 dias",
         tags: ["Rede Intersetorial"],
+        body: {
+          type: "object",
+          required: ["caseId", "studentCode", "destination", "reason"],
+          properties: {
+            caseId: { type: "string", example: "caso-novo-099" },
+            studentCode: { type: "string", example: "TAR-2026-0099" },
+            schoolName: { type: "string", example: "EMEF Gilberto Lex" },
+            destination: {
+              type: "string",
+              example: "CAPS_AJ",
+            },
+            destinationName: { type: "string", example: "CAPS Álcool e Drogas Regional" },
+            reason: { type: "string", example: "Suporte e acolhimento para vulnerabilidade psicossocial" },
+            specialtyRequired: { type: "string", example: "Apoio Especializado" },
+            priority: { type: "string", enum: ["rotina", "prioritario", "urgente"], example: "urgente" },
+            requestedBy: { type: "string", example: "Psicólogo Periscópio" },
+            slaDeadlineDays: { type: "number", default: 90, example: 90 },
+          },
+        },
+        response: {
+          201: {
+            description: "Encaminhamento registrado com protocolo intersetorial",
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              id: { type: "string", example: "ref-taruma-001" },
+              caseId: { type: "string", example: "caso-novo-099" },
+              studentCode: { type: "string", example: "TAR-2026-0099" },
+              schoolName: { type: "string", example: "EMEF Gilberto Lex" },
+              destination: { type: "string", example: "CAPS_AJ" },
+              status: { type: "string", example: "solicitado" },
+              slaDeadlineDays: { type: "number", example: 90 },
+              slaStatus: { type: "string", example: "no_prazo" },
+              daysElapsed: { type: "number", example: 0 },
+              daysRemaining: { type: "number", example: 90 },
+              isBreached: { type: "boolean", example: false },
+              createdAt: { type: "string", format: "date-time" },
+            },
+          },
+        },
       },
     },
     async (request, reply) => {
@@ -72,11 +176,13 @@ export async function intersectoralRoutes(app: FastifyInstance) {
         });
       }
 
+      const destUpper = (body.destination || "").toUpperCase() as IntersectoralDestination;
+
       const created = createReferral({
         caseId: body.caseId,
         studentCode: body.studentCode,
         schoolName: body.schoolName || "Escola Municipal",
-        destination: body.destination,
+        destination: destUpper,
         destinationName: body.destinationName,
         reason: body.reason,
         specialtyRequired: body.specialtyRequired || "Avaliação Multidisciplinar",
@@ -97,8 +203,41 @@ export async function intersectoralRoutes(app: FastifyInstance) {
     "/api/intersectoral/referrals/:id/status",
     {
       schema: {
-        description: "Atualiza status do acolhimento (acolhido, em atendimento, contrarreferência) e registra retorno formal",
+        description: "Atualiza status do acolhimento (acolhido, em atendimento, contrarreferência) e registra retorno formal para a escola",
         tags: ["Rede Intersetorial"],
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", description: "ID do encaminhamento" },
+          },
+        },
+        body: {
+          type: "object",
+          required: ["status"],
+          properties: {
+            status: {
+              type: "string",
+              example: "contrarreferencia_concluida",
+            },
+            feedbackNotes: {
+              type: "string",
+              description: "Notas de contrarreferência para a equipe escolar",
+              example: "Paciente acolhido no CAPS IJ com início de plano terapêutico singular (PTS).",
+            },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              id: { type: "string", example: "ref-taruma-001" },
+              status: { type: "string", example: "contrarreferencia_concluida" },
+              feedbackNotes: { type: "string" },
+            },
+          },
+        },
       },
     },
     async (request, reply) => {
@@ -111,7 +250,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
 
       const updated = updateReferralStatus(id, status, feedbackNotes);
       if (!updated) {
-        return reply.status(404).send({ error: `Encaminhamento '${id}' não encontrado.` });
+        return reply.status(404).send({ error: "Encaminhamento não encontrado." });
       }
 
       return reply.send(updated);

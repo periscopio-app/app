@@ -229,6 +229,7 @@ export default function REDashboardPage({
   // Active case & assessment
   const [activeCase, setActiveCase] = useState<CaseItem | null>(null);
   const [reAssessment, setReAssessment] = useState<ReAssessment | null>(null);
+  const [returnReason, setReturnReason] = useState<string | null>(null);
   const [fogapPayload, setFogapPayload] = useState<FogapPayload>(makeFogapPayloadVazio());
 
   // SNAP-IV state
@@ -493,7 +494,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     setActiveInstrument("fogap");
     try {
       const [fogapData, snap4Data] = await Promise.all([
-        api.get<{ assessment: ReAssessment | null }>(
+        api.get<{ assessment: ReAssessment | null; returnReason?: string | null }>(
           `/api/cases/${c.id}/re-assessment`
         ),
         api.get<{ assessment: ReAssessment | null }>(
@@ -503,6 +504,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
 
       if (fogapData.assessment) {
         setReAssessment(fogapData.assessment);
+        setReturnReason(fogapData.returnReason ?? null);
         const p = parseFogapPayload(fogapData.assessment.payload);
         setFogapPayload(p);
         if (p.fogap_state === "rascunho" || p.fogap_state === "em_revisao") {
@@ -512,6 +514,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
         }
       } else {
         setReAssessment(null);
+        setReturnReason(null);
         setFogapPayload(makeFogapPayloadVazio());
         // Auto-fill age from student's birth date if available
         if (c.birthYear && c.birthMonth) {
@@ -1068,11 +1071,18 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   </div>
                 )}
                 {reAssessment?.status === "devolvido" && (
-                  <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-black">
-                    <RotateCcw className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Avaliação devolvida pelo médico.</strong> Revise e reenvie o formulário para continuar o fluxo.
-                    </span>
+                  <div className="flex flex-col gap-1.5 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-black">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+                      <span>
+                        <strong>Avaliação devolvida pelo médico para revisão.</strong> Revise os apontamentos e reenvie o formulário para prosseguir.
+                      </span>
+                    </div>
+                    {returnReason && (
+                      <div className="mt-1 pl-6 text-xs text-amber-950 bg-amber-100/70 p-2.5 rounded-lg border border-amber-200">
+                        <strong className="text-amber-900">Motivo informado pelo médico:</strong> &ldquo;{returnReason}&rdquo;
+                      </div>
+                    )}
                   </div>
                 )}
                 {isReadOnly && reAssessment?.status === "enviado" && (

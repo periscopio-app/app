@@ -283,6 +283,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
       return {
         user: newUser,
+        temporaryPassword: initialPassword,
         message:
           "Usuário criado com sucesso. Comunique a senha inicial por canal seguro fora do sistema.",
       };

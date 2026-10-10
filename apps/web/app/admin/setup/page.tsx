@@ -210,7 +210,7 @@ export default function SysAdminSetupPage() {
             </div>
 
             <div style={{ background: "rgba(59, 130, 246, 0.08)", padding: "10px 14px", borderRadius: "8px", fontSize: "0.82rem", color: "#93c5fd", marginBottom: "18px" }}>
-              🌐 <strong>Acesso Exclusivo White Label:</strong> <code>https://app.projetoperiscopio.com.br/{slug || "slug-da-escola"}</code>
+              🌐 <strong>Acesso Exclusivo White Label:</strong> <code>https://www.projetoperiscopio.com.br/{slug || "slug-da-escola"}</code>
             </div>
 
             <div className="form-group" style={{ marginBottom: "16px" }}>

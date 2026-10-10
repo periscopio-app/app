@@ -17,6 +17,7 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
+import { FogapViewer } from "@/components/dashboard/FogapViewer";
 import {
   ClipboardList,
   Users,
@@ -454,37 +455,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         Nenhuma avaliação enviada para este caso ainda.
                       </p>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`text-xs font-bold rounded-full px-2.5 py-0.5 ${
-                              reAssessment.status === "enviado"
-                                ? "bg-sucesso/10 text-black"
-                                : reAssessment.status === "devolvido"
-                                ? "bg-erro/10 text-black"
-                                : "bg-ouro-100 text-black"
-                            }`}
-                          >
-                            {reAssessment.status.toUpperCase()}
-                          </span>
-                          {reAssessment.submittedAt && (
-                            <span className="text-xs text-neutral-800">
-                              Enviado em{" "}
-                              {new Date(reAssessment.submittedAt).toLocaleDateString("pt-BR")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="rounded-xl border border-linha divide-y divide-linha">
-                          {Object.entries(reAssessment.payload as Record<string, string>)
-                            .filter(([, v]) => Boolean(v))
-                            .map(([key, value]) => (
-                              <div key={key} className="px-4 py-2.5 grid grid-cols-2 gap-4">
-                                <span className="text-xs font-semibold text-black">{key}</span>
-                                <span className="text-xs text-neutral-800">{value}</span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
+                      <FogapViewer
+                        payload={reAssessment.payload}
+                        status={reAssessment.status}
+                        submittedAt={reAssessment.submittedAt}
+                      />
                     )}
                   </div>
                 )}

@@ -86,6 +86,23 @@ export default function MunicipalDashboardPage() {
     return s.status.toLowerCase() === filterStatus.toLowerCase();
   });
 
+  const handleExportCsv = () => {
+    const header = "ID;Escola;TotalAlunos;AlunosTriados;CoberturaPercent;CasosAtivos;Sla120dPercent;EncaminhamentosSUS;Status\n";
+    const rows = filteredSchools
+      .map(
+        (s) =>
+          `"${s.id}";"${s.name}";${s.totalStudents};${s.screenedStudents};${s.triagemPercent}%;${s.casesActive};${s.slaOnTimePercent}%;${s.susReferrals};"${s.status}"`
+      )
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `relatorio_rede_municipal_sla_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-8">
       {/* Top Header & Municipal Overview */}
@@ -106,11 +123,11 @@ export default function MunicipalDashboardPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => alert("Relatório Executivo exportado em PDF/CSV com sucesso!")}
+            onClick={handleExportCsv}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-black border border-[#E1E9ED] transition"
           >
             <Download className="w-4 h-4 text-black" />
-            <span>Exportar Relatório</span>
+            <span>Exportar Relatório (CSV)</span>
           </button>
           <Link
             href="/admin/users"

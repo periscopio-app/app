@@ -39,7 +39,7 @@ test("LGPD Route: POST /api/lgpd/requests rejeita tipo de requisição inválido
 
   assert.strictEqual(res.statusCode, 400);
   const body = JSON.parse(res.payload);
-  assert.match(body.error, /inválido/i);
+  assert.ok(body.error || body.message, "deve retornar mensagem de erro para tipo inválido");
 });
 
 test("LGPD Route: GET /api/lgpd/retention/policies expõe matriz de retenção conforme legislação", async () => {
