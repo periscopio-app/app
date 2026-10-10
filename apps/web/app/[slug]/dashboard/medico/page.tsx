@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
+import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import {
   ClipboardList,
   Users,
@@ -51,12 +52,16 @@ const CLOSE_LABELS: Record<string, string> = {
 };
 
 const SPECIALTIES = [
-  { id: "fonoaudiologia", label: "Fonoaudiologia" },
-  { id: "neuropsicologia", label: "Neuropsicologia" },
-  { id: "psicologia", label: "Psicologia" },
-  { id: "psicomotricidade", label: "Psicomotricidade" },
-  { id: "servico_social", label: "Serviço Social" },
+  { id: "assistente_social", label: "Assistente Social (AS) — Diagnóstico Social e Acompanhamento Familiar" },
+  { id: "neuropsicologia", label: "Neuropsicólogo(a) — Avaliação Neuropsicológica" },
+  { id: "psicomotricidade", label: "Psicomotricista" },
+  { id: "psicologia", label: "Psicoterapeuta / Psicólogo(a) Clínico(a)" },
+  { id: "fonoaudiologia", label: "Fonoaudiólogo(a)" },
+  { id: "psicologia_familiar", label: "Psicólogo(a) Familiar" },
+  { id: "psicopedagogia", label: "Psicopedagogo(a) Clínico(a)" },
+  { id: "servico_social", label: "Serviço Social (AS)" },
 ];
+
 
 type ActiveView = "queue" | "re" | "delegate" | "consolidated" | "close" | "trail" | "return";
 
@@ -318,31 +323,40 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 Nenhum caso aguardando revisão médica.
               </p>
             )}
-            {cases.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => openCase(c)}
-                className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
-                  activeCase?.id === c.id
-                    ? "border-roxo bg-roxo-100"
-                    : "border-linha hover:bg-fundo"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-black">{c.studentCode}</span>
-                  <span
-                    className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"
-                    }`}
-                  >
-                    {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
-                  </span>
-                </div>
-                <div className="text-[11px] text-neutral-800 mt-0.5">
-                  {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-                </div>
-              </button>
-            ))}
+            {cases.map((c) => {
+              const currentYear = new Date().getFullYear();
+              const idade = c.birthYear ? currentYear - c.birthYear : null;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => openCase(c)}
+                  className={`w-full text-left rounded-xl border p-3 transition space-y-1.5 ${
+                    activeCase?.id === c.id
+                      ? "border-roxo bg-roxo-50 ring-1 ring-roxo/40"
+                      : "border-linha hover:bg-fundo"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-black">{c.studentCode}</span>
+                    <span
+                      className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                        JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"
+                      }`}
+                    >
+                      {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
+                    <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
+                    <span>•</span>
+                    <span><strong>Idade:</strong> {idade ? `${idade} anos` : "—"}</span>
+                  </div>
+                  <div className="text-[10px] text-neutral-500 truncate">
+                    <strong>Escola:</strong> {c.schoolName || slug} · <strong>Profissional:</strong> {c.assignedToName || "Responsável Escolar"}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -357,20 +371,28 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
             </div>
           ) : (
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
-              {/* Case header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-linha">
+              {/* Prontuário Oficial - 5 Colunas Padronizadas */}
+              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
+                <ProntuarioHeaderCard
+                  studentCode={activeCase.studentCode}
+                  studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
+                  schoolName={activeCase.schoolName || slug}
+                  ageText={activeCase.birthYear ? `${new Date().getFullYear() - activeCase.birthYear} anos` : "7–9 anos (Piloto)"}
+                  professionalName={activeCase.assignedToName || me?.name || "Médico(a) Avaliador(a)"}
+                  professionalRole={me?.role || "md1"}
+                  journeyState={activeCase.journeyState}
+                />
+              </div>
+
+              {/* Case action tabs header */}
+              <div className="flex items-center justify-between px-6 py-3.5 border-b border-linha">
                 <div>
-                  <h2 className="text-base font-bold text-black">{activeCase.studentCode}</h2>
-                  <span
-                    className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                      JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"
-                    }`}
-                  >
-                    {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
-                  </span>
+                  <h3 className="text-sm font-bold text-black">Ações Médicas e Multiprofissionais</h3>
+                  <p className="text-[11px] text-neutral-500">Revisão diagnóstica, delegação ao núcleo e encerramento clínico</p>
                 </div>
                 {/* Action tabs */}
                 <nav className="flex flex-wrap gap-1">
+
                   {[
                     { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
                     { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },

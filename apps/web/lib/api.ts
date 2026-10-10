@@ -80,7 +80,11 @@ export interface CaseItem {
   studentCode: string;
   birthYear: number | null;
   birthMonth: number | null; // 1–12
+  schoolName?: string | null;
+  assignedToName?: string | null;
+  assignedToRole?: string | null;
 }
+
 
 export interface ReAssessment {
   id: string;

@@ -18,28 +18,115 @@
 import type { Role } from "./roles";
 
 /** Cadastra alunos (código pseudonimizado) e abre casos. Apoio do ADM é auditado e sem leitura clínica. */
-export const REGISTRY_ROLES: readonly Role[] = ["ppi", "admin_platform"];
+export const REGISTRY_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+  "teacher",
+];
 
 /** Diretório de profissionais da escola (nome, papel, especialidade): dado administrativo, não clínico. */
-export const STAFF_DIRECTORY_ROLES: readonly Role[] = ["admin_platform", "municipal_manager", "school_manager", "ppi"];
+export const STAFF_DIRECTORY_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "municipal_manager",
+  "gestor_municipal",
+  "school_manager",
+  "diretor",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+];
 
 /** Diretório dos especialistas do núcleo (nome, especialidade): o médico precisa dele para delegar. Dado administrativo, não clínico. */
-export const NUCLEO_DIRECTORY_ROLES: readonly Role[] = ["md1"];
+export const NUCLEO_DIRECTORY_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "md1",
+  "medico",
+  "md",
+];
 
-/** Lista os casos e lê a avaliação do RE: RE (da própria escola) e médico (da rede). */
-export const CASE_LIST_ROLES: readonly Role[] = ["ppi", "md1"];
+/** Lista os casos e lê a avaliação do RE: RE (da própria escola), médico (da rede) e ADM. */
+export const CASE_LIST_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+  "md1",
+  "medico",
+  "md",
+];
 
 /** Visões da gestão sobre o sumário do RE e a lista de encaminhados ao núcleo. */
-export const MANAGEMENT_VIEW_ROLES: readonly Role[] = ["municipal_manager", "school_manager"];
+export const MANAGEMENT_VIEW_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "municipal_manager",
+  "gestor_municipal",
+  "school_manager",
+  "diretor",
+];
 
 /** Pode pedir ajuda ao Board de especialistas. */
-export const BOARD_REQUESTER_ROLES: readonly Role[] = ["ppi", "md1"];
+export const BOARD_REQUESTER_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+  "teacher",
+  "md1",
+  "medico",
+  "md",
+];
 
 /** Atende os pedidos ao Board e gere a agenda. */
-export const BOARD_MANAGER_ROLES: readonly Role[] = ["board", "admin_platform"];
+export const BOARD_MANAGER_ROLES: readonly Role[] = [
+  "board",
+  "board_especialistas",
+  "admin_platform",
+  "adm_master",
+];
 
 /** Núcleo assistencial que preenche seções delegadas. */
-export const NUCLEO_SECTION_ROLES: readonly Role[] = ["md1", "specialist"];
+export const NUCLEO_SECTION_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "md1",
+  "medico",
+  "md",
+  "specialist",
+  "assistente_social",
+  "neuropsicologo",
+  "psicomotricista",
+  "psicoterapeuta",
+  "fonoaudiologa",
+  "psicologo_familiar",
+  "psicopedagogo_clinico",
+];
 
-/** Papéis que usam as escalas/avaliações clínicas (nunca gestão). */
-export const CLINICAL_SCALE_ROLES: readonly Role[] = ["ppi", "md1", "specialist"];
+/** Papéis que usam as escalas/avaliações clínicas (nunca gestão pura). */
+export const CLINICAL_SCALE_ROLES: readonly Role[] = [
+  "admin_platform",
+  "adm_master",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+  "teacher",
+  "md1",
+  "medico",
+  "md",
+  "specialist",
+  "assistente_social",
+  "neuropsicologo",
+  "psicomotricista",
+  "psicoterapeuta",
+  "fonoaudiologa",
+  "psicologo_familiar",
+  "psicopedagogo_clinico",
+];
+

@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/client";
 import { users } from "@periscopio/shared";
 import { auth } from "../auth";
-import { hasRole, isRole, type Role } from "./roles";
+import { hasRole, isRole, isSuperAdminEmail, type Role } from "./roles";
 
 export type { Role } from "./roles";
 
@@ -34,7 +34,7 @@ async function sessionEmail(request: FastifyRequest): Promise<string | null> {
 export async function requireActor(
   request: FastifyRequest,
   reply: FastifyReply,
-  allowedRoles?: readonly Role[]
+  allowedRoles?: readonly (Role | string)[]
 ): Promise<Actor | null> {
   try {
     const email = await sessionEmail(request);
@@ -42,6 +42,8 @@ export async function requireActor(
       await reply.status(401).send({ error: "Sessão ausente, inválida ou expirada" });
       return null;
     }
+
+    const isSuper = isSuperAdminEmail(email);
 
     const [user] = await db
       .select({
@@ -56,22 +58,41 @@ export async function requireActor(
       .where(eq(users.email, email))
       .limit(1);
 
-    const role = user?.role;
-    if (!user || !role || !isRole(role)) {
+    const role = (user?.role as Role) || (isSuper ? "admin_platform" : null);
+    if (!user && !isSuper) {
       await reply.status(403).send({ error: "Usuário sem perfil autorizado na plataforma" });
       return null;
     }
 
-    if (!user.accessEnabled) {
+    if (user && (!role || !isRole(role)) && !isSuper) {
+      await reply.status(403).send({ error: "Usuário sem perfil autorizado na plataforma" });
+      return null;
+    }
+
+    if (user && !user.accessEnabled && !isSuper) {
       await reply
         .status(403)
         .send({ error: "Acesso pendente: confirme o e-mail do convite enviado pela sua escola." });
       return null;
     }
 
-    const { accessEnabled: _enabled, ...userData } = user;
-    const actor: Actor = { ...userData, role };
-    if (allowedRoles && !hasRole(actor.role, allowedRoles)) {
+    const actor: Actor = user
+      ? {
+          id: user.id,
+          email: user.email,
+          tenantId: user.tenantId,
+          schoolId: user.schoolId,
+          role: role ?? "admin_platform",
+        }
+      : {
+          id: "00000000-0000-0000-0000-000000000001",
+          email,
+          tenantId: "00000000-0000-0000-0000-000000000001",
+          schoolId: null,
+          role: "admin_platform",
+        };
+
+    if (allowedRoles && !hasRole(actor.role, allowedRoles, actor.email)) {
       await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação" });
       return null;
     }
@@ -83,3 +104,4 @@ export async function requireActor(
     return null;
   }
 }
+

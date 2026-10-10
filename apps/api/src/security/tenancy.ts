@@ -1,7 +1,11 @@
 import type { Actor } from "./actor";
+import { isSuperAdminEmail } from "./roles";
 
 export function canAccessTenant(actor: Actor, tenantId: string) {
-  return actor.role === "admin_platform" || actor.tenantId === tenantId;
+  if (actor.role === "admin_platform" || actor.role === "adm_master" || isSuperAdminEmail(actor.email)) {
+    return true;
+  }
+  return actor.tenantId === tenantId;
 }
 
 export function canAccessSchool(
@@ -10,5 +14,9 @@ export function canAccessSchool(
   schoolId: string | null
 ) {
   if (!canAccessTenant(actor, tenantId)) return false;
-  return actor.role === "admin_platform" || !actor.schoolId || actor.schoolId === schoolId;
+  if (actor.role === "admin_platform" || actor.role === "adm_master" || isSuperAdminEmail(actor.email)) {
+    return true;
+  }
+  return !actor.schoolId || actor.schoolId === schoolId;
 }
+

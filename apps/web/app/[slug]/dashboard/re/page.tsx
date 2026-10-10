@@ -32,6 +32,9 @@ import {
   type OpcaoSnap4,
 } from "@periscopio/shared";
 import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ConfirmDialog, Modal } from "@/components/ui";
+import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+
 import {
   FileText,
   Plus,
@@ -247,6 +250,10 @@ export default function REDashboardPage({
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [schoolName, setSchoolName] = useState<string>("");
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitSuccessSummary, setSubmitSuccessSummary] = useState<string | null>(null);
+
 
   // Computed
   const isReadOnly =
@@ -389,10 +396,12 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
       try {
         const [meData, schoolData] = await Promise.all([
           api.get<{ user: Me }>("/api/me"),
-          api.get<{ school: { id: string } }>(`/api/schools/by-slug/${encodeURIComponent(slug)}`),
+          api.get<{ school: { id: string; name?: string } }>(`/api/schools/by-slug/${encodeURIComponent(slug)}`),
         ]);
         setMe(meData.user);
         setSchoolId(schoolData.school.id);
+        setSchoolName(schoolData.school.name ?? slug);
+
 
         const [casesData, studentsData] = await Promise.all([
           api.get<{ cases: CaseItem[] }>("/api/cases?states=rascunho,enviado_re,revisao_medica,delegado,retornado,encerrado"),
@@ -624,18 +633,19 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     }
   }
 
-  async function handleSubmit() {
+  function handleOpenSubmitModal() {
     if (!activeCase) return;
     const { pronto, pendencias } = prontoParaRevisao(fogapPayload);
     if (!pronto) {
-      setCaseMsg(`Formulário incompleto:\n• ${pendencias.join("\n• ")}`);
+      setCaseMsg(`Formulário incompleto para envio:\n• ${pendencias.join("\n• ")}`);
       setActiveSection("revisao");
       return;
     }
-    const confirmed = window.confirm(
-      "Ao enviar, a avaliação ficará bloqueada para edição e será encaminhada ao médico. Confirmar?"
-    );
-    if (!confirmed) return;
+    setShowSubmitModal(true);
+  }
+
+  async function handleConfirmSubmit() {
+    if (!activeCase) return;
     setSubmitting(true);
     setCaseMsg(null);
     try {
@@ -645,7 +655,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
       } else {
         await api.put(`/api/cases/${activeCase.id}/re-assessment`, { payload: payloadComEstado });
       }
-      const data = await api.post<{ assessment: ReAssessment }>(
+      const data = await api.post<{ assessment: ReAssessment; summary?: string; message?: string }>(
         `/api/cases/${activeCase.id}/re-assessment/submit`,
         {}
       );
@@ -655,13 +665,20 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
         prev.map((c) => (c.id === activeCase.id ? { ...c, journeyState: "revisao_medica" } : c))
       );
       setActiveCase((prev) => (prev ? { ...prev, journeyState: "revisao_medica" } : prev));
-      setCaseMsg("Avaliação enviada com sucesso! Caso encaminhado para revisão médica.");
+      setShowSubmitModal(false);
+      setSubmitSuccessSummary(
+        data.summary ||
+          `Caso ${activeCase.studentCode} sumarizado com sucesso!\nAvaliação FOGAP encaminhada ao Médico (MD) e Núcleo Assistencial para investigação multiprofissional.`
+      );
+      setCaseMsg("Avaliação enviada com sucesso! Caso sumarizado e encaminhado para revisão médica.");
     } catch (err: unknown) {
       setCaseMsg(err instanceof Error ? err.message : "Erro ao enviar avaliação.");
+      setShowSubmitModal(false);
     } finally {
       setSubmitting(false);
     }
   }
+
 
   // ── SNAP-IV Save ─────────────────────────────────────────────────────────
 
@@ -876,27 +893,37 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
               {cases.length === 0 && (
                 <p className="text-xs text-neutral-800 text-center py-4">Nenhum caso ativo.</p>
               )}
-              {cases.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => selectCase(c)}
-                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
-                    activeCase?.id === c.id
-                      ? "border-roxo bg-roxo-100"
-                      : "border-linha hover:bg-fundo"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-black">{c.studentCode}</span>
-                    <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"}`}>
-                      {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-neutral-800 mt-0.5">
-                    {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-                  </div>
-                </button>
-              ))}
+              {cases.map((c) => {
+                const idadeCalculada = c.birthYear
+                  ? calcularIdadePorNascimento(c.birthYear, c.birthMonth ?? 1)
+                  : null;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => selectCase(c)}
+                    className={`w-full text-left rounded-xl border p-3 transition space-y-1.5 ${
+                      activeCase?.id === c.id
+                        ? "border-roxo bg-roxo-50 ring-1 ring-roxo/40"
+                        : "border-linha hover:bg-fundo"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-black">{c.studentCode}</span>
+                      <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"}`}>
+                        {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
+                      <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
+                      <span>•</span>
+                      <span><strong>Idade:</strong> {idadeCalculada ? `${idadeCalculada.anos}a` : "—"}</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-500 truncate">
+                      <strong>Escola:</strong> {c.schoolName || schoolName || slug} · <strong>Profissional:</strong> {c.assignedToName || me?.name || "RE"}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -916,7 +943,24 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
           ) : (
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
 
-              {/* Case header */}
+              {/* Prontuário Oficial - 5 Colunas Padronizadas */}
+              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
+                <ProntuarioHeaderCard
+                  studentCode={activeCase.studentCode}
+                  studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
+                  schoolName={activeCase.schoolName || schoolName || slug}
+                  ageText={
+                    fogapPayload.idade_anos != null
+                      ? `${fogapPayload.idade_anos} anos ${fogapPayload.idade_meses ? `e ${fogapPayload.idade_meses}m` : ""}`
+                      : "7 anos (G3)"
+                  }
+                  professionalName={me?.name || "Responsável Escolar"}
+                  professionalRole={me?.role || "ppi"}
+                  journeyState={activeCase.journeyState}
+                />
+              </div>
+
+              {/* Case header & instruments */}
               <div className="px-6 py-4 border-b border-linha flex items-start justify-between">
                 <div>
                   {/* Instrument selector */}
@@ -927,7 +971,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                       className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
                         activeInstrument === "fogap"
                           ? "bg-roxo-100 border border-roxo text-black border-roxo"
-                          : "bg-roxo-100 text-black border-roxo-200 hover:bg-roxo-200"
+                          : "bg-roxo-50 text-black border-roxo-200 hover:bg-roxo-100"
                       }`}
                     >
                       FOGAP
@@ -938,14 +982,14 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                       className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
                         activeInstrument === "snap4"
                           ? "bg-roxo-100 border border-roxo text-black border-roxo"
-                          : "bg-roxo-100 text-black border-roxo-200 hover:bg-roxo-200"
+                          : "bg-roxo-50 text-black border-roxo-200 hover:bg-roxo-100"
                       }`}
                     >
                       SNAP-IV
                     </button>
                   </div>
-                  <h2 className="mt-1 text-lg font-bold text-black">
-                    {activeCase.studentCode}
+                  <h2 className="mt-1 text-base font-bold text-black flex items-center gap-2">
+                    Avaliação Clínica Integrada
                   </h2>
                   <p className="text-xs text-neutral-800">
                     Aberto em {new Date(activeCase.createdAt).toLocaleDateString("pt-BR")}
@@ -977,6 +1021,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   </button>
                 </div>
               </div>
+
 
               {/* Banners & AI Summary */}
               <div className="px-6 pt-4 space-y-2">
@@ -1493,11 +1538,12 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                     <button
                       type="button"
                       disabled={saving || submitting || fogapPayload.fogap_state === "aguardando_idade" || fogapPayload.fogap_state === "fora_da_faixa"}
-                      onClick={handleSubmit}
-                      className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                      onClick={handleOpenSubmitModal}
+                      className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition shadow-xs"
                     >
                       <Send className="h-4 w-4" />
-                      {submitting ? "Enviando..." : "Enviar ao médico"}
+                      {submitting ? "Enviando..." : "Enviar e Sumarizar ao Médico"}
+
                     </button>
                   </div>
                 )}
@@ -1704,6 +1750,85 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
           )}
         </div>
       </div>
+
+      {/* Modal / Popup de Confirmação e Sumarização do Caso */}
+      {activeCase && (
+        <ConfirmDialog
+          open={showSubmitModal}
+          onClose={() => setShowSubmitModal(false)}
+          onConfirm={handleConfirmSubmit}
+          title="Encaminhar Prontuário ao Núcleo Assistencial"
+          description="O caso será sumarizado e transferido para a fila de avaliação do Médico (MD) e do Assistente Social (AS). A avaliação FOGAP ficará bloqueada para edições da escola."
+          confirmText="Confirmar e Encaminhar"
+          cancelText="Continuar editando"
+          tone="send"
+          isLoading={submitting}
+        >
+          <div className="space-y-3 rounded-2xl bg-neutral-50 p-4 border border-linha text-xs">
+            <div className="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">
+              Dados do Prontuário a Encaminhar:
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-neutral-700">
+              <div><strong className="text-black">Nº Prontuário:</strong> {activeCase.studentCode}</div>
+              <div><strong className="text-black">Nome:</strong> Aluno ({activeCase.studentCode.slice(-6)})</div>
+              <div><strong className="text-black">Escola:</strong> {schoolName || slug}</div>
+              <div>
+                <strong className="text-black">Idade:</strong>{" "}
+                {fogapPayload.idade_anos != null ? `${fogapPayload.idade_anos} anos` : "G3 (Piloto)"}
+              </div>
+              <div className="col-span-2">
+                <strong className="text-black">Profissional Responsável:</strong> {me?.name || "RE"} (Responsável Escolar)
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-neutral-200">
+              <strong className="text-black block mb-1">Prévia do Sumário para o Próximo Profissional:</strong>
+              <div className="bg-white p-3 rounded-xl border border-linha text-neutral-800 leading-relaxed max-h-36 overflow-y-auto font-sans">
+                {`[Sumário do RE]\nAluno: ${activeCase.studentCode} | Grupo FOGAP: ${fogapPayload.grupo ?? "G3"}\nDificuldades: ${
+                  fogapPayload.secao_sumario?.dificuldades_persistentes?.length
+                    ? fogapPayload.secao_sumario.dificuldades_persistentes.join(", ")
+                    : "Em acompanhamento escolar"
+                }\nConduta prévia: ${fogapPayload.secao_sumario?.conduta === "sim" ? "Sim, intervenção adotada" : "Sem conduta formal prévia"}\nDestino: Triagem concluída. Encaminhado ao Médico (MD) e Assistente Social (AS).`}
+              </div>
+            </div>
+          </div>
+        </ConfirmDialog>
+      )}
+
+      {/* Modal de Sucesso com o Sumário Completo */}
+      <Modal
+        open={!!submitSuccessSummary}
+        onClose={() => setSubmitSuccessSummary(null)}
+        title="Prontuário Encaminhado com Sucesso!"
+        description="O caso foi sumarizado e integrado à fila do Núcleo Assistencial."
+        maxWidth="lg"
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-950 text-xs">
+            <div className="flex items-center gap-2 font-bold text-sm mb-1 text-emerald-900">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              Sumário Clínico Gerado para o Próximo Profissional
+            </div>
+            <p className="text-emerald-800 text-xs mb-3">
+              O Médico (MD) e os Especialistas do Núcleo Assistencial receberam a notificação com os seguintes dados consolidados:
+            </p>
+            <pre className="whitespace-pre-wrap font-sans text-xs bg-white p-3.5 rounded-xl border border-emerald-200 text-neutral-800 leading-relaxed max-h-60 overflow-y-auto">
+              {submitSuccessSummary}
+            </pre>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setSubmitSuccessSummary(null)}
+              className="rounded-xl bg-roxo px-5 py-2 text-sm font-semibold text-white hover:bg-roxo-800 transition shadow-xs"
+            >
+              Concluir e Voltar aos Casos
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
+
