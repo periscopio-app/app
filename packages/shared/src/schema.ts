@@ -209,17 +209,21 @@ export const enrollments = pgTable("enrollments", {
   completedAt: timestamp("completed_at"),
 });
 
-/** LGPD — Rastreamento auditável imutável por eventId (Retenção mínima de 5 anos). */
+/** LGPD e Trilha de Auditoria Imutável (Retenção mínima de 5 anos). */
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   eventId: uuid("event_id").defaultRandom().notNull(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  tenantId: uuid("tenant_id").references(() => tenants.id),
   actorId: uuid("actor_id").references(() => users.id),
-  action: varchar("action", { length: 60 }).notNull(),
+  userEmail: varchar("user_email", { length: 255 }),
+  action: varchar("action", { length: 80 }).notNull(),
   entity: varchar("entity", { length: 60 }).notNull(),
   entityId: uuid("entity_id"),
   correlationId: varchar("correlation_id", { length: 120 }),
   ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  durationMs: integer("duration_ms"),
+  payload: jsonb("payload"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -551,3 +555,4 @@ export const biQuestions = pgTable("bi_questions", {
   approvedBy: uuid("approved_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+

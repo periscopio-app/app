@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { formatCpf, formatPhone, validateCpf } from "@periscopio/shared";
 
 interface ProfessionalInput {
   name: string;
@@ -111,6 +112,34 @@ export default function SchoolOnboardingPage({
       setError("As senhas não conferem.");
       return;
     }
+
+    // Validações estritas dos profissionais
+    for (let i = 0; i < professionals.length; i++) {
+      const p = professionals[i];
+      const num = i + 1;
+      if (!p.name || p.name.trim().length < 3) {
+        setError(`O nome do Profissional #${num} é obrigatório (mínimo 3 caracteres).`);
+        return;
+      }
+      if (!p.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
+        setError(`O e-mail profissional do Profissional #${num} é inválido.`);
+        return;
+      }
+      const rawPhone = p.phone.replace(/\D/g, "");
+      if (rawPhone.length < 10) {
+        setError(`O telefone/WhatsApp do Profissional #${num} é obrigatório com DDD.`);
+        return;
+      }
+      if (!validateCpf(p.cpf)) {
+        setError(`O CPF do Profissional #${num} é obrigatório e deve ser um CPF válido.`);
+        return;
+      }
+      if (!p.classCode || p.classCode.trim().length < 2) {
+        setError(`O Registro / Conselho de Classe do Profissional #${num} é obrigatório (ex: CRP, CRM, CRFa, CBO).`);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -218,12 +247,13 @@ export default function SchoolOnboardingPage({
             <div
               key={idx}
               style={{
-                background: "rgba(15, 23, 42, 0.5)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "12px",
+                background: "#ffffff",
+                border: "1.5px solid #e2e8f0",
+                borderRadius: "14px",
                 padding: "20px",
                 marginBottom: "20px",
                 position: "relative",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
               }}
             >
               <div
@@ -232,9 +262,11 @@ export default function SchoolOnboardingPage({
                   justifyContent: "space-between",
                   alignItems: "center",
                   marginBottom: "14px",
+                  paddingBottom: "10px",
+                  borderBottom: "1px solid #f1f5f9",
                 }}
               >
-                <h4 style={{ color: "#60a5fa", fontSize: "0.95rem" }}>
+                <h4 style={{ color: "#0f172a", fontSize: "0.98rem", fontWeight: 700 }}>
                   Profissional #{idx + 1}
                 </h4>
                 {professionals.length > 1 && (
@@ -242,13 +274,14 @@ export default function SchoolOnboardingPage({
                     type="button"
                     onClick={() => removeProfessional(idx)}
                     style={{
-                      background: "rgba(239, 68, 68, 0.15)",
-                      color: "#fca5a5",
-                      border: "none",
+                      background: "#fee2e2",
+                      color: "#b91c1c",
+                      border: "1px solid #fecaca",
                       padding: "4px 10px",
                       borderRadius: "6px",
                       cursor: "pointer",
                       fontSize: "0.8rem",
+                      fontWeight: 600,
                     }}
                   >
                     ✕ Remover
@@ -258,10 +291,11 @@ export default function SchoolOnboardingPage({
 
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "14px" }}>
                 <div className="form-group">
-                  <label className="form-label">Nome Completo *</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>Nome Completo *</label>
                   <input
                     type="text"
                     className="form-input"
+                    style={{ background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1" }}
                     placeholder="Ex: Dra. Larissa Mendonça"
                     value={prof.name}
                     onChange={(e) => updateProfessional(idx, "name", e.target.value)}
@@ -270,12 +304,12 @@ export default function SchoolOnboardingPage({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Especialidade / Perfil *</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>Especialidade / Perfil *</label>
                   <select
                     className="form-input"
                     value={prof.specialty}
                     onChange={(e) => updateProfessional(idx, "specialty", e.target.value)}
-                    style={{ background: "#0f172a" }}
+                    style={{ background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1" }}
                     required
                   >
                     <option value="psicopedagogia">Psicopedagogo (PpI)</option>
@@ -290,10 +324,11 @@ export default function SchoolOnboardingPage({
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div className="form-group">
-                  <label className="form-label">E-mail Profissional (Login) *</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>E-mail Profissional (Login) *</label>
                   <input
                     type="email"
                     className="form-input"
+                    style={{ background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1" }}
                     placeholder="larissa.mendonca@saude.gov.br"
                     value={prof.email}
                     onChange={(e) => updateProfessional(idx, "email", e.target.value)}
@@ -302,37 +337,53 @@ export default function SchoolOnboardingPage({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Telefone / WhatsApp</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>Telefone / WhatsApp *</label>
                   <input
                     type="tel"
                     className="form-input"
+                    style={{ background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1" }}
                     placeholder="(11) 98765-1122"
                     value={prof.phone}
-                    onChange={(e) => updateProfessional(idx, "phone", e.target.value)}
+                    onChange={(e) => updateProfessional(idx, "phone", formatPhone(e.target.value))}
+                    required
                   />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div className="form-group">
-                  <label className="form-label">CPF (Apenas números)</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>CPF (11 dígitos) *</label>
                   <input
                     type="text"
                     className="form-input"
+                    style={{
+                      background: "#ffffff",
+                      color: "#0f172a",
+                      border: prof.cpf.length === 14 && !validateCpf(prof.cpf) ? "1.5px solid #ef4444" : "1.5px solid #cbd5e1",
+                    }}
                     placeholder="000.000.000-00"
+                    maxLength={14}
                     value={prof.cpf}
-                    onChange={(e) => updateProfessional(idx, "cpf", e.target.value)}
+                    onChange={(e) => updateProfessional(idx, "cpf", formatCpf(e.target.value))}
+                    required
                   />
+                  {prof.cpf.length === 14 && !validateCpf(prof.cpf) && (
+                    <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "4px", display: "block" }}>
+                      ⚠️ CPF com dígito verificador inválido.
+                    </span>
+                  )}
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Registro / Conselho de Classe</label>
+                  <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>Registro / Conselho de Classe *</label>
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="Ex: CRP 06/123456, CRM 98765"
+                    style={{ background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1" }}
+                    placeholder="Ex: CRP 06/123456, CRM 98765, CRFa 1234"
                     value={prof.classCode}
                     onChange={(e) => updateProfessional(idx, "classCode", e.target.value)}
+                    required
                   />
                 </div>
               </div>

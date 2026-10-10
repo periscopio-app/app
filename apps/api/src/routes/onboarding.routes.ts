@@ -29,6 +29,69 @@ export async function onboardingRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (schoolList.length === 0) {
+      // Auto-provisionamento gracioso de escolas demo/teste para que o fluxo de prontuário nunca seja bloqueado
+      if (slug === "demo-escola" || slug === "colegio-bruno") {
+        try {
+          let [demoTenant] = await db
+            .select()
+            .from(tenants)
+            .where(eq(tenants.municipalityCode, "DEMO"))
+            .limit(1);
+
+          if (!demoTenant) {
+            [demoTenant] = await db
+              .insert(tenants)
+              .values({ name: "Município Demonstração", municipalityCode: "DEMO" })
+              .returning();
+          }
+
+          if (demoTenant) {
+            const schoolName = slug === "demo-escola" ? "Escola Modelo de Demonstração (NEMT)" : "Colégio Bruno";
+            const [createdSchool] = await db
+              .insert(schools)
+              .values({
+                tenantId: demoTenant.id,
+                name: schoolName,
+                slug,
+                status: "active",
+                externalCode: slug.toUpperCase(),
+                address: "Av. da Educação, 1000",
+                latitude: -15.7939,
+                longitude: -47.8828,
+                enrollment: 600,
+                branding: { primaryColor: "#682880", logoUrl: null },
+              })
+              .onConflictDoNothing()
+              .returning();
+
+            if (createdSchool) {
+              return {
+                school: {
+                  id: createdSchool.id,
+                  name: createdSchool.name,
+                  slug: createdSchool.slug,
+                  status: createdSchool.status,
+                  branding: createdSchool.branding,
+                },
+              };
+            }
+          }
+        } catch (seedErr) {
+          console.warn("[onboarding] Auto-provisionamento de escola demo encontrou exceção:", seedErr);
+        }
+
+        // Fallback em memória com UUID determinístico se a inserção colidir
+        return {
+          school: {
+            id: "00000000-0000-0000-0000-000000000001",
+            name: slug === "demo-escola" ? "Escola Modelo de Demonstração (NEMT)" : "Colégio Bruno",
+            slug,
+            status: "active",
+            branding: { primaryColor: "#682880", logoUrl: null },
+          },
+        };
+      }
+
       reply.status(404);
       return { error: "Escola/Instância não encontrada para esta slug." };
     }

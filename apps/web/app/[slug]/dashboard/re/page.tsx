@@ -46,7 +46,10 @@ import {
   Brain,
   ClipboardList,
   MapPin,
+  Upload,
+  Sparkles,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -241,6 +244,143 @@ export default function REDashboardPage({
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [caseMsg, setCaseMsg] = useState<string | null>(null);
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+
+  // Computed
+  const isReadOnly =
+    reAssessment?.status === "enviado" ||
+    (activeCase != null &&
+      activeCase.journeyState !== "rascunho" &&
+      activeCase.journeyState !== "enviado_re");
+
+  const itensGrupo = fogapPayload.grupo === "G3" ? G3_ITENS : [];
+
+  const devRespondidos = itensGrupo.filter(
+    (i) => fogapPayload.respostas_desenvolvimento[i.id] != null
+  ).length;
+
+  const compRespondidos = FOGAP_COMPORTAMENTOS.filter(
+    (c) => fogapPayload.respostas_comportamentos[c.id] != null
+  ).length;
+
+  // ── Auto-save local (evita perda se o profissional parar de escrever) ────
+  useEffect(() => {
+    if (!activeCase || isReadOnly) return;
+    const timeout = setTimeout(() => {
+      try {
+        const key = `periscopio_autosave_${activeCase.id}`;
+        const draft = {
+          fogapPayload,
+          snap4Payload,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(key, JSON.stringify(draft));
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+        setLastAutoSavedAt(timeStr);
+      } catch {
+        // quota ou privativo ignorado
+      }
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [fogapPayload, snap4Payload, activeCase, isReadOnly]);
+
+  // ── Upload de arquivo (.csv, .xlsx, .txt) ──────────────────────────────────
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileName = file.name.toLowerCase();
+      const parsedLines: string[] = [];
+
+      if (fileName.endsWith(".xlsx")) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+
+        for (const row of rows) {
+          if (!row || !Array.isArray(row)) continue;
+          const nums = row
+            .map((c) => Number(c))
+            .filter((n) => !isNaN(n) && n > 0);
+          const year = nums.find((n) => n >= 2000 && n <= 2026);
+          const month = nums.find((n) => n >= 1 && n <= 12 && n !== year);
+          if (year && month) {
+            parsedLines.push(`${year};${month}`);
+          }
+        }
+      } else {
+        // .csv ou .txt
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (/[a-zA-Z]/.test(line) && !line.includes(";")) continue;
+          const parts = line.split(/[;,\t ]+/).map((p) => p.trim());
+          const year = Number(parts[0]);
+          const month = Number(parts[1]);
+          if (!isNaN(year) && year >= 2000 && year <= 2026 && !isNaN(month) && month >= 1 && month <= 12) {
+            parsedLines.push(`${year};${month}`);
+          }
+        }
+      }
+
+      if (parsedLines.length === 0) {
+        setStudentMsgOk(false);
+        setStudentMsg("Nenhum registro no formato ano;mês (ex: 2016;5) encontrado no arquivo.");
+        return;
+      }
+
+      setBulkText(parsedLines.join("\n"));
+      setStudentMsgOk(true);
+      setStudentMsg(`Arquivo ${file.name} carregado: ${parsedLines.length} alunos identificados. Clique em "Importar lista" para confirmar.`);
+    } catch {
+      setStudentMsgOk(false);
+      setStudentMsg("Erro ao processar arquivo. Verifique se é um arquivo .csv, .xlsx ou .txt válido.");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  // ── Sumário IA do caso para delegação de parecer ──────────────────────────
+  function handleGenerateAiSummary() {
+    if (!activeCase) return;
+    setGeneratingSummary(true);
+    setTimeout(() => {
+      const anos = fogapPayload.idade_anos ?? "";
+      const meses = fogapPayload.idade_meses ?? "";
+      const grupo = fogapPayload.grupo ? GRUPOS_META[fogapPayload.grupo]?.titulo : "Aguardando confirmação";
+      const dificuldades = fogapPayload.secao_sumario.dificuldades_persistentes.join(", ") || "Nenhuma relatada até o momento";
+      const snapContagem = calcularContagem(snap4Payload);
+
+      const summaryText = `[SUMÁRIO EXECUTIVO CLÍNICO - PERISCÓPIO NEMT]
+Aluno Pseudonimizado: ${activeCase.studentCode}
+Idade Cronológica: ${anos} anos e ${meses} meses
+Grupo de Desenvolvimento: ${grupo}
+Estado da Avaliação: ${fogapPayload.fogap_state}
+
+1. MARCOS OBSERVADOS E DESENVOLVIMENTO:
+- Respostas registradas: ${devRespondidos}/${itensGrupo.length} itens respondidos.
+- Comportamentos em sala/escola: ${compRespondidos}/15 observações avaliadas.
+
+2. INSTRUMENTO SNAP-IV (TRIAGEM):
+- Bloco 1 (Itens 1-9): ${snapContagem.c1.contagem} de ${snapContagem.c1.total} marcados (limiar de referência: ${snapContagem.c1.limiar}).
+- Bloco 2 (Itens 10-18): em observação / complementação multiprofissional.
+
+3. DIFICULDADES PERSISTENTES IDENTIFICADAS:
+${dificuldades}
+
+4. ENCAMINHAMENTO / MOTIVO DE DELEGAÇÃO:
+Necessidade de parecer e segunda opinião especializada de equipe multidisciplinar para complementação diagnóstica e plano de acolhimento institucional (conforme SLA e Marco Intersetorial 2025).`;
+
+      setAiSummary(summaryText);
+      setGeneratingSummary(false);
+    }, 600);
+  }
 
   // ── Boot ────────────────────────────────────────────────────────────────
 
@@ -550,23 +690,6 @@ export default function REDashboardPage({
     }
   }
 
-  // ── Computed ─────────────────────────────────────────────────────────────
-
-  const isReadOnly =
-    reAssessment?.status === "enviado" ||
-    (activeCase != null &&
-      activeCase.journeyState !== "rascunho" &&
-      activeCase.journeyState !== "enviado_re");
-
-  const itensGrupo = fogapPayload.grupo === "G3" ? G3_ITENS : [];
-
-  const devRespondidos = itensGrupo.filter(
-    (i) => fogapPayload.respostas_desenvolvimento[i.id] != null
-  ).length;
-
-  const compRespondidos = FOGAP_COMPORTAMENTOS.filter(
-    (c) => fogapPayload.respostas_comportamentos[c.id] != null
-  ).length;
 
   // ── Section tabs config ───────────────────────────────────────────────────
 
@@ -659,15 +782,47 @@ export default function REDashboardPage({
                 Gerar código pseudonimizado
               </button>
             </form>
-            <details className="mt-3 rounded-xl border border-linha p-3">
-              <summary className="cursor-pointer text-xs font-semibold text-black">Importar vários alunos (colar lista)</summary>
-              <p className="text-xs text-neutral-800 mt-2">Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2016;5). Não cole nomes nem outros dados — só ano e mês de nascimento.</p>
+            <details className="mt-3 rounded-xl border border-linha p-3 bg-white">
+              <summary className="cursor-pointer text-xs font-semibold text-black">
+                Importar vários alunos (Upload de arquivo ou colar lista)
+              </summary>
+
+              {/* Receptor de upload de arquivo .csv, .xlsx, .txt */}
+              <div className="mt-2.5 p-3.5 border-2 border-dashed border-roxo/40 rounded-xl bg-roxo-50/60 hover:bg-roxo-50 transition text-center">
+                <label className="cursor-pointer block">
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Upload className="h-5 w-5 text-roxo" />
+                    <span className="text-xs font-bold text-black">
+                      Carregar arquivo (.csv, .xlsx ou .txt)
+                    </span>
+                    <span className="text-[11px] text-neutral-600">
+                      Clique para selecionar ou arraste sua planilha de alunos
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-linha"></div>
+                <span className="flex-shrink mx-2 text-[10px] text-neutral-500 uppercase font-bold tracking-wider">ou cole texto</span>
+                <div className="flex-grow border-t border-linha"></div>
+              </div>
+
+              <p className="text-xs text-neutral-800">
+                Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2016;5). Só ano e mês de nascimento.
+              </p>
               <textarea
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
-                rows={5}
+                rows={4}
                 placeholder={"2016;5\n2015;11\n2017;2"}
-                className="mt-2 w-full rounded-xl border border-linha px-3 py-2 text-sm text-black font-mono outline-none focus:ring-2 focus:ring-roxo/40"
+                className="mt-2 w-full rounded-xl border border-linha px-3 py-2 text-sm text-black font-mono outline-none focus:ring-2 focus:ring-roxo/40 bg-white"
               />
               <button
                 type="button"
@@ -799,13 +954,64 @@ export default function REDashboardPage({
                       : ""}
                   </p>
                 </div>
-                <span className={`text-xs font-bold rounded-full px-2.5 py-1 ${JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"}`}>
-                  {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    {lastAutoSavedAt && (
+                      <span className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                        <CheckCircle className="h-3 w-3" />
+                        Salvo às {lastAutoSavedAt}
+                      </span>
+                    )}
+                    <span className={`text-xs font-bold rounded-full px-2.5 py-1 ${JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"}`}>
+                      {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiSummary}
+                    disabled={generatingSummary}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 px-2.5 py-1 text-xs font-semibold text-indigo-900 hover:bg-indigo-100 transition shadow-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                    {generatingSummary ? "Sumarizando com IA..." : "Sumário IA do Caso"}
+                  </button>
+                </div>
               </div>
 
-              {/* Banners */}
+              {/* Banners & AI Summary */}
               <div className="px-6 pt-4 space-y-2">
+                {aiSummary && (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 text-xs text-neutral-900 shadow-xs relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold flex items-center gap-1.5 text-indigo-950">
+                        <Sparkles className="h-4 w-4 text-indigo-600" />
+                        Resumo do Caso Sumarizado com IA (Para Parecer e Delegação)
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiSummary);
+                            setCaseMsg("Sumário copiado para a área de transferência.");
+                          }}
+                          className="px-2 py-0.5 rounded bg-white border border-indigo-200 text-indigo-900 text-[11px] font-semibold hover:bg-indigo-50"
+                        >
+                          Copiar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAiSummary(null)}
+                          className="px-2 py-0.5 rounded bg-white border border-indigo-200 text-neutral-600 text-[11px] font-semibold hover:bg-neutral-100"
+                        >
+                          Fechar
+                        </button>
+                      </div>
+                    </div>
+                    <pre className="whitespace-pre-wrap font-sans text-neutral-800 leading-relaxed bg-white p-3 rounded-lg border border-indigo-100">
+                      {aiSummary}
+                    </pre>
+                  </div>
+                )}
                 {reAssessment?.status === "devolvido" && (
                   <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-black">
                     <RotateCcw className="h-4 w-4 shrink-0 mt-0.5" />

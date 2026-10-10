@@ -111,24 +111,24 @@ export default function SysAdminSetupPage() {
               </span>
             </div>
 
-            <div style={{ background: "rgba(0,0,0,0.3)", padding: "16px", borderRadius: "12px", textAlign: "left", marginBottom: "20px" }}>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "6px" }}>
-                <strong>Slug da Escola:</strong> <code>{createdData.school.slug}</code>
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "18px", borderRadius: "12px", textAlign: "left", marginBottom: "20px" }}>
+              <p style={{ fontSize: "0.85rem", color: "#1e293b", marginBottom: "6px" }}>
+                <strong style={{ color: "#0f172a" }}>Slug da Escola:</strong> <code style={{ background: "#e2e8f0", color: "#0f172a", padding: "2px 6px", borderRadius: "4px" }}>{createdData.school.slug}</code>
               </p>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "6px" }}>
-                <strong>E-mail do Responsável:</strong> {createdData.school.responsavelEmail}
+              <p style={{ fontSize: "0.85rem", color: "#1e293b", marginBottom: "6px" }}>
+                <strong style={{ color: "#0f172a" }}>E-mail do Responsável:</strong> {createdData.school.responsavelEmail}
               </p>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "12px" }}>
-                <strong>Status de Envio de E-mail:</strong> {createdData.emailStatus}
+              <p style={{ fontSize: "0.85rem", color: "#1e293b", marginBottom: "14px" }}>
+                <strong style={{ color: "#0f172a" }}>Status de Envio de E-mail:</strong> {createdData.emailStatus}
               </p>
 
-              <label className="form-label">Magic Link de Onboarding Gerado:</label>
+              <label className="form-label" style={{ color: "#0f172a", fontWeight: 600 }}>Magic Link de Onboarding Gerado:</label>
               <input
                 type="text"
                 readOnly
                 value={createdData.magicLink}
                 className="form-input"
-                style={{ fontSize: "0.82rem", background: "#0f172a" }}
+                style={{ fontSize: "0.85rem", background: "#ffffff", color: "#0f172a", border: "1.5px solid #cbd5e1", fontWeight: 500 }}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
             </div>
