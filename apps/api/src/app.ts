@@ -21,6 +21,10 @@ import { locationsRoutes } from "./routes/locations.routes";
 import { viacepRoutes } from "./routes/viacep.routes";
 import { rndsRoutes } from "./routes/rnds.routes";
 import { intersectoralRoutes } from "./routes/intersectoral.routes";
+import { consentRoutes } from "./routes/consent.routes";
+import { lgpdRoutes } from "./routes/lgpd.routes";
+import { identityVaultRoutes } from "./routes/identity-vault.routes";
+import { attachmentsRoutes } from "./routes/attachments.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({ logger: opts.logger ?? true, trustProxy: true });
@@ -111,6 +115,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(viacepRoutes);
   app.register(rndsRoutes);
   app.register(intersectoralRoutes);
+  app.register(consentRoutes);
+  app.register(lgpdRoutes);
+  app.register(identityVaultRoutes);
+  app.register(attachmentsRoutes);
 
   return app;
 }

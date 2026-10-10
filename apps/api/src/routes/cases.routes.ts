@@ -302,6 +302,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const list = await db
       .select({
         id: cases.id,
+        studentId: cases.studentId,
         journeyState: cases.journeyState,
         status: cases.status,
         createdAt: cases.createdAt,

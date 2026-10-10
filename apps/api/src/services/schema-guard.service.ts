@@ -12,23 +12,33 @@ let ensured: Promise<void> | null = null;
 
 function migrationSql(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    resolve(here, "../../drizzle/0015_audit_trail_vault.sql"),
-    resolve(here, "../drizzle/0015_audit_trail_vault.sql"),
-    resolve(process.cwd(), "drizzle/0015_audit_trail_vault.sql"),
-    resolve(process.cwd(), "apps/api/drizzle/0015_audit_trail_vault.sql"),
+  const files = [
+    "0015_audit_trail_vault.sql",
+    "0016_row_level_security.sql",
   ];
-  for (const file of candidates) {
-    try {
-      return readFileSync(file, "utf8")
-        .split("--> statement-breakpoint")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    } catch {
-      // tenta o próximo caminho
+  const allSql: string[] = [];
+
+  for (const fileName of files) {
+    const candidates = [
+      resolve(here, `../../drizzle/${fileName}`),
+      resolve(here, `../drizzle/${fileName}`),
+      resolve(process.cwd(), `drizzle/${fileName}`),
+      resolve(process.cwd(), `apps/api/drizzle/${fileName}`),
+    ];
+    for (const file of candidates) {
+      try {
+        const statements = readFileSync(file, "utf8")
+          .split("--> statement-breakpoint")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        allSql.push(...statements);
+        break;
+      } catch {
+        // tenta o próximo caminho
+      }
     }
   }
-  return [];
+  return allSql;
 }
 
 export function ensureSchema(): Promise<void> {

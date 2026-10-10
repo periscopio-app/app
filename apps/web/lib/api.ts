@@ -77,6 +77,7 @@ export interface CaseItem {
   status: string;
   createdAt: string;
   updatedAt: string;
+  studentId?: string;
   studentCode: string;
   birthYear: number | null;
   birthMonth: number | null; // 1–12

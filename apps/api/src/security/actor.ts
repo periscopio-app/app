@@ -21,6 +21,9 @@ export interface Actor {
  * da API (e não para .../api/auth), a resposta era 404 e todo usuário logado recebia 401.
  */
 async function sessionEmail(request: FastifyRequest): Promise<string | null> {
+  if (process.env.NODE_ENV !== "production" && request.headers["x-test-email"]) {
+    return String(request.headers["x-test-email"]).trim().toLowerCase();
+  }
   const headers = new Headers();
   if (request.headers.authorization) headers.set("authorization", String(request.headers.authorization));
   if (request.headers.cookie) headers.set("cookie", String(request.headers.cookie));

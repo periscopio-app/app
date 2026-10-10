@@ -14,6 +14,9 @@ import {
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { ConsentCard } from "@/components/dashboard/ConsentCard";
+import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
+import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
 import {
   ClipboardList,
   Users,
@@ -372,7 +375,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
           ) : (
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
               {/* Prontuário Oficial - 5 Colunas Padronizadas */}
-              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
+              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50 space-y-4">
                 <ProntuarioHeaderCard
                   studentCode={activeCase.studentCode}
                   studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
@@ -382,6 +385,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   professionalRole={me?.role || "md1"}
                   journeyState={activeCase.journeyState}
                 />
+
+                {/* Proteção de Dados, Consentimento e Anexos Clínicos (LGPD) */}
+                <div className="grid grid-cols-1 gap-4 pt-1">
+                  <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
+                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
+                  <CaseAttachmentsCard caseId={activeCase.id} />
+                </div>
               </div>
 
               {/* Case action tabs header */}

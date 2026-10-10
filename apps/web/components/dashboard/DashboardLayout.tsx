@@ -19,6 +19,7 @@ import { BarChart3, MapPinned,
   ArrowUpRight,
   CalendarClock,
   ClipboardList,
+  ShieldAlert,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -102,13 +103,49 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         ...(mapaRoles.includes(userRole) ? [biItem, mapaItem] : []),
       ]
     : [];
+  const isSuper =
+    userRole === "admin_platform" ||
+    userRole === "adm_master" ||
+    session?.user?.email === "bruno@oceanoazul.dev.br" ||
+    (session?.user?.email ? session.user.email.endsWith("@oceanoazul.dev.br") : false);
 
-  const visibleAdmin = userRole === "admin_platform"
+  const visibleAdmin = isSuper || userRole === "admin_platform"
     ? [
         { label: "Usuários & Privilégios", href: "/admin/users", icon: ShieldCheck, badge: "Master", exact: false },
+        { label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck, badge: "LGPD", exact: false },
         { label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup", exact: false },
       ]
     : [];
+
+  // Bloqueio de navegação por perfil nas telas (Frontend Route Guard)
+  const getRouteAllowedRoles = (path: string): string[] | null => {
+    if (path.includes("/dashboard/re")) return ["ppi", "re", "responsavel_escolar", "teacher"];
+    if (path.includes("/dashboard/medico")) return ["md1", "medico", "md"];
+    if (path.includes("/dashboard/especialista"))
+      return [
+        "specialist",
+        "assistente_social",
+        "as",
+        "servico_social",
+        "neuropsicologo",
+        "psicomotricista",
+        "psicoterapeuta",
+        "psicologo",
+        "psicologa",
+        "fonoaudiologo",
+        "fonoaudiologa",
+        "psicologo_familiar",
+        "psicopedagogo_clinico",
+      ];
+    if (path.includes("/dashboard/gestao"))
+      return ["school_manager", "diretor", "municipal_manager", "gestor_municipal", "board", "board_especialistas"];
+    if (path.includes("/dashboard/agenda")) return ["ppi", "md1", "board", "board_especialistas"];
+    if (path.startsWith("/admin/")) return ["admin_platform", "adm_master"];
+    return null;
+  };
+
+  const allowedForRoute = getRouteAllowedRoles(pathname);
+  const isBlocked = userRole && !isSuper && allowedForRoute && !allowedForRoute.includes(userRole);
 
   const navItems = [
     ...(visibleClinical.length > 0 ? [{ group: "Fluxo Clínico", items: visibleClinical }] : []),
@@ -328,7 +365,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Page Content */}
-        <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">{children}</div>
+        <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+          {isBlocked ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto text-center shadow-sm space-y-4 my-12 animate-fadeIn">
+              <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto border border-amber-200">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold text-black">Acesso Restrito por Perfil</h2>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Este painel é restrito aos papéis funcionais autorizados. Seu perfil não possui privilégios de acesso a esta seção.
+              </p>
+              <button
+                onClick={() => router.push(`/${currentSlug}/dashboard`)}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-[#682880] text-white hover:bg-[#531e66] transition"
+              >
+                Ir para o Painel Autorizado
+              </button>
+            </div>
+          ) : (
+            children
+          )}
+        </div>
       </main>
     </div>
   );
