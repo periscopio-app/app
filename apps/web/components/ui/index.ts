@@ -23,3 +23,4 @@ export {
   type LocationValue,
   type LocationSelectorProps,
 } from "./LocationSelector";
+export { CepInput, type CepInputProps } from "./CepInput";

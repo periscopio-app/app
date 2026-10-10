@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import NotionTasksWidget from "@/components/admin/NotionTasksWidget";
+import IntersectoralNetworkWidget from "@/components/admin/IntersectoralNetworkWidget";
 import { LocationSelector, type LocationValue } from "@/components/ui/LocationSelector";
+import { CepInput } from "@/components/ui/CepInput";
 
 export default function SysAdminSetupPage() {
   const [nomeEscola, setNomeEscola] = useState("");
@@ -212,6 +213,22 @@ export default function SysAdminSetupPage() {
               🌐 <strong>Acesso Exclusivo White Label:</strong> <code>https://app.projetoperiscopio.com.br/{slug || "slug-da-escola"}</code>
             </div>
 
+            <div className="form-group" style={{ marginBottom: "16px" }}>
+              <label className="form-label" style={{ marginBottom: "6px", display: "block" }}>
+                Buscar Endereço por CEP (ViaCEP Oficial)
+              </label>
+              <CepInput
+                placeholder="00000-000"
+                onAddressFound={(addr) => {
+                  setLocation({
+                    countryCode: "BR",
+                    stateUf: addr.uf,
+                    cityName: addr.localidade,
+                  });
+                }}
+              />
+            </div>
+
             <div className="form-group" style={{ marginBottom: "18px" }}>
               <label className="form-label" style={{ marginBottom: "8px", display: "block" }}>
                 Localização Geográfica da Instituição (País, Estado e Município)
@@ -292,9 +309,9 @@ export default function SysAdminSetupPage() {
         </div>
       </div>
 
-      {/* Notion System Tasks Sync Widget */}
+      {/* Rede Intersetorial (CRAS, CAPS, UBS e Acolhimento 90 dias) */}
       <div className="w-full max-w-[720px]">
-        <NotionTasksWidget />
+        <IntersectoralNetworkWidget />
       </div>
     </div>
   );
