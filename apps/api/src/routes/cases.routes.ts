@@ -35,6 +35,7 @@ import {
   type JourneyState,
 } from "../services/case-state.service";
 import { notificar } from "../services/notifications.service";
+import { recordAudit } from "../services/audit.service";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@periscopio/shared";
 
@@ -118,6 +119,23 @@ export async function casesRoutes(app: FastifyInstance) {
     if (!birth.ok) return reply.status(400).send({ error: birth.error });
 
     const student = await insertStudent(school, birth.birthYear, birth.birthMonth);
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "create_student",
+        entityType: "student",
+        entityId: student.id,
+        payload: {
+          studentCode: student.studentCode,
+          birthYear: student.birthYear,
+          birthMonth: student.birthMonth,
+          schoolId: school.id,
+        },
+      },
+      request
+    );
     return reply.status(201).send({ success: true, student });
   });
 
@@ -149,6 +167,21 @@ export async function casesRoutes(app: FastifyInstance) {
 
     const created = [];
     for (const v of valid) created.push(await insertStudent(school, v.birthYear, v.birthMonth));
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "bulk_create_students",
+        entityType: "student",
+        entityId: school.id,
+        payload: {
+          count: created.length,
+          schoolId: school.id,
+        },
+      },
+      request
+    );
     return reply.status(201).send({ success: true, imported: created.length, students: created });
   });
 
