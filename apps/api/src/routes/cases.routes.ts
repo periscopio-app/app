@@ -14,7 +14,7 @@ import {
 } from "@periscopio/shared";
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
-import { SPECIALIST_CLINICAL_ROLES } from "../security/roles";
+import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
 import { ageBracketOf, generateStudentCode, validateBirth } from "../services/student-code";
 import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
@@ -65,12 +65,27 @@ async function studentVisibleTo(actor: Actor, studentId: string) {
 }
 
 async function caseVisibleTo(actor: Actor, caseId: string) {
+  const isSuper =
+    actor.role === "admin_platform" ||
+    actor.role === "adm_master" ||
+    isSuperAdminEmail(actor.email);
+
   const [caseItem] = await db
     .select()
     .from(cases)
-    .where(and(eq(cases.id, caseId), eq(cases.tenantId, actor.tenantId)))
+    .where(isSuper ? eq(cases.id, caseId) : and(eq(cases.id, caseId), eq(cases.tenantId, actor.tenantId)))
     .limit(1);
   if (!caseItem) return null;
+
+  if (isSuper) {
+    const [student] = await db
+      .select()
+      .from(students)
+      .where(eq(students.id, caseItem.studentId))
+      .limit(1);
+    return student ? { caseItem, student } : null;
+  }
+
   const student = await studentVisibleTo(actor, caseItem.studentId);
   return student ? { caseItem, student } : null;
 }
@@ -269,7 +284,16 @@ export async function casesRoutes(app: FastifyInstance) {
       ? (query.states.split(",").map((s) => s.trim()).filter(Boolean) as JourneyState[])
       : [];
 
-    const conditions = [eq(cases.tenantId, actor.tenantId)];
+    const isSuper =
+      actor.role === "admin_platform" ||
+      actor.role === "adm_master" ||
+      isSuperAdminEmail(actor.email);
+
+    const conditions = [];
+    if (!isSuper) {
+      conditions.push(eq(cases.tenantId, actor.tenantId));
+    }
+
     if (stateList.length === 1) conditions.push(eq(cases.journeyState, stateList[0]));
     else if (stateList.length > 1) conditions.push(inArray(cases.journeyState, stateList));
     // RE enxerga só a própria escola; o médico enxerga a rede do município (a lista que recebe dos REs).
@@ -285,14 +309,20 @@ export async function casesRoutes(app: FastifyInstance) {
         studentCode: students.studentCode,
         birthYear: students.birthYear,
         birthMonth: students.birthMonth,
+        schoolName: schools.name,
+        assignedToName: users.name,
+        assignedToRole: users.role,
       })
       .from(cases)
       .innerJoin(students, eq(cases.studentId, students.id))
-      .where(and(...conditions))
+      .leftJoin(schools, eq(students.schoolId, schools.id))
+      .leftJoin(users, eq(cases.assignedToId, users.id))
+      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(cases.updatedAt));
 
     return { cases: list };
   });
+
 
   // ── Avaliação do RE (rascunho → enviado → devolvido) ────────────────────
 
@@ -326,12 +356,24 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases/:caseId/re-assessment", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["ppi"]);
+    const actor = await requireActor(request, reply, [
+      "ppi",
+      "re",
+      "responsavel_escolar",
+      "teacher",
+      "admin_platform",
+      "adm_master",
+    ]);
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+
+    const isSuper =
+      actor.role === "admin_platform" ||
+      actor.role === "adm_master" ||
+      isSuperAdminEmail(actor.email);
 
     const { formCode: formCodeQuery } = request.query as { formCode?: string };
     const formCode = formCodeQuery === SNAP4_FORM_CODE ? SNAP4_FORM_CODE : FOGAP_FORM_CODE;
@@ -341,16 +383,18 @@ export async function casesRoutes(app: FastifyInstance) {
     if (!parse.success) return reply.status(400).send({ error: "Payload inválido", issues: parse.error.issues });
 
     // Verificar se já existe rascunho aberto para este instrumento
+    const whereConditions = [
+      eq(reAssessments.caseId, caseId),
+      eq(reAssessments.formCode, formCode),
+    ];
+    if (!isSuper) {
+      whereConditions.push(eq(reAssessments.tenantId, actor.tenantId));
+    }
+
     const [existing] = await db
       .select({ id: reAssessments.id, status: reAssessments.status })
       .from(reAssessments)
-      .where(
-        and(
-          eq(reAssessments.caseId, caseId),
-          eq(reAssessments.tenantId, actor.tenantId),
-          eq(reAssessments.formCode, formCode)
-        )
-      )
+      .where(and(...whereConditions))
       .limit(1);
 
     // Mesma validação do PUT: sem ela, um rascunho malformado era aceito aqui e derrubava o envio (500).
@@ -367,10 +411,12 @@ export async function casesRoutes(app: FastifyInstance) {
       });
     }
 
+    const targetTenantId = visible.caseItem.tenantId || actor.tenantId;
+
     const [assessment] = await db
       .insert(reAssessments)
       .values({
-        tenantId: actor.tenantId,
+        tenantId: targetTenantId,
         caseId,
         formCode,
         formVersion,
@@ -384,7 +430,14 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.put("/api/cases/:caseId/re-assessment", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["ppi"]);
+    const actor = await requireActor(request, reply, [
+      "ppi",
+      "re",
+      "responsavel_escolar",
+      "teacher",
+      "admin_platform",
+      "adm_master",
+    ]);
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -394,19 +447,26 @@ export async function casesRoutes(app: FastifyInstance) {
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
 
+    const isSuper =
+      actor.role === "admin_platform" ||
+      actor.role === "adm_master" ||
+      isSuperAdminEmail(actor.email);
+
     const parse = reAssessmentBodySchema.safeParse(request.body);
     if (!parse.success) return reply.status(400).send({ error: "Payload inválido", issues: parse.error.issues });
+
+    const whereConditions = [
+      eq(reAssessments.caseId, caseId),
+      eq(reAssessments.formCode, formCode),
+    ];
+    if (!isSuper) {
+      whereConditions.push(eq(reAssessments.tenantId, actor.tenantId));
+    }
 
     const [existing] = await db
       .select()
       .from(reAssessments)
-      .where(
-        and(
-          eq(reAssessments.caseId, caseId),
-          eq(reAssessments.tenantId, actor.tenantId),
-          eq(reAssessments.formCode, formCode)
-        )
-      )
+      .where(and(...whereConditions))
       .limit(1);
 
     if (!existing) return reply.status(404).send({ error: "Avaliação não encontrada" });
@@ -429,29 +489,44 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases/:caseId/re-assessment/submit", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["ppi"]);
+    const actor = await requireActor(request, reply, [
+      "ppi",
+      "re",
+      "responsavel_escolar",
+      "teacher",
+      "admin_platform",
+      "adm_master",
+    ]);
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
 
+    const isSuper =
+      actor.role === "admin_platform" ||
+      actor.role === "adm_master" ||
+      isSuperAdminEmail(actor.email);
+
+    const whereConditions = [
+      eq(reAssessments.caseId, caseId),
+      eq(reAssessments.formCode, FOGAP_FORM_CODE),
+    ];
+    if (!isSuper) {
+      whereConditions.push(eq(reAssessments.tenantId, actor.tenantId));
+    }
+
     const [existing] = await db
       .select()
       .from(reAssessments)
-      .where(
-        and(
-          eq(reAssessments.caseId, caseId),
-          eq(reAssessments.tenantId, actor.tenantId),
-          eq(reAssessments.formCode, FOGAP_FORM_CODE)
-        )
-      )
+      .where(and(...whereConditions))
       .limit(1);
 
     if (!existing) return reply.status(404).send({ error: "Nenhuma avaliação em rascunho para enviar" });
     if (existing.status !== "rascunho" && existing.status !== "devolvido") {
       return reply.status(409).send({ error: "Avaliação já enviada" });
     }
+
 
     // Valida prontoParaRevisao — todos os itens do grupo devem estar respondidos
     const { pronto, pendencias } = prontoParaRevisao(existing.payload as FogapPayload);
@@ -479,11 +554,47 @@ export async function casesRoutes(app: FastifyInstance) {
       await applyTransitionInTx(txDb, caseId, "revisao_medica", actor, "Caso encaminhado para revisão médica");
     });
 
+    // Gera sumário estruturado para o próximo profissional (Médico e Núcleo Assistencial)
+    const payload = existing.payload as FogapPayload;
+    const studentCode = visible.student.studentCode;
+    const sumario = payload.secao_sumario ?? {};
+    const diffs = Array.isArray(sumario.dificuldades_persistentes) && sumario.dificuldades_persistentes.length > 0
+      ? sumario.dificuldades_persistentes.join(", ")
+      : "Nenhuma dificuldade adicional reportada";
+    const conduta = sumario.conduta === "sim"
+      ? `Conduta escolar prévia: ${sumario.qual || "Sim"} (tempo: ${sumario.tempo || "—"}, resultado: ${sumario.resultado || "—"})`
+      : "Escola ainda não havia adotado conduta prévia";
+    const caseSummary = `[Sumário do Caso pelo Responsável Escolar (RE)]
+Aluno: ${studentCode} | Grupo FOGAP: ${payload.grupo ?? "Piloto"}
+Dificuldades persistentes: ${diffs}
+Histórico de intervenção escolar: ${conduta}
+Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação diagnóstica pelo Médico (MD) e acompanhamento sociofamiliar pelo Assistente Social (AS).`;
+
+
+    const targetTenantId = visible.caseItem.tenantId || actor.tenantId;
+
+    // Registra evento imutável na trilha de auditoria
+    await recordAudit(
+      {
+        tenantId: targetTenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "re_assessment.submit_and_summarize",
+        entityType: "case",
+        entityId: caseId,
+        payload: {
+          studentCode,
+          summary: caseSummary,
+          grupo: payload.grupo,
+        },
+      },
+      request
+    );
+
     // Notifica RE que enviou (transitória) + médico do caso (persistente)
     const eventBase = `protocolo.enviado:${existing.id}`;
-    const studentCode = visible.student.studentCode;
     await notificar({
-      tenantId: actor.tenantId,
+      tenantId: targetTenantId,
       eventId: `${eventBase}:re`,
       eventType: "protocolo.enviado",
       recipientId: actor.id,
@@ -497,10 +608,10 @@ export async function casesRoutes(app: FastifyInstance) {
     const medicos = await db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.tenantId, actor.tenantId), eq(users.role, "md1")));
+      .where(and(eq(users.tenantId, targetTenantId), eq(users.role, "md1")));
     for (const medico of medicos) {
       await notificar({
-        tenantId: actor.tenantId,
+        tenantId: targetTenantId,
         eventId: `${eventBase}:md1:${medico.id}`,
         eventType: "protocolo.enviado",
         recipientId: medico.id,
@@ -511,8 +622,14 @@ export async function casesRoutes(app: FastifyInstance) {
       });
     }
 
-    return { success: true, assessment: submitted!, message: "Avaliação enviada. Caso encaminhado ao médico." };
+    return {
+      success: true,
+      assessment: submitted!,
+      summary: caseSummary,
+      message: "Avaliação enviada. Caso sumarizado e encaminhado ao médico e ao núcleo assistencial.",
+    };
   });
+
 
   // ── Delegação (md1 apenas) ──────────────────────────────────────────────
 

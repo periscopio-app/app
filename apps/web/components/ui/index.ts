@@ -24,3 +24,7 @@ export {
   type LocationSelectorProps,
 } from "./LocationSelector";
 export { CepInput, type CepInputProps } from "./CepInput";
+export { Modal, type ModalProps } from "./Modal";
+export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
+export { RoleBanner } from "./RoleBanner";
+
