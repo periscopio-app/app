@@ -78,10 +78,12 @@ export function isRole(value: string): value is Role {
 export function isSuperAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  return (
-    normalized === "bruno@oceanoazul.dev.br" ||
-    normalized.endsWith("@oceanoazul.dev.br")
-  );
+  const superadmins = (process.env.SUPERADMIN_EMAILS || "bruno@oceanoazul.dev.br")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  return superadmins.includes(normalized);
 }
 
 /** Mapeamento de papéis equivalentes para compatibilidade retroativa. */
@@ -94,10 +96,10 @@ const ROLE_EQUIVALENTS: Record<string, string[]> = {
   gestor_municipal: ["municipal_manager", "gestor_municipal"],
   school_manager: ["school_manager", "diretor"],
   diretor: ["school_manager", "diretor"],
-  ppi: ["ppi", "re", "responsavel_escolar", "teacher"],
+  ppi: ["ppi", "re", "responsavel_escolar"],
   re: ["ppi", "re", "responsavel_escolar"],
   responsavel_escolar: ["ppi", "re", "responsavel_escolar"],
-  teacher: ["teacher", "ppi", "re"],
+  teacher: ["teacher"],
   md1: ["md1", "medico", "md"],
   medico: ["md1", "medico", "md"],
   md: ["md1", "medico", "md"],

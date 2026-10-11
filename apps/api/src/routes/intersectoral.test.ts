@@ -2,11 +2,35 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../app";
 
+test("Rede Intersetorial: recusa requisições sem autenticação (401)", async () => {
+  const app = await buildApp({ logger: false });
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/intersectoral/monitoring/sla-90d",
+  });
+  assert.equal(response.statusCode, 401);
+});
+
+test("Rede Intersetorial: recusa requisições com perfil não autorizado (403)", async () => {
+  const app = await buildApp({ logger: false });
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/intersectoral/monitoring/sla-90d",
+    headers: {
+      "x-test-email": "pesquisador@demo.periscopio.test",
+    },
+  });
+  assert.equal(response.statusCode, 403);
+});
+
 test("Rede Intersetorial: GET /api/intersectoral/monitoring/sla-90d calcula conformidade do prazo legal", async () => {
   const app = await buildApp({ logger: false });
   const response = await app.inject({
     method: "GET",
     url: "/api/intersectoral/monitoring/sla-90d",
+    headers: {
+      "x-test-email": "bruno@oceanoazul.dev.br",
+    },
   });
 
   assert.equal(response.statusCode, 200);
@@ -23,6 +47,9 @@ test("Rede Intersetorial: POST /api/intersectoral/referrals cria encaminhamento 
   const response = await app.inject({
     method: "POST",
     url: "/api/intersectoral/referrals",
+    headers: {
+      "x-test-email": "bruno@oceanoazul.dev.br",
+    },
     payload: {
       caseId: "caso-novo-099",
       studentCode: "TAR-2026-0099",
@@ -50,6 +77,9 @@ test("Rede Intersetorial: PATCH /api/intersectoral/referrals/:id/status atualiza
   const response = await app.inject({
     method: "PATCH",
     url: "/api/intersectoral/referrals/ref-taruma-001/status",
+    headers: {
+      "x-test-email": "bruno@oceanoazul.dev.br",
+    },
     payload: {
       status: "contrarreferencia_concluida",
       feedbackNotes: "Paciente acolhido no CAPS IJ com início de plano terapêutico singular (PTS).",
@@ -62,3 +92,4 @@ test("Rede Intersetorial: PATCH /api/intersectoral/referrals/:id/status atualiza
   assert.equal(body.status, "contrarreferencia_concluida");
   assert.ok(body.feedbackNotes.includes("plano terapêutico singular"));
 });
+

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { requireActor } from "../security/actor";
 import {
   createReferral,
   listReferrals,
@@ -7,6 +8,19 @@ import {
   type IntersectoralDestination,
   type ReferralStatus,
 } from "../services/intersectoral.service";
+
+const INTERSECTORAL_ROLES = [
+  "admin_platform",
+  "adm_master",
+  "municipal_manager",
+  "gestor_municipal",
+  "md1",
+  "medico",
+  "md",
+  "ppi",
+  "re",
+  "responsavel_escolar",
+] as const;
 
 export async function intersectoralRoutes(app: FastifyInstance) {
   // 1. Painel de monitoramento do acolhimento em 90 dias (Lei 13.509 / ECA art. 19 § 2º)
@@ -53,7 +67,9 @@ export async function intersectoralRoutes(app: FastifyInstance) {
         },
       },
     },
-    async () => {
+    async (request, reply) => {
+      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      if (!actor) return;
       return getIntersectoralMonitoringSummary();
     }
   );
@@ -95,7 +111,9 @@ export async function intersectoralRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      if (!actor) return;
       const { destination, status } = request.query;
       const destNorm = destination ? (destination.toUpperCase() as IntersectoralDestination) : undefined;
       const referrals = listReferrals({ destination: destNorm, status: status as ReferralStatus });
@@ -169,6 +187,8 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      if (!actor) return;
       const body = request.body;
       if (!body.caseId || !body.studentCode || !body.destination || !body.reason) {
         return reply.status(400).send({
@@ -241,6 +261,8 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      if (!actor) return;
       const { id } = request.params;
       const { status, feedbackNotes } = request.body;
 

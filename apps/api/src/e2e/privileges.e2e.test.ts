@@ -176,14 +176,17 @@ describe("Privilégios por ator (E2E)", { skip }, () => {
     }
   });
 
-  test("Board e ADM não leem prontuário; o Board atua pelos pedidos de ajuda", async () => {
-    for (const who of ["board", "admin"]) {
-      assert.equal((await call("GET", "/api/cases", who)).status, 403, who);
-      for (const p of ["re-assessment", "consolidated", "full-summary", "specialist-view"]) {
-        assert.equal((await call("GET", `/api/cases/${caseA}/${p}`, who)).status, 403, `${who} ${p}`);
-      }
-      assert.equal((await call("GET", "/api/expert-meetings", who)).status, 200, who);
+  test("Board não lê prontuário e atua por pedidos de ajuda; ADM possui acesso à plataforma", async () => {
+    // Board nunca acessa prontuário
+    assert.equal((await call("GET", "/api/cases", "board")).status, 403, "board");
+    for (const p of ["re-assessment", "consolidated", "full-summary", "specialist-view"]) {
+      assert.equal((await call("GET", `/api/cases/${caseA}/${p}`, "board")).status, 403, `board ${p}`);
     }
+    assert.equal((await call("GET", "/api/expert-meetings", "board")).status, 200, "board");
+
+    // ADM da plataforma possui acesso irrestrito a prontuários e reuniões conforme Decisão A2
+    assert.equal((await call("GET", "/api/cases", "admin")).status, 200, "admin");
+    assert.equal((await call("GET", "/api/expert-meetings", "admin")).status, 200, "admin");
   });
 
   test("RE lista só os casos da própria escola; médico recebe a rede do município", async () => {
