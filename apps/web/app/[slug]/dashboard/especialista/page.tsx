@@ -8,7 +8,6 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
 
 const SPECIALTY_NAMES: Record<string, string> = {
-  assistente_social: "Assistente Social (AS)",
   servico_social: "Assistente Social (AS)",
   as: "Assistente Social (AS)",
   neuropsicologia: "Neuropsicólogo(a)",
@@ -19,7 +18,6 @@ const SPECIALTY_NAMES: Record<string, string> = {
   psicologia: "Psicoterapeuta / Psicólogo(a)",
   fonoaudiologia: "Fonoaudiólogo(a)",
   fonoaudiologa: "Fonoaudiólogo(a)",
-  psicologia_familiar: "Psicólogo(a) Familiar",
   psicopedagogia: "Psicopedagogo(a) Clínico(a)",
   psicopedagogo_clinico: "Psicopedagogo(a) Clínico(a)",
 };

@@ -17,7 +17,6 @@ export type Role =
   | "md1"
   | "medico"
   | "md"
-  | "assistente_social"
   | "as"
   | "servico_social"
   | "neuropsicologo"
@@ -52,7 +51,6 @@ const roles: readonly Role[] = [
   "md1",
   "medico",
   "md",
-  "assistente_social",
   "as",
   "servico_social",
   "neuropsicologo",
@@ -105,7 +103,6 @@ const ROLE_EQUIVALENTS: Record<string, string[]> = {
   md: ["md1", "medico", "md"],
   specialist: [
     "specialist",
-    "assistente_social",
     "as",
     "servico_social",
     "neuropsicologo",
@@ -122,9 +119,8 @@ const ROLE_EQUIVALENTS: Record<string, string[]> = {
     "psicopedagogo_clinico",
     "psicopedagoga_clinica",
   ],
-  assistente_social: ["assistente_social", "as", "servico_social", "specialist"],
-  as: ["assistente_social", "as", "servico_social", "specialist"],
-  servico_social: ["assistente_social", "as", "servico_social", "specialist"],
+  as: ["as", "servico_social", "specialist"],
+  servico_social: ["as", "servico_social", "specialist"],
 };
 
 export function hasRole(
@@ -165,7 +161,6 @@ export const ROLE_HUMAN_LABELS: Record<string, string> = {
   md1: "Médico(a) (MD)",
   medico: "Médico(a) (MD)",
   md: "Médico(a) (MD)",
-  assistente_social: "Assistente Social (AS)",
   as: "Assistente Social (AS)",
   servico_social: "Assistente Social (AS)",
   neuropsicologo: "Neuropsicólogo(a)",
@@ -207,7 +202,6 @@ export const CLINICAL_ROLES: readonly Role[] = [
   "medico",
   "md",
   "specialist",
-  "assistente_social",
   "as",
   "servico_social",
   "neuropsicologo",
@@ -234,7 +228,6 @@ export const TRIAGEM_ROLES: readonly Role[] = [
 /** Papéis de especialista clínico para prontuário multidisciplinar delegado. */
 export const SPECIALIST_CLINICAL_ROLES: readonly Role[] = [
   "specialist",
-  "assistente_social",
   "as",
   "servico_social",
   "neuropsicologo",

@@ -58,15 +58,19 @@ export function formatPhone(val: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 }
 
-export const ALLOWED_SPECIALTIES = [
-  "psicopedagogia",
-  "medicina",
+export const VALID_SPECIALTIES = [
   "fonoaudiologia",
-  "psicologia",
+  "medicina",
   "neuropsicologia",
+  "psicologia",
+  "psicopedagogia",
   "psicomotricidade",
   "servico_social",
 ] as const;
+
+export type ValidSpecialty = (typeof VALID_SPECIALTIES)[number];
+
+export const ALLOWED_SPECIALTIES = VALID_SPECIALTIES;
 
 export const professionalSchema = z.object({
   name: z

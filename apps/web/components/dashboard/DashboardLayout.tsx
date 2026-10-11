@@ -124,7 +124,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/especialista"))
       return [
         "specialist",
-        "assistente_social",
         "as",
         "servico_social",
         "neuropsicologo",
