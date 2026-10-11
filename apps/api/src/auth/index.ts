@@ -9,21 +9,27 @@ import { resetPasswordEmail, verificationEmail } from "../email/templates";
  * RBAC próprio do domínio (admin_platform, municipal_manager, school_manager,
  * teacher, ppi, md1, board, researcher) fica em `users.role`, ver packages/shared/src/schema.ts.
  */
+function resolveAuthBaseUrl(): string {
+  let url = process.env.BETTER_AUTH_URL;
+  // Se a variável apontar para o endpoint legado do Neon Auth (...neonauth.../neondb/auth),
+  // ignoramos, pois o Better Auth roda self-hosted nesta API.
+  if (!url || url.includes("neonauth")) {
+    url = process.env.API_URL || (process.env.PORT ? `http://localhost:${process.env.PORT}` : "http://localhost:3001");
+  }
+  return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
+}
+
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
-const authBaseUrl = process.env.BETTER_AUTH_URL || process.env.NEON_AUTH_URL;
+const authBaseUrl = resolveAuthBaseUrl();
 
 if (process.env.NODE_ENV === "production") {
   if (!authSecret) {
     throw new Error("BETTER_AUTH_SECRET é obrigatória em produção.");
   }
-  if (!authBaseUrl) {
-    throw new Error("BETTER_AUTH_URL é obrigatória em produção.");
-  }
   if (authSecret === "dev_only_secret_replace_in_production") {
     throw new Error("BETTER_AUTH_SECRET não pode ser o valor de desenvolvimento.");
   }
   if (authSecret.length < 32) {
-    // Aviso (não derruba a API): segredo curto enfraquece a assinatura das sessões.
     console.warn("[auth] BETTER_AUTH_SECRET tem menos de 32 caracteres; troque por um segredo longo.");
   }
 }
@@ -59,11 +65,13 @@ export const auth = betterAuth({
         : undefined,
   }),
   secret: authSecret ?? "dev_only_secret_replace_in_production",
-  baseURL: authBaseUrl ?? "http://localhost:3001",
+  baseURL: authBaseUrl,
+  basePath: "/api/auth",
   // As tabelas de auth (neon_auth.*) usam colunas uuid; o Better Auth gera ids
   // alfanumericos por padrao, o que quebra o INSERT.
   advanced: {
     database: { generateId: "uuid" },
+    useSecureCookies: process.env.NODE_ENV === "production" && authBaseUrl.startsWith("https://"),
   },
   emailAndPassword: {
     enabled: true,
@@ -91,8 +99,17 @@ export const auth = betterAuth({
       );
     },
   },
-  trustedOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  trustedOrigins: Array.from(
+    new Set([
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:3001",
+      ...(process.env.APP_URL ? [process.env.APP_URL.replace(/\/$/, "")] : []),
+      ...(process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ])
+  ),
 });

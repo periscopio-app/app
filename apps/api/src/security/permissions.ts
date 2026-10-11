@@ -24,7 +24,6 @@ export const REGISTRY_ROLES: readonly Role[] = [
   "ppi",
   "re",
   "responsavel_escolar",
-  "teacher",
 ];
 
 /** Diretório de profissionais da escola (nome, papel, especialidade): dado administrativo, não clínico. */
@@ -63,8 +62,6 @@ export const CASE_LIST_ROLES: readonly Role[] = [
 
 /** Visões da gestão sobre o sumário do RE e a lista de encaminhados ao núcleo. */
 export const MANAGEMENT_VIEW_ROLES: readonly Role[] = [
-  "admin_platform",
-  "adm_master",
   "municipal_manager",
   "gestor_municipal",
   "school_manager",
@@ -78,7 +75,6 @@ export const BOARD_REQUESTER_ROLES: readonly Role[] = [
   "ppi",
   "re",
   "responsavel_escolar",
-  "teacher",
   "md1",
   "medico",
   "md",
@@ -100,7 +96,8 @@ export const NUCLEO_SECTION_ROLES: readonly Role[] = [
   "medico",
   "md",
   "specialist",
-  "assistente_social",
+  "as",
+  "servico_social",
   "neuropsicologo",
   "psicomotricista",
   "psicoterapeuta",
@@ -121,7 +118,8 @@ export const CLINICAL_SCALE_ROLES: readonly Role[] = [
   "medico",
   "md",
   "specialist",
-  "assistente_social",
+  "as",
+  "servico_social",
   "neuropsicologo",
   "psicomotricista",
   "psicoterapeuta",

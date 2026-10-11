@@ -119,12 +119,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Bloqueio de navegação por perfil nas telas (Frontend Route Guard)
   const getRouteAllowedRoles = (path: string): string[] | null => {
-    if (path.includes("/dashboard/re")) return ["ppi", "re", "responsavel_escolar", "teacher"];
+    if (path.includes("/dashboard/re")) return ["ppi", "re", "responsavel_escolar"];
     if (path.includes("/dashboard/medico")) return ["md1", "medico", "md"];
     if (path.includes("/dashboard/especialista"))
       return [
         "specialist",
-        "assistente_social",
         "as",
         "servico_social",
         "neuropsicologo",

@@ -12,6 +12,7 @@ import {
   schools,
   students,
   users,
+  VALID_SPECIALTIES,
 } from "@periscopio/shared";
 import { requireActor, type Actor } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
@@ -652,20 +653,12 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
   // ── Delegação (md1 apenas) ──────────────────────────────────────────────
 
-  const VALID_SPECIALTIES = new Set([
-    "fonoaudiologia",
-    "medicina",
-    "neuropsicologia",
-    "psicologia",
-    "psicopedagogia",
-    "psicomotricidade",
-    "servico_social",
-  ]);
+  const VALID_SPECIALTIES_SET = new Set<string>(VALID_SPECIALTIES);
 
   const delegateSchema = z.object({
     delegations: z.array(
       z.object({
-        specialty: z.string().refine((s) => VALID_SPECIALTIES.has(s), { message: "Especialidade inválida" }),
+        specialty: z.string().refine((s) => VALID_SPECIALTIES_SET.has(s), { message: "Especialidade inválida" }),
         professionalId: z.string().uuid(),
         notes: z.string().optional(),
       })

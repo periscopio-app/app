@@ -39,9 +39,18 @@ export async function authRoutes(app: FastifyInstance) {
 
     const res = await auth.handler(req);
     reply.status(res.status);
+
     res.headers.forEach((val, key) => {
-      reply.header(key, val);
+      const lower = key.toLowerCase();
+      if (lower !== "set-cookie" && lower !== "content-length" && lower !== "content-encoding") {
+        reply.header(key, val);
+      }
     });
+
+    const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+    if (setCookies.length > 0) {
+      reply.header("set-cookie", setCookies);
+    }
 
     const responseText = await res.text();
     try {

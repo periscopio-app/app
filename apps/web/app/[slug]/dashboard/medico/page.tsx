@@ -56,14 +56,12 @@ const CLOSE_LABELS: Record<string, string> = {
 };
 
 const SPECIALTIES = [
-  { id: "assistente_social", label: "Assistente Social (AS) — Diagnóstico Social e Acompanhamento Familiar" },
   { id: "neuropsicologia", label: "Neuropsicólogo(a) — Avaliação Neuropsicológica" },
-  { id: "psicomotricidade", label: "Psicomotricista" },
-  { id: "psicologia", label: "Psicoterapeuta / Psicólogo(a) Clínico(a)" },
   { id: "fonoaudiologia", label: "Fonoaudiólogo(a)" },
-  { id: "psicologia_familiar", label: "Psicólogo(a) Familiar" },
+  { id: "psicologia", label: "Psicoterapeuta / Psicólogo(a) Clínico(a)" },
+  { id: "psicomotricidade", label: "Psicomotricista" },
   { id: "psicopedagogia", label: "Psicopedagogo(a) Clínico(a)" },
-  { id: "servico_social", label: "Serviço Social (AS)" },
+  { id: "servico_social", label: "Serviço Social (AS) — Diagnóstico Social e Acompanhamento Familiar" },
 ];
 
 
