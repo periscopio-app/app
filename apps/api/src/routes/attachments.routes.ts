@@ -73,11 +73,17 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       }
 
       const validation = validateAttachmentUpload({
-        tenantId: actor.tenantId,
+        actor: {
+          id: actor.id,
+          tenantId: actor.tenantId,
+          schoolId: actor.schoolId || undefined,
+          role: actor.role as any,
+        },
         caseId,
-        fileName: body.fileName,
+        caseTenantId: caseRecord.tenantId,
+        filename: body.fileName,
         mimeType: body.mimeType,
-        fileSizeBytes: body.fileSizeBytes,
+        sizeInBytes: body.fileSizeBytes,
       });
 
       if (!validation.allowed) {
@@ -87,7 +93,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
 
       return {
         success: true,
-        storageKey: validation.storageKey,
+        storageKey: validation.objectKey,
         expiresInSeconds: 900,
         maxSizeBytes: 10 * 1024 * 1024,
         message: "Intenção de upload aprovada. Chave opaca de armazenamento gerada sem PII.",

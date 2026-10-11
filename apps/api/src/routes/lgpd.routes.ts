@@ -78,6 +78,13 @@ export async function lgpdRoutes(app: FastifyInstance) {
               message: { type: "string", example: "Solicitação registrada sob o protocolo 7c9e6679-7425-40de-944b-e07fc1f90ae7. O prazo legal de resposta da Controladora é de até 15 dias úteis (Art. 19, II da LGPD)." },
             },
           },
+          400: {
+            description: "Erro de validação nos campos da solicitação",
+            type: "object",
+            properties: {
+              error: { type: "string" },
+            },
+          },
         },
       },
     },

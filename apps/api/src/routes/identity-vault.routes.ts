@@ -208,7 +208,7 @@ export async function identityVaultRoutes(app: FastifyInstance) {
         actor: {
           id: actor.id,
           tenantId: actor.tenantId,
-          schoolId: actor.schoolId,
+          schoolId: actor.schoolId || undefined,
           role: actor.role,
         },
         studentId,
