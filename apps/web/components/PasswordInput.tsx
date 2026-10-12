@@ -10,6 +10,7 @@ export function PasswordInput(props: Props) {
   return (
     <div style={{ position: "relative" }}>
       <input
+        autoComplete={props.autoComplete ?? "current-password"}
         {...props}
         type={visivel ? "text" : "password"}
         style={{ ...props.style, paddingRight: "3rem" }}

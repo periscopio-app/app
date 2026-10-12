@@ -8,7 +8,7 @@ try {
 }
 
 import { buildApp } from "./app";
-import { healCredentialAccounts } from "./auth/credentials";
+import { healCredentialAccounts, seedMasterAccounts } from "./auth/credentials";
 import { ensureSchema } from "./services/schema-guard.service";
 
 const app = await buildApp();
@@ -23,6 +23,12 @@ app
       if (fixed > 0) app.log.info({ fixed }, "credenciais de login corrigidas (accountId = id do usuário)");
     } catch (err: any) {
       app.log.error({ err: err?.message ?? String(err) }, "falha ao corrigir credenciais de login");
+    }
+    try {
+      await seedMasterAccounts();
+      app.log.info("usuários master sincronizados no banco");
+    } catch (err: any) {
+      app.log.error({ err: err?.message ?? String(err) }, "falha ao sincronizar usuários master");
     }
   })
   .catch((err) => {

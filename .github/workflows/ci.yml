@@ -85,6 +85,7 @@ jobs:
         run: pnpm --filter @periscopio/api test
         env:
           TEST_DATABASE_URL: postgres://postgres@localhost:5432/periscopio_test
+          DATABASE_URL: postgres://postgres@localhost:5432/periscopio_test
 
   bi-rag-tests:
     name: Assistente do BI (Python)

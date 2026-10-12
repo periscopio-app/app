@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { auth } from "../auth";
+import { auth, authBaseUrl } from "../auth";
 import { requireActor } from "../security/actor";
 
 export async function authRoutes(app: FastifyInstance) {
@@ -7,7 +7,7 @@ export async function authRoutes(app: FastifyInstance) {
     return {
       authProvider: "better-auth",
       googleAuthEnabled: false,
-      baseUrl: process.env.BETTER_AUTH_URL || "/api/auth",
+      baseUrl: `${authBaseUrl}/api/auth`,
     };
   });
 
