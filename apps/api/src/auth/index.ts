@@ -9,18 +9,21 @@ import { resetPasswordEmail, verificationEmail } from "../email/templates";
  * RBAC próprio do domínio (admin_platform, municipal_manager, school_manager,
  * teacher, ppi, md1, board, researcher) fica em `users.role`, ver packages/shared/src/schema.ts.
  */
-function resolveAuthBaseUrl(): string {
+export function resolveAuthBaseUrl(): string {
   let url = process.env.BETTER_AUTH_URL;
-  // Se a variável apontar para o endpoint legado do Neon Auth (...neonauth.../neondb/auth),
-  // ignoramos, pois o Better Auth roda self-hosted nesta API.
+  // Se a variável apontar para o endpoint legado do Neon Auth (...neonauth.../neondb/auth) ou estiver vazia:
   if (!url || url.includes("neonauth")) {
-    url = process.env.API_URL || (process.env.PORT ? `http://localhost:${process.env.PORT}` : "http://localhost:3001");
+    url =
+      process.env.API_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      (process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : undefined) ||
+      (process.env.PORT ? `http://localhost:${process.env.PORT}` : "http://localhost:3001");
   }
   return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
 }
 
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
-const authBaseUrl = resolveAuthBaseUrl();
+export const authBaseUrl = resolveAuthBaseUrl();
 
 if (process.env.NODE_ENV === "production") {
   if (!authSecret) {
@@ -105,6 +108,8 @@ export const auth = betterAuth({
       "http://127.0.0.1:3000",
       "http://localhost:3001",
       "http://127.0.0.1:3001",
+      ...(authBaseUrl ? [authBaseUrl] : []),
+      ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL.replace(/\/$/, "")] : []),
       ...(process.env.APP_URL ? [process.env.APP_URL.replace(/\/$/, "")] : []),
       ...(process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")
         .split(",")

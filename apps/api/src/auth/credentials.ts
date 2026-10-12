@@ -92,3 +92,96 @@ export async function healCredentialAccounts(): Promise<number> {
   );
   return res.rowCount ?? 0;
 }
+
+/**
+ * Garante que os usuários master configurados no ambiente (.env) existam no neon_auth
+ * e em public.users com as senhas corretas definidas no ambiente.
+ */
+export async function seedMasterAccounts(): Promise<void> {
+  const client = await (db as any).$client;
+  if (!client?.query) return;
+
+  const masters = [
+    {
+      email: process.env.SEED_MASTER_1_EMAIL || "bruno@oceanoazul.dev.br",
+      name: process.env.SEED_MASTER_1_NAME || "Bruno Bisogni",
+      password: process.env.SEED_MASTER_1_PASSWORD || "Amor121314@#$",
+    },
+    {
+      email: process.env.SEED_MASTER_2_EMAIL || "admin@projetoperiscopio.com.br",
+      name: process.env.SEED_MASTER_2_NAME || "Administrador Master",
+      password: process.env.SEED_MASTER_2_PASSWORD || "Periscopio@Master2026!",
+    },
+  ];
+
+  const globalTenantId = "00000000-0000-0000-0000-000000000001";
+  await client.query(`
+    INSERT INTO tenants (id, name, municipality_code)
+    VALUES ($1, 'Periscópio Plataforma Global', '0000000')
+    ON CONFLICT (id) DO NOTHING;
+  `, [globalTenantId]).catch(() => {});
+
+  for (const m of masters) {
+    if (!m.email || !m.password) continue;
+    const email = m.email.toLowerCase().trim();
+    const hashed = await hashPassword(m.password);
+
+    // 1. Garantir neon_auth.user
+    const existing = await client.query(
+      `SELECT id FROM neon_auth."user" WHERE lower(email) = $1 LIMIT 1`,
+      [email]
+    );
+
+    let userId: string;
+    if (existing.rows.length > 0) {
+      userId = existing.rows[0].id;
+      await client.query(
+        `UPDATE neon_auth."user" SET name = $1, "emailVerified" = true, "updatedAt" = NOW() WHERE id = $2`,
+        [m.name, userId]
+      );
+    } else {
+      userId = crypto.randomUUID();
+      await client.query(
+        `INSERT INTO neon_auth."user" (id, name, email, "emailVerified", role, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, true, 'admin', NOW(), NOW())`,
+        [userId, m.name, email]
+      );
+    }
+
+    // 2. Garantir neon_auth.account com senha atualizada
+    const acc = await client.query(
+      `SELECT id FROM neon_auth.account WHERE "userId" = $1 AND "providerId" = 'credential' LIMIT 1`,
+      [userId]
+    );
+    if (acc.rows.length > 0) {
+      await client.query(
+        `UPDATE neon_auth.account SET password = $1, "accountId" = $2::text, "updatedAt" = NOW() WHERE id = $3`,
+        [hashed, userId, acc.rows[0].id]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+         VALUES ($1, $2, 'credential', $2, $3, NOW(), NOW())`,
+        [crypto.randomUUID(), userId, hashed]
+      );
+    }
+
+    // 3. Garantir public.users
+    const domainUser = await client.query(
+      `SELECT id FROM public.users WHERE lower(email) = $1 LIMIT 1`,
+      [email]
+    );
+    if (domainUser.rows.length > 0) {
+      await client.query(
+        `UPDATE public.users SET name = $1, role = 'admin_platform', "tenant_id" = $2, "access_enabled" = true WHERE id = $3`,
+        [m.name, globalTenantId, domainUser.rows[0].id]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO public.users (id, "tenant_id", "school_id", email, name, role, "access_enabled", "created_at")
+         VALUES ($1, $2, NULL, $3, $4, 'admin_platform', true, NOW())`,
+        [userId, globalTenantId, email, m.name]
+      );
+    }
+  }
+}

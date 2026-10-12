@@ -114,6 +114,7 @@ export default function SchoolLoginPage({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="username"
             />
           </div>
 
@@ -128,6 +129,8 @@ export default function SchoolLoginPage({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
+              autoComplete="current-password"
             />
           </div>
 
