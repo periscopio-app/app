@@ -9,9 +9,19 @@ try {
 
 import { buildApp } from "./app";
 import { healCredentialAccounts, seedMasterAccounts } from "./auth/credentials";
+import { incr } from "./observability/metrics";
 import { ensureSchema } from "./services/schema-guard.service";
 
 const app = await buildApp();
+
+process.on("unhandledRejection", (reason) => {
+  incr("unhandled_rejections");
+  app.log.error({ err: reason instanceof Error ? { name: reason.name, message: reason.message, stack: reason.stack } : String(reason) }, "promessa rejeitada sem tratamento");
+});
+process.on("uncaughtException", (err) => {
+  app.log.fatal({ err: { name: err.name, message: err.message, stack: err.stack } }, "exceção não capturada; reiniciando");
+  setTimeout(() => process.exit(1), 200).unref();
+});
 const port = Number(process.env.PORT ?? 3001);
 
 app

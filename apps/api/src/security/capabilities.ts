@@ -120,6 +120,7 @@ export const CAPABILITIES = [
   { key: "users.manage", group: "plataforma", label: "Gerir usuários e convites", description: "Criar, alterar perfil, desativar e reativar usuários.", defaultRoles: ADMIN, locked: true },
   { key: "schools.provision", group: "plataforma", label: "Provisionar escolas e redes", description: "Criar escola/rede e abrir a instância do município.", defaultRoles: ADMIN, locked: true },
   { key: "population.import", group: "plataforma", label: "Importar dados populacionais (Tarumã)", description: "Carga de dados agregados do município.", defaultRoles: ADMIN, locked: true },
+  { key: "system.observability.view", group: "plataforma", label: "Ver a saúde do sistema", description: "Erros, lentidão, banco, e-mail e configuração da plataforma.", defaultRoles: ADMIN, locked: true },
   { key: "lgpd.manage", group: "plataforma", label: "Governança LGPD (DPO)", description: "Tratar pedidos de titulares e consultar a política de retenção.", defaultRoles: ADMIN, locked: true },
 
   // ── Cadastro e fila ─────────────────────────────────────────────────────

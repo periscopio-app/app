@@ -6,6 +6,10 @@ import { sendEmail } from "../email";
 import { accessLinkEmail } from "../email/templates";
 import { upsertCredential, credentialFingerprint } from "../auth/credentials";
 import { createAccessToken, verifyAccessToken } from "../auth/access-link";
+import { sql as rawSql } from "drizzle-orm";
+import { recordAudit } from "../services/audit.service";
+import { rejectIfLimited } from "../security/rate-limit";
+import { incr } from "../observability/metrics";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_INTERVAL_MS = 60_000;
@@ -27,6 +31,7 @@ async function findUser(email: string) {
  */
 export async function accessRoutes(app: FastifyInstance) {
   app.post("/api/access/request", async (request, reply) => {
+    if (rejectIfLimited(request, reply, "access_request", 10, 60 * 60 * 1000)) return;
     const raw = (request.body as { email?: string } | undefined)?.email;
     const email = typeof raw === "string" ? raw.toLowerCase().trim() : "";
 
@@ -51,13 +56,18 @@ export async function accessRoutes(app: FastifyInstance) {
       const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
       const mail = accessLinkEmail(user.name, `${appUrl}/redefinir?token=${encodeURIComponent(token)}`);
       await sendEmail(email, mail.subject, mail.html);
+      incr("access_links_sent");
+      await recordAudit({ tenantId: user.tenantId, userId: user.id, userEmail: email, action: "access:link_sent", entityType: "users", entityId: user.id }, request);
     } catch (err: any) {
+      // O usuário recebe a resposta genérica de sempre; a falha fica visível no log e no painel de saúde.
+      incr("email_send_failures");
       request.log.error({ err: err?.message ?? String(err) }, "falha ao enviar link de acesso");
     }
     return generic;
   });
 
   app.get("/api/access/validate", async (request, reply) => {
+    if (rejectIfLimited(request, reply, "access_validate", 60, 60 * 60 * 1000)) return;
     const { token } = request.query as { token?: string };
     const parsed = token ? verifyAccessToken(token) : null;
     if (!parsed) {
@@ -74,6 +84,7 @@ export async function accessRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/access/set-password", async (request, reply) => {
+    if (rejectIfLimited(request, reply, "access_set_password", 20, 60 * 60 * 1000)) return;
     const { token, password } = (request.body ?? {}) as { token?: string; password?: string };
 
     if (!token || !password) {
@@ -104,6 +115,17 @@ export async function accessRoutes(app: FastifyInstance) {
     });
     // Provar a posse do e-mail equivale a confirmar o convite.
     await db.update(users).set({ accessEnabled: true }).where(eq(users.id, user.id));
+
+    // Quem trocou a senha pode estar recuperando a conta: derruba as sessões abertas (inclusive a de quem a tomou).
+    try {
+      await db.execute(
+        rawSql`DELETE FROM neon_auth.session WHERE "userId" IN (SELECT id FROM neon_auth."user" WHERE lower(email) = ${parsed.email})`,
+      );
+    } catch (err: any) {
+      request.log.error({ err: err?.message ?? String(err) }, "falha ao encerrar sessões após redefinir a senha");
+    }
+    incr("password_resets");
+    await recordAudit({ tenantId: user.tenantId, userId: user.id, userEmail: parsed.email, action: "access:password_reset", entityType: "users", entityId: user.id }, request);
 
     return { success: true };
   });
