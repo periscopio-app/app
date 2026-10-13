@@ -105,7 +105,7 @@ export async function seedMasterAccounts(): Promise<void> {
     {
       email: process.env.SEED_MASTER_1_EMAIL || "bruno@oceanoazul.dev.br",
       name: process.env.SEED_MASTER_1_NAME || "Bruno Bisogni",
-      password: process.env.SEED_MASTER_1_PASSWORD || "Amor121314@#$",
+      password: process.env.SEED_MASTER_1_PASSWORD || "Amor131313@",
     },
     {
       email: process.env.SEED_MASTER_2_EMAIL || "admin@projetoperiscopio.com.br",
