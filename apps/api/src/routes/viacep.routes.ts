@@ -1,27 +1,12 @@
 import type { FastifyInstance } from "fastify";
-
-export interface ViaCepResponse {
-  cep: string;
-  logradouro: string;
-  complemento: string;
-  bairro: string;
-  localidade: string;
-  uf: string;
-  ibge: string;
-  gia?: string;
-  ddd?: string;
-  siafi?: string;
-  erro?: boolean | string;
-}
-
-const cepCache = new Map<string, ViaCepResponse>();
+import { lookupCep } from "../services/cep.service";
 
 export async function viacepRoutes(app: FastifyInstance) {
   app.get<{ Params: { cep: string } }>(
     "/api/cep/:cep",
     {
       schema: {
-        description: "Consulta endereço completo por CEP via integração ViaCEP oficial para cadastro de escolas, profissionais e pacientes",
+        description: "Consulta endereço completo por CEP por provedores gratuitos (BrasilAPI, ViaCEP, OpenCEP) para cadastro de escolas, profissionais e pacientes",
         tags: ["Localização & CEP"],
         params: {
           type: "object",
@@ -32,7 +17,7 @@ export async function viacepRoutes(app: FastifyInstance) {
         },
         response: {
           200: {
-            description: "Endereço localizado com sucesso nos Correios / ViaCEP",
+            description: "Endereço localizado",
             type: "object",
             properties: {
               cep: { type: "string", example: "19820-000" },
@@ -53,12 +38,15 @@ export async function viacepRoutes(app: FastifyInstance) {
             type: "object",
             properties: { error: { type: "string" } },
           },
+          502: {
+            type: "object",
+            properties: { error: { type: "string" } },
+          },
         },
       },
     },
     async (request, reply) => {
-      const rawCep = request.params.cep || "";
-      const cleanCep = rawCep.replace(/\D/g, "");
+      const cleanCep = (request.params.cep || "").replace(/\D/g, "");
 
       if (cleanCep.length !== 8) {
         return reply.status(400).send({
@@ -66,61 +54,14 @@ export async function viacepRoutes(app: FastifyInstance) {
         });
       }
 
-      if (cepCache.has(cleanCep)) {
-        return reply.send(cepCache.get(cleanCep));
+      const r = await lookupCep(cleanCep);
+      if (r.status === "ok") return reply.send(r.address);
+      if (r.status === "not_found") {
+        return reply.status(404).send({ error: `CEP ${cleanCep} não encontrado.` });
       }
-
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
-          signal: controller.signal,
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "PeriscopioSaude/2.0 (sistema-medico-escolar)",
-          },
-        });
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-          return reply.status(502).send({
-            error: "Falha na comunicação com o serviço ViaCEP.",
-          });
-        }
-
-        const data: ViaCepResponse = await response.json();
-
-        if (data.erro === true || data.erro === "true") {
-          return reply.status(404).send({
-            error: `CEP ${cleanCep} não encontrado na base dos Correios.`,
-          });
-        }
-
-        const result = {
-          cep: data.cep || `${cleanCep.slice(0, 5)}-${cleanCep.slice(5)}`,
-          logradouro: data.logradouro || "",
-          complemento: data.complemento || "",
-          bairro: data.bairro || "",
-          localidade: data.localidade || "",
-          uf: (data.uf || "").toUpperCase(),
-          ibge: data.ibge || "",
-          ddd: data.ddd || "",
-        };
-
-        cepCache.set(cleanCep, result);
-        return reply.send(result);
-      } catch (err: any) {
-        if (err.name === "AbortError") {
-          return reply.status(504).send({
-            error: "Tempo de resposta do serviço ViaCEP excedido (timeout).",
-          });
-        }
-        // Falha ao alcançar o ViaCEP (rede, DNS, TLS) é falha do serviço externo, não erro interno.
-        return reply.status(502).send({
-          error: "Não foi possível consultar o serviço ViaCEP agora.",
-        });
-      }
+      return reply.status(502).send({
+        error: "Não foi possível consultar os serviços de CEP agora. Preencha o endereço manualmente.",
+      });
     }
   );
 }

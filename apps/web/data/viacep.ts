@@ -1,5 +1,7 @@
 /**
- * Serviço de Integração com ViaCEP para busca de endereço
+ * Busca de endereço por CEP.
+ * 1) API do Periscópio (cadeia BrasilAPI → ViaCEP → OpenCEP no servidor);
+ * 2) se a API estiver fora do ar, BrasilAPI e depois ViaCEP direto do navegador (ambos gratuitos e com CORS aberto).
  */
 
 export interface ViaCepAddress {
@@ -43,6 +45,29 @@ export async function fetchAddressByCep(rawCep: string): Promise<ViaCepAddress |
     }
   } catch {
     // Fallback direto para o ViaCEP caso a API interna não esteja acessível no cliente
+  }
+
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cep/v2/${cleanCep}`);
+    if (res.ok) {
+      const d = await res.json();
+      if (d?.city && d?.state) {
+        const addr: ViaCepAddress = {
+          cep: formatCep(cleanCep),
+          logradouro: d.street || "",
+          complemento: "",
+          bairro: d.neighborhood || "",
+          localidade: d.city,
+          uf: String(d.state).toUpperCase(),
+          ibge: "",
+          ddd: "",
+        };
+        cepCache[cleanCep] = addr;
+        return addr;
+      }
+    }
+  } catch {
+    // tenta o próximo provedor
   }
 
   try {
