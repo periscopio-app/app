@@ -5,6 +5,14 @@ import { cases, caseSummaries, caseTimeline, caseTransitions } from "@periscopio
 import type { Actor } from "../security/actor";
 import { db } from "../db/client";
 
+/** Erro de regra da jornada com status HTTP próprio (evita 500 para situações esperadas). */
+export class CaseTransitionError extends Error {
+  constructor(message: string, public readonly statusCode: 403 | 404 | 409 | 422) {
+    super(message);
+    this.name = "CaseTransitionError";
+  }
+}
+
 export type JourneyState =
   | "rascunho"
   | "enviado_re"
@@ -70,7 +78,7 @@ export async function applyTransitionInTx(
   reason: string
 ): Promise<void> {
   if (!reason.trim()) {
-    throw new Error("Motivo é obrigatório para registrar transição");
+    throw new CaseTransitionError("Motivo é obrigatório para registrar transição", 422);
   }
 
   const [caseItem] = await tx
@@ -79,14 +87,18 @@ export async function applyTransitionInTx(
     .where(and(eq(cases.id, caseId), eq(cases.tenantId, actor.tenantId)))
     .limit(1);
 
-  if (!caseItem) throw new Error("Caso não encontrado");
+  if (!caseItem) throw new CaseTransitionError("Caso não encontrado", 404);
 
   const current = (caseItem.journeyState ?? "rascunho") as JourneyState;
   const allowed = findAllowedTransition(current, toState, actor.role);
 
   if (!allowed) {
-    throw new Error(
-      `Transição de '${current}' para '${toState}' não permitida para o papel '${actor.role}'`
+    const roleAllowed = ALLOWED_TRANSITIONS.some((t) => t.from === current && t.to === toState);
+    throw new CaseTransitionError(
+      roleAllowed
+        ? "Seu perfil não pode avançar este caso. Use o perfil indicado para esta etapa (por exemplo, o RE para enviar a avaliação)."
+        : "Este caso não está na etapa certa para essa ação. Atualize a tela para ver a situação atual.",
+      roleAllowed ? 403 : 409
     );
   }
 

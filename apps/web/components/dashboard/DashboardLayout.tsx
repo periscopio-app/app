@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
-import { useCapabilities } from "@/lib/capabilities";
+import { useCapabilities, resetMe } from "@/lib/capabilities";
 import { BarChart3, MapPinned,
   FileText,
   Stethoscope,
@@ -72,7 +72,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = async () => {
     try {
       await signOut();
-      router.push("/login");
+      resetMe();
+      // Recarrega por completo: nenhum dado do perfil anterior fica na memória do navegador.
+      window.location.assign("/login");
     } catch (e) {
       console.error("Erro ao fazer logout", e);
     }
@@ -81,16 +83,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // O menu segue as CAIXINHAS do Administrador Master (privilégios), não só o perfil.
   const visibleClinical = [
     { show: has("fogap.fill"), label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
-    { show: has("management.view"), label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
+    { show: has("management.view"), label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList },
     { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
     { show: hasAny(["board.request", "board.manage"]), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
-    { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity, badge: "Piloto" },
-    { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3, badge: "Gestão" },
-    { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão" },
+    { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity },
+    { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3 },
+    { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned },
   ]
     .filter((i) => i.show)
-    .map(({ show: _s, ...rest }) => ({ ...rest, exact: false }));
+    .map(({ show: _s, ...rest }) => ({ badge: undefined as string | undefined, ...rest, exact: false }));
   const isSuper =
     userRole === "admin_platform" ||
     userRole === "adm_master" ||
@@ -98,14 +100,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     (session?.user?.email ? session.user.email.endsWith("@oceanoazul.dev.br") : false);
 
   const visibleAdmin = [
-    { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal, badge: "Master" },
-    { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity, badge: "Master" },
-    { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck, badge: "Master" },
-    { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck, badge: "LGPD" },
-    { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup" },
+    { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal },
+    { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity },
+    { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck },
+    { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck },
+    { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2 },
   ]
     .filter((i) => i.show)
-    .map(({ show: _s, ...rest }) => ({ ...rest, exact: false }));
+    .map(({ show: _s, ...rest }) => ({ badge: undefined as string | undefined, ...rest, exact: false }));
 
   // Bloqueio de navegação por privilégio (a API é quem decide de verdade; isto só evita uma tela vazia).
   const requiredForRoute = (path: string): string[] | null => {
@@ -215,7 +217,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   {currentSlug === "demo-escola" ? "Escola Municipal Demo" : currentSlug}
                 </span>
               </div>
-              <span className="text-[10px] text-neutral-800 uppercase font-mono font-bold">Tenant</span>
             </div>
           </div>
 
@@ -327,12 +328,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           <div className="flex items-center gap-3">
             <NotificationCenter />
-            <Link
-              href={`/${currentSlug}/dashboard/re`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black shadow-sm transition"
-            >
-              <span>+ Novo Prontuário</span>
-            </Link>
+            {/* Só aparece para quem pode cadastrar aluno e abrir caso (RE). */}
+            {has("student.register") && has("fogap.fill") && (
+              <Link
+                href={`/${currentSlug}/dashboard/re`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black shadow-sm transition"
+              >
+                <span>+ Novo Prontuário</span>
+              </Link>
+            )}
             <a
               href="https://wa.me/5511984444994"
               target="_blank"

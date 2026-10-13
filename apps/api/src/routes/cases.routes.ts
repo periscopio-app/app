@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import {
@@ -19,14 +19,17 @@ import { canonicalRole } from "../security/capabilities";
 import { canAccessSchool } from "../security/tenancy";
 import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
-import { ageBracketOf, generateStudentCode, validateBirth } from "../services/student-code";
+import { ageBracketOf, generateStudentCode, validateBirth, validatePilotAge } from "../services/student-code";
 import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
 import {
   FOGAP_FORM_CODE,
   FOGAP_VERSION,
+  FOGAP_DESTINOS,
   prontoParaRevisao,
+  sumarioComPadroes,
   validarPayloadFogap,
   type FogapPayload,
+  type FogapSecaoSumario,
   SNAP4_FORM_CODE,
   SNAP4_VERSION,
   validarPayloadSnap4,
@@ -138,6 +141,8 @@ export async function casesRoutes(app: FastifyInstance) {
 
     const birth = validateBirth(body);
     if (!birth.ok) return reply.status(400).send({ error: birth.error });
+    const pilotAge = validatePilotAge(birth.birthYear, birth.birthMonth);
+    if (!pilotAge.ok) return reply.status(400).send({ error: pilotAge.error });
 
     const student = await insertStudent(school, birth.birthYear, birth.birthMonth);
     await recordAudit(
@@ -182,6 +187,7 @@ export async function casesRoutes(app: FastifyInstance) {
       }
       const b = validateBirth(r ?? {});
       if (!b.ok) errors.push({ row: i + 1, error: b.error });
+      else if (!validatePilotAge(b.birthYear, b.birthMonth).ok) errors.push({ row: i + 1, error: "Fora da faixa do piloto (6 anos a 9 anos e 11 meses)." });
       else valid.push({ birthYear: b.birthYear, birthMonth: b.birthMonth });
     });
     if (errors.length > 0) return reply.status(400).send({ error: "Planilha com erros; nada foi importado", errors: errors.slice(0, 20) });
@@ -259,6 +265,25 @@ export async function casesRoutes(app: FastifyInstance) {
     const student = await studentVisibleTo(actor, body.studentId);
     if (!student) return reply.status(404).send({ error: "Aluno não encontrado" });
 
+    // Forma única do caso na interface: junta código do aluno, nascimento e escola (sem nome nem documento).
+    const [school] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, student.schoolId)).limit(1);
+    const present = (c: typeof cases.$inferSelect) => ({
+      ...c,
+      studentCode: student.studentCode,
+      birthYear: student.birthYear,
+      birthMonth: student.birthMonth,
+      schoolName: school?.name ?? null,
+    });
+
+    // "Abrir" um aluno que já tem caso em andamento retoma esse caso, em vez de duplicar o prontuário.
+    const [open] = await db
+      .select()
+      .from(cases)
+      .where(and(eq(cases.studentId, student.id), eq(cases.tenantId, student.tenantId), ne(cases.journeyState, "encerrado")))
+      .orderBy(desc(cases.createdAt))
+      .limit(1);
+    if (open) return reply.status(200).send({ success: true, reused: true, case: present(open) });
+
     const [caseItem] = await db
       .insert(cases)
       .values({
@@ -278,7 +303,7 @@ export async function casesRoutes(app: FastifyInstance) {
       payload: { actorRole: actor.role },
     });
 
-    return reply.status(201).send({ success: true, case: caseItem });
+    return reply.status(201).send({ success: true, case: present(caseItem) });
   });
 
   app.get("/api/cases", async (request, reply) => {
@@ -534,6 +559,9 @@ export async function casesRoutes(app: FastifyInstance) {
     }
 
 
+    const dataError = validarPayloadFogap(existing.payload);
+    if (dataError) return reply.status(422).send({ error: dataError });
+
     // Valida prontoParaRevisao — todos os itens do grupo devem estar respondidos
     const { pronto, pendencias } = prontoParaRevisao(existing.payload as FogapPayload);
     if (!pronto) {
@@ -570,9 +598,17 @@ export async function casesRoutes(app: FastifyInstance) {
     const conduta = sumario.conduta === "sim"
       ? `Conduta escolar prévia: ${sumario.qual || "Sim"} (tempo: ${sumario.tempo || "—"}, resultado: ${sumario.resultado || "—"})`
       : "Escola ainda não havia adotado conduta prévia";
+    const f1 = sumarioComPadroes(sumario as Partial<FogapSecaoSumario>);
+    const destinos = [
+      ...FOGAP_DESTINOS.filter((d) => f1.encaminhado?.[d.key]).map((d) => `${d.label} (${f1.encaminhado![d.key]})`),
+      ...(f1.encaminhado?.outro_nome?.trim() ? [`${f1.encaminhado.outro_nome.trim()}${f1.encaminhado.outro ? ` (${f1.encaminhado.outro})` : ""}`] : []),
+    ];
     const caseSummary = `[Sumário do Caso pelo Responsável Escolar (RE)]
-Aluno: ${studentCode} | Grupo FOGAP: ${payload.grupo ?? "Piloto"}
+Aluno: ${studentCode} | Grupo FOGAP: ${payload.grupo ?? "Piloto"}${f1.serie?.trim() ? ` | Série: ${f1.serie.trim()}` : ""}
+Queixa do professor: ${f1.queixa_professor?.trim() || "não informada"}
+Hipótese do RE (registro do profissional): ${f1.hipotese_espectro?.trim() || "não informada"}
 Dificuldades persistentes: ${diffs}
+Encaminhado a: ${destinos.length ? destinos.join("; ") : "sem destino registrado"}
 Histórico de intervenção escolar: ${conduta}
 Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação diagnóstica pelo Médico (MD) e acompanhamento sociofamiliar pelo Assistente Social (AS).`;
 

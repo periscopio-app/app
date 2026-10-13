@@ -35,7 +35,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
         case 403: return "Seu perfil não possui permissão para esta ação.";
         case 404: return "Recurso não encontrado.";
         case 409: return "Conflito: a operação não pode ser concluída no estado atual.";
-        default: return "Erro ao processar a solicitação.";
+        case 413: return "O arquivo ou o texto enviado é grande demais.";
+        case 429: return "Muitas tentativas seguidas. Aguarde um instante e tente de novo.";
+        default:
+          return res.status >= 500
+            ? "Não foi possível concluir agora. Seus dados continuam salvos; tente de novo em instantes. Se repetir, avise o suporte."
+            : "Não foi possível concluir esta ação. Confira os dados e tente de novo.";
       }
     })();
     throw new ApiError(res.status, msg, serverBody);

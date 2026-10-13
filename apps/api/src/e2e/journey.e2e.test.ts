@@ -5,6 +5,7 @@
  */
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -144,6 +145,32 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(c.body.case.journeyState, "rascunho");
   });
 
+  test("caso devolvido traz o código do aluno e abrir de novo retoma o mesmo caso", async () => {
+    const again = await call("POST", "/api/cases", "re", { studentId });
+    assert.equal(again.status, 200, JSON.stringify(again.body));
+    assert.equal(again.body.reused, true);
+    assert.equal(again.body.case.id, caseId, "não duplica o prontuário");
+    assert.match(again.body.case.studentCode, /^ESCO-\d{4}-[A-Z0-9]+$/, "a tela precisa do código para listar o caso");
+    assert.equal(typeof again.body.case.birthYear, "number");
+    assert.equal(again.body.case.schoolName, "Escola A1");
+    const list = await call("GET", "/api/cases", "re");
+    assert.equal(list.body.cases.filter((x: any) => x.id === caseId).length, 1);
+  });
+
+  test("trava de idade do piloto: só 6 anos a 9 anos e 11 meses (individual e em lote)", async () => {
+    const Y = new Date().getFullYear();
+    const novo = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: Y - 2, birthMonth: 1 });
+    assert.equal(novo.status, 400);
+    assert.match(novo.body.error, /6 anos a 9 anos e 11 meses/);
+    const velho = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: Y - 12, birthMonth: 1 });
+    assert.equal(velho.status, 400);
+    const lote = await call("POST", `/api/schools/${ids.schoolA}/students/bulk`, "re", {
+      students: [{ birthYear: Y - 8, birthMonth: 1 }, { birthYear: Y - 3, birthMonth: 1 }],
+    });
+    assert.equal(lote.status, 400, "lote com uma linha fora da faixa não importa nada");
+    assert.equal(lote.body.errors[0].row, 2);
+  });
+
   test("isolamento: outro município e outra escola não enxergam o caso (404)", async () => {
     assert.equal((await call("GET", `/api/cases/${caseId}/re-assessment`, "reB")).status, 404);
     assert.equal((await call("GET", `/api/cases/${caseId}/consolidated`, "mdB")).status, 404);
@@ -162,6 +189,12 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(early.status, 422, "envio de formulário incompleto deve ser recusado");
     assert.ok(Array.isArray(early.body.pendencias) && early.body.pendencias.length > 0);
 
+    const futuro = await call("PUT", `/api/cases/${caseId}/re-assessment`, "re", {
+      payload: { ...draft, secao_encaminhamento: { observacoes: "x", data: "2099-01-01" } },
+    });
+    assert.equal(futuro.status, 400, "data de encaminhamento futura é recusada");
+    assert.match(futuro.body.error, /futura/);
+
     const up = await call("PUT", `/api/cases/${caseId}/re-assessment`, "re", { payload: draft });
     assert.equal(up.status, 200, JSON.stringify(up.body));
 
@@ -172,6 +205,30 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(edit.status, 409, "após o envio a edição deve ser bloqueada");
     const again = await call("POST", `/api/cases/${caseId}/re-assessment/submit`, "re");
     assert.equal(again.status, 409);
+  });
+
+  test("administrador de outro município enviando o FOGAP recebe erro claro (não 500) e nada muda", async () => {
+    const { db, tenants, users, upsertCredential } = H;
+    const [tB] = await db.select().from(tenants).where(eq(tenants.municipalityCode, "B")).limit(1);
+    await db.insert(users).values({ tenantId: tB.id, email: "adm@teste.local", name: "Admin Plataforma", role: "admin_platform", accessEnabled: true });
+    await upsertCredential({ email: "adm@teste.local", name: "Admin Plataforma", password: PASS });
+    await login("adm", "adm@teste.local");
+
+    const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: 2019, birthMonth: 8 });
+    assert.equal(s.status, 201, JSON.stringify(s.body));
+    const c = await call("POST", "/api/cases", "re", { studentId: s.body.student.id });
+    const cid = c.body.case.id;
+    const created = await call("POST", `/api/cases/${cid}/re-assessment`, "re", { payload: fogapPronto() });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+
+    const r = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "adm");
+    assert.ok([403, 404, 409].includes(r.status), `esperado erro de regra, veio ${r.status}: ${JSON.stringify(r.body)}`);
+    assert.equal(typeof r.body.error, "string");
+
+    const after = await call("GET", `/api/cases/${cid}/re-assessment`, "re");
+    assert.equal(after.body.assessment?.status ?? after.body.status, "rascunho", "a transação foi desfeita: o RE ainda pode enviar");
+    const ok = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
   });
 
   test("RE não delega; médico delega a especialista e a outra especialidade", async () => {

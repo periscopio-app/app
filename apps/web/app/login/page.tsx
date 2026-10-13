@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { resetMe } from "@/lib/capabilities";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function LoginPage() {
             : "E-mail ou senha incorretos. Se você ainda não criou sua senha, use o link abaixo.",
         );
       } else {
+        resetMe();
         router.push("/dashboard");
       }
     } catch (err: any) {

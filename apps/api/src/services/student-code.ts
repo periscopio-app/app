@@ -45,3 +45,20 @@ export function ageBracketOf(birthYear: number, birthMonth: number, now = new Da
   if (age < 18) return "13-17";
   return "18+";
 }
+
+/** Faixa do piloto: de 6 anos completos até 9 anos e 11 meses (72 a 119 meses). */
+export const PILOT_AGE_MIN_MONTHS = 72;
+export const PILOT_AGE_MAX_MONTHS = 119;
+
+export function ageInMonths(birthYear: number, birthMonth: number, now = new Date()): number {
+  return now.getFullYear() * 12 + (now.getMonth() + 1) - (birthYear * 12 + birthMonth);
+}
+
+/** Trava do cadastro de alunos no piloto. Aceita só quem tem de 6 anos a 9 anos e 11 meses. */
+export function validatePilotAge(birthYear: number, birthMonth: number, now = new Date()): { ok: true } | { ok: false; error: string } {
+  const months = ageInMonths(birthYear, birthMonth, now);
+  if (months < PILOT_AGE_MIN_MONTHS || months > PILOT_AGE_MAX_MONTHS) {
+    return { ok: false, error: "Fora da faixa do piloto: o cadastro aceita alunos de 6 anos a 9 anos e 11 meses." };
+  }
+  return { ok: true };
+}

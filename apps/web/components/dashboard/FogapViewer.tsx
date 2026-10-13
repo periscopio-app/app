@@ -3,18 +3,24 @@
 import {
   G3_ITENS,
   FOGAP_COMPORTAMENTOS,
-  DIFICULDADES_PERSISTENTES_OPCOES,
   type FogapPayload,
 } from "@periscopio/shared";
-import { CheckCircle2, AlertCircle, HelpCircle, FileText, UserCheck, Calendar } from "lucide-react";
+import { CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 
 interface FogapViewerProps {
   payload: unknown;
   status?: string;
   submittedAt?: string | null;
+  /** Dados do caso para o cabeçalho do Formulário I (sempre o código; nunca o nome). */
+  studentCode?: string | null;
+  birthYear?: number | null;
+  birthMonth?: number | null;
+  schoolName?: string | null;
+  professionalName?: string | null;
 }
 
-export function FogapViewer({ payload, status, submittedAt }: FogapViewerProps) {
+export function FogapViewer({ payload, status, submittedAt, studentCode, birthYear, birthMonth, schoolName, professionalName }: FogapViewerProps) {
   if (!payload || typeof payload !== "object") {
     return (
       <div className="p-4 rounded-xl border border-dashed border-slate-300 text-slate-500 text-sm">
@@ -35,11 +41,20 @@ export function FogapViewer({ payload, status, submittedAt }: FogapViewerProps) 
 
   const devAnswers = p.respostas_desenvolvimento || {};
   const compAnswers = p.respostas_comportamentos || {};
-  const difs = p.dificuldades_persistem || [];
-  const intervencao = p.intervencao_professor;
 
   return (
     <div className="space-y-6">
+      {/* Formulário I: o sumário do RE, igual ao que ele viu ao preencher. */}
+      <SumarioFormularioI
+        studentCode={studentCode}
+        birthYear={birthYear}
+        birthMonth={birthMonth}
+        schoolName={schoolName}
+        payload={payload}
+        professionalName={professionalName}
+        modo="enviado"
+      />
+
       {/* Resumo do Cabeçalho FOGAP */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
         <div>
@@ -143,76 +158,6 @@ export function FogapViewer({ payload, status, submittedAt }: FogapViewerProps) 
           })}
         </div>
       </div>
-
-      {/* 3. Observações do Professor e Intervenções Escolares */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
-          <h4 className="font-bold text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
-            <UserCheck className="w-4 h-4 text-blue-600" />
-            Dificuldades que Persistem
-          </h4>
-          {difs.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {difs.map((d: string) => (
-                <span
-                  key={d}
-                  className="px-2.5 py-1 rounded-xl text-xs font-bold bg-[#682880]/10 text-black border border-[#682880]/20"
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500 italic">Nenhuma dificuldade específica assinalada.</p>
-          )}
-
-          {p.dificuldade_outra_texto && (
-            <div className="pt-2 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-              <strong className="text-black">Outra dificuldade:</strong> {p.dificuldade_outra_texto}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
-          <h4 className="font-bold text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            Intervenção do Professor
-          </h4>
-          {intervencao?.houve_conduta ? (
-            <div className="space-y-2 text-xs">
-              <div className="text-slate-800">
-                <strong className="text-black">Conduta adotada:</strong> {intervencao.qual_conduta || "Não detalhado"}
-              </div>
-              <div className="text-slate-800">
-                <strong className="text-black">Duração:</strong> {intervencao.tempo_intervencao || "Não informado"}
-              </div>
-              <div className="text-slate-800">
-                <strong className="text-black">Resultado obtido:</strong> {intervencao.resultado || "Não informado"}
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500 italic">Nenhuma intervenção formal prévia documentada pelo docente.</p>
-          )}
-        </div>
-      </div>
-
-      {/* 4. Encaminhamento para a RE */}
-      {p.encaminhamento && (
-        <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 space-y-2 text-xs">
-          <h4 className="font-bold uppercase tracking-wider text-black flex items-center gap-1.5">
-            <HelpCircle className="w-4 h-4 text-indigo-700" />
-            Encaminhamento da Escola para a RE
-          </h4>
-          <p className="text-slate-800 leading-relaxed font-sans">
-            {p.encaminhamento.observacoes || "Sem observações adicionais anexadas."}
-          </p>
-          {p.encaminhamento.data_encaminhamento && (
-            <span className="text-[11px] text-slate-500 block pt-1">
-              Data de registro: {p.encaminhamento.data_encaminhamento}
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 }

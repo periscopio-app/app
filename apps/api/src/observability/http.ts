@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { CaseTransitionError } from "../services/case-state.service";
 import { STATUS_CODES } from "node:http";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { incr, observeRequest, recordError } from "./metrics";
@@ -84,6 +85,8 @@ export function registerObservability(app: FastifyInstance): void {
       });
     }
     request.log.warn({ status, code: err.code }, err.message);
+    // Regra da jornada (ex.: caso fora do município, perfil sem a etapa): a tela mostra `error` como texto.
+    if (err instanceof CaseTransitionError) return reply.status(status).send({ error: err.message });
     return reply.status(status).send({
       statusCode: status,
       ...(err.code ? { code: err.code } : {}),

@@ -86,11 +86,12 @@ export function ColumnChart({ title, subtitle, data }: { title: string; subtitle
         <div className="text-sm font-bold text-black">{title}</div>
         {subtitle && <div className="text-xs text-black">{subtitle}</div>}
       </figcaption>
-      <div className="flex items-end gap-3" role="img" aria-label={`${title}: ${data.map((d) => `${d.label} ${fmt(d.value)}`).join("; ")}`}>
+      <div className="flex items-start gap-3" role="img" aria-label={`${title}: ${data.map((d) => `${d.label} ${fmt(d.value)}`).join("; ")}`}>
         {data.map((d) => (
-          <div key={d.key} className="flex flex-1 flex-col items-center text-xs text-black">
-            <span className="mb-1 font-semibold tabular-nums">{fmt(d.value)}</span>
-            <div className="flex w-full items-end justify-center" style={{ height: H }}>
+          <div key={d.key} className="flex min-w-0 flex-1 flex-col items-center text-xs text-black">
+            {/* Área das colunas: altura fixa e base comum; o número fica logo acima de cada coluna. */}
+            <div className="flex w-full flex-col items-center justify-end" style={{ height: H + 22 }}>
+              <span className="mb-1 font-semibold tabular-nums">{fmt(d.value)}</span>
               {d.value != null ? (
                 <div
                   className={`w-full max-w-[56px] rounded-t border ${d.highlight ? "border-2 border-roxo bg-roxo-200" : "border-ceu-700 bg-ceu-100"}`}
@@ -100,9 +101,12 @@ export function ColumnChart({ title, subtitle, data }: { title: string; subtitle
                 <div className="w-full max-w-[56px] rounded-t border border-neutral-400" style={{ height: 24, backgroundImage: HATCH }} />
               )}
             </div>
-            <span className="mt-1 text-center leading-tight">{d.label}</span>
-            {d.share != null && <span className="text-[11px]">{fmt(d.share)}%</span>}
-            {d.highlight && <span className="mt-0.5 rounded-full border border-roxo bg-roxo-100 px-2 text-[10px] font-bold">piloto</span>}
+            {/* Rótulos com linhas de altura fixa, para todas as colunas terminarem alinhadas. */}
+            <span className="mt-1 flex min-h-[2.4em] items-start justify-center text-center leading-tight">{d.label}</span>
+            <span className="min-h-[1.1em] text-[11px]">{d.share != null ? `${fmt(d.share)}%` : ""}</span>
+            <span className="mt-0.5 min-h-[1.2rem]">
+              {d.highlight && <span className="rounded-full border border-roxo bg-roxo-100 px-2 text-[10px] font-bold">piloto</span>}
+            </span>
           </div>
         ))}
       </div>
