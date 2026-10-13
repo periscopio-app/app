@@ -5,6 +5,7 @@
  */
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -204,6 +205,30 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(edit.status, 409, "após o envio a edição deve ser bloqueada");
     const again = await call("POST", `/api/cases/${caseId}/re-assessment/submit`, "re");
     assert.equal(again.status, 409);
+  });
+
+  test("administrador de outro município enviando o FOGAP recebe erro claro (não 500) e nada muda", async () => {
+    const { db, tenants, users, upsertCredential } = H;
+    const [tB] = await db.select().from(tenants).where(eq(tenants.municipalityCode, "B")).limit(1);
+    await db.insert(users).values({ tenantId: tB.id, email: "adm@teste.local", name: "Admin Plataforma", role: "admin_platform", accessEnabled: true });
+    await upsertCredential({ email: "adm@teste.local", name: "Admin Plataforma", password: PASS });
+    await login("adm", "adm@teste.local");
+
+    const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: 2019, birthMonth: 8 });
+    assert.equal(s.status, 201, JSON.stringify(s.body));
+    const c = await call("POST", "/api/cases", "re", { studentId: s.body.student.id });
+    const cid = c.body.case.id;
+    const created = await call("POST", `/api/cases/${cid}/re-assessment`, "re", { payload: fogapPronto() });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+
+    const r = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "adm");
+    assert.ok([403, 404, 409].includes(r.status), `esperado erro de regra, veio ${r.status}: ${JSON.stringify(r.body)}`);
+    assert.equal(typeof r.body.error, "string");
+
+    const after = await call("GET", `/api/cases/${cid}/re-assessment`, "re");
+    assert.equal(after.body.assessment?.status ?? after.body.status, "rascunho", "a transação foi desfeita: o RE ainda pode enviar");
+    const ok = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
   });
 
   test("RE não delega; médico delega a especialista e a outra especialidade", async () => {

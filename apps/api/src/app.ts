@@ -27,6 +27,7 @@ import { consentRoutes } from "./routes/consent.routes";
 import { lgpdRoutes } from "./routes/lgpd.routes";
 import { identityVaultRoutes } from "./routes/identity-vault.routes";
 import { attachmentsRoutes } from "./routes/attachments.routes";
+import { CaseTransitionError } from "./services/case-state.service";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -37,6 +38,14 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
         strict: false,
       },
     },
+  });
+  // Erros de regra da jornada viram 403/404/409/422 com mensagem clara, nunca 500.
+  const defaultErrorHandler = app.errorHandler;
+  app.setErrorHandler((err, request, reply) => {
+    if (err instanceof CaseTransitionError) {
+      return reply.status(err.statusCode).send({ error: err.message });
+    }
+    return defaultErrorHandler.call(app, err, request, reply);
   });
   const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
     .split(",")
