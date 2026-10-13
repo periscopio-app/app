@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 /** Tela de erro amigável: substitui o "Application error" cru do navegador em qualquer página. */
 export default function ErroDaPagina({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -21,9 +22,9 @@ export default function ErroDaPagina({ error, reset }: { error: Error & { digest
           <button onClick={() => reset()} className="rounded-xl bg-[#682880] px-4 py-2 text-xs font-bold text-white hover:bg-[#531e66]">
             Tentar de novo
           </button>
-          <a href="/" className="rounded-xl border border-[#E1E9ED] bg-[#F0F9FC] px-4 py-2 text-xs font-bold text-black hover:bg-[#E1E9ED]">
+          <Link href="/" className="rounded-xl border border-[#E1E9ED] bg-[#F0F9FC] px-4 py-2 text-xs font-bold text-black hover:bg-[#E1E9ED]">
             Voltar ao início
-          </a>
+          </Link>
         </div>
       </div>
     </main>
