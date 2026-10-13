@@ -134,6 +134,13 @@
       "when": 1792024800000,
       "tag": "0018_rls_tenant_isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792111200000,
+      "tag": "0019_pilot_symptom_measurements",
+      "breakpoints": true
     }
   ]
 }

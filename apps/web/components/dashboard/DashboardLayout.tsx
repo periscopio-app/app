@@ -21,6 +21,7 @@ import { BarChart3, MapPinned,
   ClipboardList,
   ShieldAlert,
   SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -84,6 +85,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
     { show: hasAny(["board.request", "board.manage"]), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
+    { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity, badge: "Piloto" },
     { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3, badge: "Gestão" },
     { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão" },
   ]
@@ -111,6 +113,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/especialista")) return ["section.read"];
     if (path.includes("/dashboard/gestao")) return ["management.view"];
     if (path.includes("/dashboard/agenda")) return ["board.request", "board.manage"];
+    if (path.includes("/dashboard/indicadores")) return ["pilot.indicators.view", "pilot.indicators.case.view"];
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
