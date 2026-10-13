@@ -515,10 +515,13 @@ export async function biRoutes(app: FastifyInstance) {
       if (bad) return reply.status(400).send({ error: bad });
     }
     const [q] = await db.select().from(biQuestions).where(eq(biQuestions.id, questionId)).limit(1);
-    if (!q) {
+    const approver = await can(actor, "bi.approve");
+    // Isolamento: só a rede da pergunta (ou a administração da plataforma) avalia; quem não é gestão só avalia a própria pergunta.
+    // Resposta 404 igual para "não existe" e "não é sua", para não revelar ids de outras redes.
+    const sameNetwork = !!q && (q.tenantId === actor.tenantId || actor.role === "admin_platform");
+    if (!q || !sameNetwork || (!approver && q.userId !== actor.id)) {
       return reply.status(404).send({ error: "Pergunta não encontrada" });
     }
-    const approver = await can(actor, "bi.approve");
     // Só gestão aprova direto; os demais viram candidatos para revisão (evita contaminar o aprendizado).
     const approved = approver && rating === 1 && !!(q.plan || correctedPlan);
     await db
