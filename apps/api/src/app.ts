@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { healthRoutes } from "./routes/health";
+import { observabilityRoutes } from "./routes/observability.routes";
+import { genRequestId, loggerOptions, registerObservability } from "./observability/http";
 import { triagemRoutes } from "./routes/triagem.routes";
 import { authRoutes } from "./routes/auth.routes";
 import { onboardingRoutes } from "./routes/onboarding.routes";
@@ -30,7 +32,9 @@ import { attachmentsRoutes } from "./routes/attachments.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
-    logger: opts.logger ?? true,
+    logger: (opts.logger ?? true) ? loggerOptions() : false,
+    genReqId: genRequestId,
+    requestIdHeader: false,
     trustProxy: true,
     ajv: {
       customOptions: {
@@ -66,7 +70,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    exposedHeaders: ["x-request-id"],
   });
+
+  registerObservability(app);
 
   // 1. Configuração do Swagger OpenAPI
   await app.register(fastifySwagger, {
@@ -111,6 +118,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   // 3. Registro das Rotas do Sistema
   app.register(healthRoutes);
+  app.register(observabilityRoutes);
   app.register(triagemRoutes);
   app.register(authRoutes);
   app.register(onboardingRoutes);

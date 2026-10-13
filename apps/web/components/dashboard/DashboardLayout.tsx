@@ -21,6 +21,7 @@ import { BarChart3, MapPinned,
   ClipboardList,
   ShieldAlert,
   SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -97,6 +98,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const visibleAdmin = [
     { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal, badge: "Master" },
+    { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity, badge: "Master" },
     { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck, badge: "Master" },
     { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck, badge: "LGPD" },
     { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup" },
@@ -114,6 +116,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
+    if (path.startsWith("/admin/saude")) return ["system.observability.view"];
     if (path.startsWith("/admin/users")) return ["users.manage"];
     if (path.startsWith("/admin/lgpd")) return ["lgpd.manage"];
     if (path.startsWith("/admin/setup")) return ["schools.provision"];
