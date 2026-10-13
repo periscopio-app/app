@@ -1,7 +1,25 @@
-import { test } from "node:test";
+import { test, before } from "node:test";
 import assert from "node:assert";
 import { buildApp } from "../app";
 import { RETENTION_POLICIES } from "./lgpd.routes";
+
+const dbUrl = process.env.TEST_DATABASE_URL;
+
+// Estes testes gravam em tabelas com chave estrangeira para o tenant da plataforma (…0001).
+// Banco de teste descartável: recria o schema e cadastra esse tenant, sem depender da ordem dos outros arquivos.
+before(async () => {
+  if (!dbUrl) return;
+  const { assertSafeTestDatabase, resetTestDatabase } = await import("../testing/test-db");
+  assertSafeTestDatabase(dbUrl);
+  await resetTestDatabase(dbUrl);
+  process.env.DATABASE_URL = dbUrl;
+  const { db } = await import("../db/client");
+  const { tenants } = await import("@periscopio/shared");
+  await db
+    .insert(tenants)
+    .values({ id: "00000000-0000-0000-0000-000000000001", name: "Plataforma", municipalityCode: "0000000" })
+    .onConflictDoNothing();
+});
 
 test("LGPD Route: POST /api/lgpd/requests aceita solicitação de titular válida", async () => {
   const app = await buildApp({ logger: false });

@@ -130,7 +130,13 @@ describe("painel de Tarumã (E2E)", { skip }, () => {
   });
 
   test("outro município e perfil sem acesso não enxergam Tarumã", async () => {
-    assert.equal((await call("GET", "/api/population/taruma", "outroGestor")).status, 404);
+    // Outro município não recebe os dados de Tarumã: a resposta é o painel vazio "sem dados populacionais".
+    const outro = await call("GET", "/api/population/taruma", "outroGestor");
+    assert.equal(outro.status, 200);
+    assert.equal(outro.body.source, null);
+    assert.deepEqual(outro.body.schools, []);
+    assert.ok(!JSON.stringify(outro.body).includes("9999"), "não vaza a outra base");
+    assert.ok(!JSON.stringify(outro.body).includes("Escola GL"), "não vaza escolas de Tarumã");
     assert.equal((await call("GET", "/api/population/taruma", "esp")).status, 403);
   });
 });

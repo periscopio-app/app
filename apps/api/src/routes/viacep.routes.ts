@@ -116,8 +116,9 @@ export async function viacepRoutes(app: FastifyInstance) {
             error: "Tempo de resposta do serviço ViaCEP excedido (timeout).",
           });
         }
-        return reply.status(500).send({
-          error: `Erro ao consultar CEP: ${err.message || "desconhecido"}`,
+        // Falha ao alcançar o ViaCEP (rede, DNS, TLS) é falha do serviço externo, não erro interno.
+        return reply.status(502).send({
+          error: "Não foi possível consultar o serviço ViaCEP agora.",
         });
       }
     }
