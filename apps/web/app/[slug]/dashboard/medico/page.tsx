@@ -459,6 +459,10 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         payload={reAssessment.payload}
                         status={reAssessment.status}
                         submittedAt={reAssessment.submittedAt}
+                        studentCode={activeCase.studentCode}
+                        birthYear={activeCase.birthYear}
+                        birthMonth={activeCase.birthMonth}
+                        schoolName={activeCase.schoolName}
                       />
                     )}
                   </div>

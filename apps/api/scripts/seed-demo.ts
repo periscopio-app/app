@@ -4,7 +4,7 @@
  *   DATABASE_URL=... SEED_DEMO_PASSWORD='<senha>' tsx scripts/seed-demo.ts [--apply]
  *
  * Cria (se não existirem): município "Demonstração", Escola Demo (slug demo-escola) com localização e matrícula
- * fictícias, um usuário por papel (e-mails em @demo.periscopio.test, domínio que não recebe e-mail),
+ * fictícias, um usuário por papel de teste, incluindo professor e cada especialidade (e-mails em @demo.periscopio.test, domínio que não recebe e-mail),
  * 12 alunos sintéticos e 1 caso aberto. A senha vem do ambiente e nunca é impressa.
  * Sem --apply roda em simulação.
  */
@@ -18,10 +18,15 @@ const DOMAIN = "demo.periscopio.test";
 const PEOPLE = [
   { key: "gestor.municipal", name: "Gestor(a) Municipal (demo)", role: "municipal_manager", school: false },
   { key: "gestor.escola", name: "Gestor(a) Escolar (demo)", role: "school_manager", school: true },
+  { key: "professor", name: "Professor(a) (demo)", role: "teacher", school: true },
   { key: "re", name: "RE – Psicopedagogo(a) Institucional (demo)", role: "ppi", school: true },
   { key: "medico", name: "Médico(a) (demo)", role: "md1", school: false },
   { key: "neuropsicologia", name: "Especialista Neuropsicologia (demo)", role: "specialist", school: false, specialty: "neuropsicologia" },
+  { key: "psicologia", name: "Especialista Psicologia (demo)", role: "specialist", school: false, specialty: "psicologia" },
   { key: "fonoaudiologia", name: "Especialista Fonoaudiologia (demo)", role: "specialist", school: false, specialty: "fonoaudiologia" },
+  { key: "psicopedagogia", name: "Especialista Psicopedagogia (demo)", role: "specialist", school: false, specialty: "psicopedagogia" },
+  { key: "psicomotricidade", name: "Especialista Psicomotricidade (demo)", role: "specialist", school: false, specialty: "psicomotricidade" },
+  { key: "servico.social", name: "Especialista Serviço Social (demo)", role: "specialist", school: false, specialty: "servico_social" },
   { key: "board", name: "Board de experts (demo)", role: "board", school: false },
   { key: "pesquisador", name: "Pesquisador(a) (demo)", role: "researcher", school: false },
 ] as const;
@@ -62,7 +67,8 @@ async function main() {
     if (existing.length === 0) {
       const made = [];
       for (let i = 0; i < 12; i++) {
-        const y = 2016 + (i % 4), m = (i % 12) + 1;
+        // Faixa do piloto (6 a 9 anos e 11 meses): nascidos de (ano atual - 9) a (ano atual - 7), meses 1 a 9.
+        const y = new Date().getFullYear() - 9 + (i % 3), m = (i % 9) + 1;
         const [s] = await db.insert(students).values({
           tenantId: tenant.id, schoolId: school.id, studentCode: generateStudentCode(school.slug), birthYear: y, birthMonth: m, ageBracket: ageBracketOf(y, m),
         }).returning();

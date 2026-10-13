@@ -4,6 +4,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { resetMe } from "@/lib/capabilities";
 
 export default function SchoolLoginPage({
   params,
@@ -58,6 +59,7 @@ export default function SchoolLoginPage({
       if (res.error) {
         setError(res.error.message || "Credenciais inválidas.");
       } else {
+        resetMe();
         router.push(`/${slug}/dashboard`);
       }
     } catch (err: any) {

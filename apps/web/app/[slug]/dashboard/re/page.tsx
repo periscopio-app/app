@@ -30,6 +30,11 @@ import {
   calcularContagem,
   type Snap4Payload,
   type OpcaoSnap4,
+  hojeBrasilia,
+  sumarioComPadroes,
+  encaminhadosVazio,
+  FOGAP_DESTINOS,
+  SUMARIO_TEXTO_MAX,
 } from "@periscopio/shared";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { ConfirmDialog, Modal } from "@/components/ui";
@@ -37,7 +42,9 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
+import { useCapabilities } from "@/lib/capabilities";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
+import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 
 import {
   FileText,
@@ -82,7 +89,9 @@ type FogapSection = "idade" | "desenvolvimento" | "comportamentos" | "sumario" |
 
 function parseFogapPayload(raw: unknown): FogapPayload {
   if (raw && typeof raw === "object" && "fogap_state" in raw) {
-    return raw as FogapPayload;
+    const p = raw as FogapPayload;
+    // Registros antigos não têm os campos novos do Formulário I: completa com valores vazios.
+    return { ...p, secao_sumario: sumarioComPadroes(p.secao_sumario) };
   }
   return makeFogapPayloadVazio();
 }
@@ -96,6 +105,14 @@ function calcularIdadePorNascimento(birthYear: number, birthMonth: number): { an
   if (meses < 0) { anos -= 1; meses += 12; }
   return { anos: Math.max(0, anos), meses: Math.max(0, meses) };
 }
+
+/** Faixa do piloto: 6 anos completos até 9 anos e 11 meses. A API aplica a mesma regra. */
+function foraDaFaixaDoPiloto(birthYear: number, birthMonth: number): boolean {
+  const hoje = new Date();
+  const meses = hoje.getFullYear() * 12 + (hoje.getMonth() + 1) - (birthYear * 12 + birthMonth);
+  return !Number.isFinite(meses) || meses < 72 || meses > 119;
+}
+const MSG_FAIXA_PILOTO = "Fora da faixa do piloto: o cadastro aceita alunos de 6 anos a 9 anos e 11 meses.";
 
 const MESES_NOMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -211,6 +228,7 @@ export default function REDashboardPage({
 }) {
   const { slug } = use(params);
   const router = useRouter();
+  const caps = useCapabilities();
 
   const [me, setMe] = useState<Me | null>(null);
   const [cases, setCases] = useState<CaseItem[]>([]);
@@ -219,7 +237,7 @@ export default function REDashboardPage({
   const [error, setError] = useState<string | null>(null);
 
   // Student registration
-  const [birthYear, setBirthYear] = useState(2016);
+  const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 7);
   const [birthMonth, setBirthMonth] = useState(1); // 1–12
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
@@ -343,7 +361,7 @@ export default function REDashboardPage({
 
       if (parsedLines.length === 0) {
         setStudentMsgOk(false);
-        setStudentMsg("Nenhum registro no formato ano;mês (ex: 2016;5) encontrado no arquivo.");
+        setStudentMsg("Nenhum registro no formato ano;mês (ex: 2018;5) encontrado no arquivo.");
         return;
       }
 
@@ -433,6 +451,11 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     e.preventDefault();
     if (!schoolId) return;
     setStudentMsg(null);
+    if (foraDaFaixaDoPiloto(Number(birthYear), Number(birthMonth))) {
+      setStudentMsgOk(false);
+      setStudentMsg(MSG_FAIXA_PILOTO);
+      return;
+    }
     try {
       const data = await api.post<{ student: Student }>("/api/students", {
         schoolId,
@@ -448,7 +471,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     }
   }
 
-  // Importação em lote: uma linha por aluno, "ano;mês" (ex.: 2016;5). Nenhum outro dado é aceito.
+  // Importação em lote: uma linha por aluno, "ano;mês" (ex.: 2018;5). Nenhum outro dado é aceito.
   async function handleBulkImport() {
     if (!schoolId) return;
     setStudentMsg(null);
@@ -459,7 +482,13 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     });
     if (rows.length === 0) {
       setStudentMsgOk(false);
-      setStudentMsg("Cole ao menos uma linha no formato ano;mês (ex.: 2016;5).");
+      setStudentMsg("Cole ao menos uma linha no formato ano;mês (ex.: 2018;5).");
+      return;
+    }
+    const fora = rows.map((r, i) => ({ r, linha: i + 1 })).filter(({ r }) => foraDaFaixaDoPiloto(r.birthYear, r.birthMonth));
+    if (fora.length > 0) {
+      setStudentMsgOk(false);
+      setStudentMsg(`${MSG_FAIXA_PILOTO} Nada foi importado. Linhas fora da faixa: ${fora.slice(0, 10).map((f) => f.linha).join(", ")}${fora.length > 10 ? "…" : ""}.`);
       return;
     }
     setBulkBusy(true);
@@ -481,7 +510,8 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     setCaseMsg(null);
     try {
       const { case: newCase } = await api.post<{ case: CaseItem }>("/api/cases", { studentId });
-      setCases((prev) => [newCase, ...prev]);
+      // Se o aluno já tinha caso em andamento, a API devolve o mesmo caso: não duplica na lista.
+      setCases((prev) => [newCase, ...prev.filter((c) => c.id !== newCase.id)]);
       await selectCase(newCase);
     } catch (err: unknown) {
       setCaseMsg(err instanceof Error ? err.message : "Erro ao abrir caso.");
@@ -601,6 +631,20 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
     setFogapPayload((prev) => ({
       ...prev,
       secao_encaminhamento: { ...prev.secao_encaminhamento, ...patch },
+    }));
+  }
+
+  function setEncaminhadoData(campo: "nucleo" | "cras" | "conselho_tutelar" | "ubs" | "outro", valor: string) {
+    if (valor && valor > hojeBrasilia()) {
+      setCaseMsg("A data do encaminhamento não pode ser futura.");
+      return;
+    }
+    setFogapPayload((prev) => ({
+      ...prev,
+      secao_sumario: {
+        ...prev.secao_sumario,
+        encaminhado: { ...encaminhadosVazio(), ...prev.secao_sumario.encaminhado, [campo]: valor || null },
+      },
     }));
   }
 
@@ -772,14 +816,14 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                 {studentMsg}
               </p>
             )}
-            <form onSubmit={handleRegisterStudent} className="space-y-3">
+            <form onSubmit={handleRegisterStudent} noValidate className="space-y-3">
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-black mb-1">Ano de nasc.</label>
                   <input
                     type="number"
-                    min={2005}
-                    max={2024}
+                    min={new Date().getFullYear() - 10}
+                    max={new Date().getFullYear() - 6}
                     value={birthYear}
                     onChange={(e) => setBirthYear(Number(e.target.value))}
                     className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40"
@@ -839,13 +883,13 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
               </div>
 
               <p className="text-xs text-neutral-800">
-                Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2016;5). Só ano e mês de nascimento.
+                Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2018;5). Só ano e mês de nascimento.
               </p>
               <textarea
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
                 rows={4}
-                placeholder={"2016;5\n2015;11\n2017;2"}
+                placeholder={"2018;5\n2019;11\n2020;2"}
                 className="mt-2 w-full rounded-xl border border-linha px-3 py-2 text-sm text-black font-mono outline-none focus:ring-2 focus:ring-roxo/40 bg-white"
               />
               <button
@@ -915,13 +959,13 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-black">{c.studentCode}</span>
+                      <span className="text-xs font-mono font-bold text-black">{c.studentCode ?? "—"}</span>
                       <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${JOURNEY_COLORS[c.journeyState] ?? "bg-linha text-neutral-800"}`}>
                         {JOURNEY_LABELS[c.journeyState] ?? c.journeyState}
                       </span>
                     </div>
                     <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
-                      <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
+                      <span><strong>Nome:</strong> Aluno ({(c.studentCode ?? "").slice(-4)})</span>
                       <span>•</span>
                       <span><strong>Idade:</strong> {idadeCalculada ? `${idadeCalculada.anos}a` : "—"}</span>
                     </div>
@@ -954,7 +998,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
               <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50 space-y-4">
                 <ProntuarioHeaderCard
                   studentCode={activeCase.studentCode}
-                  studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
+                  studentName={`Aluno (${(activeCase.studentCode ?? "").slice(-6)})`}
                   schoolName={activeCase.schoolName || schoolName || slug}
                   ageText={
                     fogapPayload.idade_anos != null
@@ -966,11 +1010,23 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   journeyState={activeCase.journeyState}
                 />
 
+                {/* Formulário I: o mesmo sumário que o médico recebe, atualizado enquanto o RE preenche. */}
+                <SumarioFormularioI
+                  studentCode={activeCase.studentCode}
+                  birthYear={activeCase.birthYear}
+                  birthMonth={activeCase.birthMonth}
+                  schoolName={activeCase.schoolName || schoolName || slug}
+                  payload={fogapPayload}
+                  professionalName={me?.name}
+                  modo={isReadOnly ? "enviado" : "rascunho"}
+                />
+
                 {/* Proteção de Dados, Consentimento e Anexos Clínicos (LGPD) */}
                 <div className="grid grid-cols-1 gap-4 pt-1">
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  <CaseAttachmentsCard caseId={activeCase.id} />
+                  {/* Documentos clínicos são do núcleo: não aparecem para o RE (a API também recusa). */}
+                  {(caps.has("attachments.read") || caps.has("attachments.write")) && <CaseAttachmentsCard caseId={activeCase.id} />}
                   <TeaScreeningPanel caseId={activeCase.id} />
                 </div>
               </div>
@@ -1156,6 +1212,33 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                     </div>
 
                     <fieldset disabled={isReadOnly ?? false} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <label htmlFor="f1-serie" className="block text-xs font-semibold text-black mb-1">Série / ano escolar</label>
+                          <input
+                            id="f1-serie"
+                            type="text"
+                            maxLength={40}
+                            value={fogapPayload.secao_sumario.serie ?? ""}
+                            onChange={(e) => setSumario({ serie: e.target.value })}
+                            placeholder="Ex.: 2º ano"
+                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="f1-queixa" className="block text-xs font-semibold text-black mb-1">Queixa do professor</label>
+                          <textarea
+                            id="f1-queixa"
+                            rows={3}
+                            maxLength={SUMARIO_TEXTO_MAX}
+                            value={fogapPayload.secao_sumario.queixa_professor ?? ""}
+                            onChange={(e) => setSumario({ queixa_professor: e.target.value })}
+                            placeholder="Descreva o que o professor observa, em linguagem simples."
+                            className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                          />
+                          <p className="mt-1 text-[11px] text-neutral-700">Não escreva nome, endereço nem outro dado que identifique a criança.</p>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-black mb-1">Anos *</label>
@@ -1354,6 +1437,18 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                     </div>
 
                     <fieldset disabled={isReadOnly ?? false} className="space-y-5">
+                      <div>
+                        <label htmlFor="f1-hipotese" className="block text-xs font-semibold text-black mb-1">Hipótese do RE sobre o espectro (dimensão)</label>
+                        <textarea
+                          id="f1-hipotese"
+                          rows={2}
+                          maxLength={SUMARIO_TEXTO_MAX}
+                          value={fogapPayload.secao_sumario.hipotese_espectro ?? ""}
+                          onChange={(e) => setSumario({ hipotese_espectro: e.target.value })}
+                          className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                        />
+                        <p className="mt-1 text-[11px] text-neutral-700">Registro do profissional. O sistema não diagnostica.</p>
+                      </div>
                       {/* Dificuldades persistentes */}
                       <div>
                         <label className="block text-xs font-semibold text-black mb-2">
@@ -1383,7 +1478,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
 
                       {/* Intervenção do professor */}
                       <div className="rounded-xl border border-linha p-4 space-y-3">
-                        <p className="text-xs font-bold text-black">Intervenção do Professor</p>
+                        <p className="text-xs font-bold text-black">Intervenção do PpI</p>
                         <div className="flex gap-3 items-center">
                           <span className="text-sm text-black">Houve conduta?</span>
                           <ExclusiveCheck<"sim" | "nao">
@@ -1439,13 +1534,61 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                           className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800"
                         />
                       </div>
+                      <div className="rounded-xl border border-linha p-4 space-y-3">
+                        <p className="text-xs font-bold text-black">Encaminhado em (deixe em branco o que não se aplica)</p>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {FOGAP_DESTINOS.map((d) => (
+                            <div key={d.key}>
+                              <label htmlFor={`f1-enc-${d.key}`} className="block text-xs font-semibold text-black mb-1">{d.label}</label>
+                              <input
+                                id={`f1-enc-${d.key}`}
+                                type="date"
+                                max={hojeBrasilia()}
+                                value={fogapPayload.secao_sumario.encaminhado?.[d.key] ?? ""}
+                                onChange={(e) => setEncaminhadoData(d.key, e.target.value)}
+                                className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                              />
+                            </div>
+                          ))}
+                          <div>
+                            <label htmlFor="f1-enc-outro-nome" className="block text-xs font-semibold text-black mb-1">Outro (para quem)</label>
+                            <input
+                              id="f1-enc-outro-nome"
+                              type="text"
+                              maxLength={120}
+                              value={fogapPayload.secao_sumario.encaminhado?.outro_nome ?? ""}
+                              onChange={(e) => setSumario({ encaminhado: { ...encaminhadosVazio(), ...fogapPayload.secao_sumario.encaminhado, outro_nome: e.target.value } })}
+                              className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="f1-enc-outro" className="block text-xs font-semibold text-black mb-1">Outro — data</label>
+                            <input
+                              id="f1-enc-outro"
+                              type="date"
+                              max={hojeBrasilia()}
+                              value={fogapPayload.secao_sumario.encaminhado?.outro ?? ""}
+                              onChange={(e) => setEncaminhadoData("outro", e.target.value)}
+                              className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-black mb-1">Data do encaminhamento</label>
                           <input
                             type="date"
+                            max={hojeBrasilia()}
                             value={fogapPayload.secao_encaminhamento.data ?? ""}
-                            onChange={(e) => setEncaminhamento({ data: e.target.value || null })}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v && v > hojeBrasilia()) {
+                                setCaseMsg("A data do encaminhamento não pode ser futura.");
+                                return;
+                              }
+                              setEncaminhamento({ data: v || null });
+                            }}
                             disabled={isReadOnly ?? false}
                             className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
                           />
@@ -1792,7 +1935,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
             </div>
             <div className="grid grid-cols-2 gap-2 text-neutral-700">
               <div><strong className="text-black">Nº Prontuário:</strong> {activeCase.studentCode}</div>
-              <div><strong className="text-black">Nome:</strong> Aluno ({activeCase.studentCode.slice(-6)})</div>
+              <div><strong className="text-black">Nome:</strong> Aluno ({(activeCase.studentCode ?? "").slice(-6)})</div>
               <div><strong className="text-black">Escola:</strong> {schoolName || slug}</div>
               <div>
                 <strong className="text-black">Idade:</strong>{" "}

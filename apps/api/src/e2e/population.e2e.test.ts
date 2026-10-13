@@ -161,22 +161,24 @@ describe("mapa populacional e cadastro de aluno (E2E)", { skip }, () => {
   });
 
   test("aluno: código gerado, validação de nascimento e importação em lote só com ano/mês", async () => {
-    const ok = await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: 2017, birthMonth: 3 });
+    // Datas relativas ao dia do teste: a trava do piloto aceita só 6 anos a 9 anos e 11 meses.
+    const Y = new Date().getFullYear();
+    const ok = await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: Y - 8, birthMonth: 1 });
     assert.equal(ok.status, 201, JSON.stringify(ok.body));
     assert.match(ok.body.student.studentCode, /^ESCO-\d{4}-[A-Z2-9]{8}$/);
     assert.equal(ok.body.student.ageBracket, "06-09");
     assert.equal((await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: 0, birthMonth: 3 })).status, 400);
-    assert.equal((await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: 2017 })).status, 400);
-    assert.equal((await call("POST", "/api/students", "re", { schoolId: schoolB, birthYear: 2017, birthMonth: 3 })).status, 404);
+    assert.equal((await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: Y - 8 })).status, 400);
+    assert.equal((await call("POST", "/api/students", "re", { schoolId: schoolB, birthYear: Y - 8, birthMonth: 1 })).status, 404);
 
-    const pii = await call("POST", `/api/schools/${schoolGL}/students/bulk`, "re", { students: [{ birthYear: 2016, birthMonth: 5, nome: "X" }] });
+    const pii = await call("POST", `/api/schools/${schoolGL}/students/bulk`, "re", { students: [{ birthYear: Y - 8, birthMonth: 1, nome: "X" }] });
     assert.equal(pii.status, 400);
     const bulk = await call("POST", `/api/schools/${schoolGL}/students/bulk`, "re", {
-      students: [{ birthYear: 2016, birthMonth: 5 }, { birthYear: 2015, birthMonth: 11 }, { birthYear: 2018, birthMonth: 1 }],
+      students: [{ birthYear: Y - 8, birthMonth: 1 }, { birthYear: Y - 8, birthMonth: 5 }, { birthYear: Y - 7, birthMonth: 1 }],
     });
     assert.equal(bulk.status, 201, JSON.stringify(bulk.body));
     assert.equal(bulk.body.imported, 3);
-    const bad = await call("POST", `/api/schools/${schoolGL}/students/bulk`, "re", { students: [{ birthYear: 2016, birthMonth: 5 }, { birthYear: 1800, birthMonth: 5 }] });
+    const bad = await call("POST", `/api/schools/${schoolGL}/students/bulk`, "re", { students: [{ birthYear: Y - 8, birthMonth: 1 }, { birthYear: 1800, birthMonth: 5 }] });
     assert.equal(bad.status, 400);
     const list = await call("GET", `/api/schools/${schoolGL}/students`, "re");
     assert.equal(list.body.students.length, 4, "lote com erro não importa nada");

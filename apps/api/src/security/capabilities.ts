@@ -113,6 +113,8 @@ export interface CapabilityDef {
 const ADMIN = ["admin_platform", "adm_master"] as const;
 const RE_ROLES = ["ppi", "re", "responsavel_escolar"] as const;
 const MD_ROLES = ["md1", "medico", "md"] as const;
+/** Documentos clínicos anexados ao caso: só o núcleo (médico e especialistas). O RE e o professor não os veem. */
+const ATTACHMENT_ROLES = [...MD_ROLES, ...SPECIALIST_CLINICAL_ROLES] as const;
 
 export const CAPABILITIES = [
   // ── Plataforma ──────────────────────────────────────────────────────────
@@ -164,8 +166,8 @@ export const CAPABILITIES = [
   // ── Dados sensíveis ─────────────────────────────────────────────────────
   { key: "vault.register", group: "dados_sensiveis", label: "Cadastrar identidade no cofre", description: "Guardar nome civil cifrado do aluno.", defaultRoles: [...CLINICAL_ROLES, "admin_platform"], sensitive: true },
   { key: "vault.reveal", group: "dados_sensiveis", label: "Revelar identidade do cofre", description: "Exige justificativa e fica na auditoria.", defaultRoles: CLINICAL_ROLES, sensitive: true },
-  { key: "attachments.write", group: "dados_sensiveis", label: "Anexar documentos clínicos", description: "Enviar arquivos ao caso.", defaultRoles: CLINICAL_ROLES, sensitive: true },
-  { key: "attachments.read", group: "dados_sensiveis", label: "Baixar documentos clínicos", description: "Abrir anexos por link assinado temporário.", defaultRoles: CLINICAL_ROLES, sensitive: true },
+  { key: "attachments.write", group: "dados_sensiveis", label: "Anexar documentos clínicos", description: "Enviar arquivos ao caso (núcleo: médico e especialistas; não aparece para o RE).", defaultRoles: ATTACHMENT_ROLES, sensitive: true },
+  { key: "attachments.read", group: "dados_sensiveis", label: "Baixar documentos clínicos", description: "Abrir anexos por link assinado temporário (núcleo: médico e especialistas; não aparece para o RE).", defaultRoles: ATTACHMENT_ROLES, sensitive: true },
   { key: "consent.write", group: "dados_sensiveis", label: "Registrar consentimento (TCLE)", description: "Registrar o aceite do responsável legal.", defaultRoles: [...CLINICAL_ROLES] },
   { key: "consent.read", group: "dados_sensiveis", label: "Ver aceites de consentimento", description: "Consultar quem aceitou e quando (documento mascarado).", defaultRoles: [...CLINICAL_ROLES], sensitive: true },
 
