@@ -21,6 +21,7 @@ import { BarChart3, MapPinned,
   ClipboardList,
   ShieldAlert,
   SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -113,9 +114,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/especialista")) return ["section.read"];
     if (path.includes("/dashboard/gestao")) return ["management.view"];
     if (path.includes("/dashboard/agenda")) return ["board.request", "board.manage"];
+    if (path.includes("/dashboard/indicadores")) return ["pilot.indicators.view", "pilot.indicators.case.view"];
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
+    if (path.startsWith("/admin/saude")) return ["system.observability.view"];
     if (path.startsWith("/admin/users")) return ["users.manage"];
     if (path.startsWith("/admin/lgpd")) return ["lgpd.manage"];
     if (path.startsWith("/admin/setup")) return ["schools.provision"];

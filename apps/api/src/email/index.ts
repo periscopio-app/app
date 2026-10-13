@@ -9,10 +9,13 @@ export async function sendEmail(to: string, subject: string, html: string) {
 
   const resend = new Resend(apiKey);
 
-  return resend.emails.send({
+  const result = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? "no-reply@periscopiosaude.com.br",
     to,
     subject,
     html,
   });
+  // O Resend devolve { error } em vez de lançar; sem isto uma chave inválida ou domínio não verificado passa em silêncio.
+  if (result.error) throw new Error(`Resend recusou o envio (${result.error.name}): ${result.error.message}`);
+  return result;
 }

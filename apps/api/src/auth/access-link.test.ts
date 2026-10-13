@@ -35,3 +35,17 @@ test("segredo diferente invalida o token", () => {
   if (previous === undefined) delete process.env.BETTER_AUTH_SECRET;
   else process.env.BETTER_AUTH_SECRET = previous;
 });
+
+test("em produção sem segredo configurado o link não é gerado (falha fechada)", () => {
+  const saved = { a: process.env.BETTER_AUTH_SECRET, b: process.env.AUTH_SECRET, n: process.env.NODE_ENV };
+  delete process.env.BETTER_AUTH_SECRET;
+  delete process.env.AUTH_SECRET;
+  (process.env as Record<string, string>).NODE_ENV = "production";
+  try {
+    assert.throws(() => createAccessToken("ana@escola.test", "abc"), /BETTER_AUTH_SECRET/);
+  } finally {
+    if (saved.a !== undefined) process.env.BETTER_AUTH_SECRET = saved.a;
+    if (saved.b !== undefined) process.env.AUTH_SECRET = saved.b;
+    (process.env as Record<string, string | undefined>).NODE_ENV = saved.n;
+  }
+});

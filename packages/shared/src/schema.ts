@@ -681,3 +681,26 @@ export const teaScreenings = pgTable(
   },
   (t) => ({ caseInstrument: uniqueIndex("tea_screenings_case_instrument_unique").on(t.caseId, t.instrument) })
 );
+
+/**
+ * Medidas de sintomas do indicador 5 do piloto (inicial x reavaliação; escola e núcleo).
+ * Só a contagem calculável pela fonte (SNAP-IV itens 1 a 9). Só inserção: a mais recente por
+ * (caso, fase, origem) é a que vale; as anteriores ficam como histórico. Sem classificação clínica.
+ */
+export const symptomMeasurements = pgTable("symptom_measurements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").notNull().references(() => schools.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  phase: varchar("phase", { length: 15 }).notNull(), // inicial | reavaliacao
+  source: varchar("source", { length: 10 }).notNull(), // escola | nucleo
+  measure: varchar("measure", { length: 30 }).notNull().default("snap4_itens_1a9"),
+  measureVersion: varchar("measure_version", { length: 30 }).notNull(),
+  appliedOn: date("applied_on").notNull(),
+  answers: jsonb("answers").notNull().default({}),
+  markedCount: integer("marked_count").notNull(),
+  itemsTotal: integer("items_total").notNull(),
+  recordedBy: uuid("recorded_by").notNull().references(() => users.id),
+  recordedRole: varchar("recorded_role", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
