@@ -21,6 +21,7 @@ import { BarChart3, MapPinned,
   ClipboardList,
   ShieldAlert,
   SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -86,6 +87,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
     { show: hasAny(["board.request", "board.manage"]), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
+    { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity },
     { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3 },
     { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned },
   ]
@@ -99,6 +101,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const visibleAdmin = [
     { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal },
+    { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity },
     { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck },
     { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck },
     { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2 },
@@ -113,9 +116,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/especialista")) return ["section.read"];
     if (path.includes("/dashboard/gestao")) return ["management.view"];
     if (path.includes("/dashboard/agenda")) return ["board.request", "board.manage"];
+    if (path.includes("/dashboard/indicadores")) return ["pilot.indicators.view", "pilot.indicators.case.view"];
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
+    if (path.startsWith("/admin/saude")) return ["system.observability.view"];
     if (path.startsWith("/admin/users")) return ["users.manage"];
     if (path.startsWith("/admin/lgpd")) return ["lgpd.manage"];
     if (path.startsWith("/admin/setup")) return ["schools.provision"];

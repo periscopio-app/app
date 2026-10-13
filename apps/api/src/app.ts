@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { healthRoutes } from "./routes/health";
+import { observabilityRoutes } from "./routes/observability.routes";
+import { genRequestId, loggerOptions, registerObservability } from "./observability/http";
 import { triagemRoutes } from "./routes/triagem.routes";
 import { authRoutes } from "./routes/auth.routes";
 import { onboardingRoutes } from "./routes/onboarding.routes";
@@ -27,25 +29,19 @@ import { consentRoutes } from "./routes/consent.routes";
 import { lgpdRoutes } from "./routes/lgpd.routes";
 import { identityVaultRoutes } from "./routes/identity-vault.routes";
 import { attachmentsRoutes } from "./routes/attachments.routes";
-import { CaseTransitionError } from "./services/case-state.service";
+import { pilotIndicatorsRoutes } from "./routes/pilot-indicators.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
-    logger: opts.logger ?? true,
+    logger: (opts.logger ?? true) ? loggerOptions() : false,
+    genReqId: genRequestId,
+    requestIdHeader: false,
     trustProxy: true,
     ajv: {
       customOptions: {
         strict: false,
       },
     },
-  });
-  // Erros de regra da jornada viram 403/404/409/422 com mensagem clara, nunca 500.
-  const defaultErrorHandler = app.errorHandler;
-  app.setErrorHandler((err, request, reply) => {
-    if (err instanceof CaseTransitionError) {
-      return reply.status(err.statusCode).send({ error: err.message });
-    }
-    return defaultErrorHandler.call(app, err, request, reply);
   });
   const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
     .split(",")
@@ -75,7 +71,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    exposedHeaders: ["x-request-id"],
   });
+
+  registerObservability(app);
 
   // 1. Configuração do Swagger OpenAPI
   await app.register(fastifySwagger, {
@@ -120,6 +119,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   // 3. Registro das Rotas do Sistema
   app.register(healthRoutes);
+  app.register(observabilityRoutes);
   app.register(triagemRoutes);
   app.register(authRoutes);
   app.register(onboardingRoutes);
@@ -144,6 +144,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(lgpdRoutes);
   app.register(identityVaultRoutes);
   app.register(attachmentsRoutes);
+  app.register(pilotIndicatorsRoutes);
 
   return app;
 }

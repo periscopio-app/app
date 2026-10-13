@@ -16,6 +16,7 @@ function migrationSql(): string[] {
     "0015_audit_trail_vault.sql",
     "0016_row_level_security.sql",
     "0017_privileges_and_tea.sql",
+    "0019_pilot_symptom_measurements.sql",
   ];
   const allSql: string[] = [];
 

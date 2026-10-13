@@ -8,11 +8,11 @@ import crypto from "crypto";
 export const ACCESS_LINK_TTL_MS = 60 * 60 * 1000;
 
 function secret(): string {
-  return (
-    process.env.BETTER_AUTH_SECRET ||
-    process.env.AUTH_SECRET ||
-    "dev_only_secret_replace_in_production"
-  );
+  const configured = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
+  if (configured) return configured;
+  // Sem segredo configurado em produção, um valor público permitiria forjar links de acesso. Falha fechada.
+  if (process.env.NODE_ENV === "production") throw new Error("BETTER_AUTH_SECRET não configurado: links de acesso desativados.");
+  return "dev_only_secret_replace_in_production";
 }
 
 function sign(body: string): string {
