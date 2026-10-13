@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import {
   createReferral,
   listReferrals,
@@ -68,7 +68,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      const actor = await requireCapability(request, reply, "intersectoral.use");
       if (!actor) return;
       return getIntersectoralMonitoringSummary();
     }
@@ -112,7 +112,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      const actor = await requireCapability(request, reply, "intersectoral.use");
       if (!actor) return;
       const { destination, status } = request.query;
       const destNorm = destination ? (destination.toUpperCase() as IntersectoralDestination) : undefined;
@@ -187,7 +187,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      const actor = await requireCapability(request, reply, "intersectoral.use");
       if (!actor) return;
       const body = request.body;
       if (!body.caseId || !body.studentCode || !body.destination || !body.reason) {
@@ -261,7 +261,7 @@ export async function intersectoralRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, INTERSECTORAL_ROLES);
+      const actor = await requireCapability(request, reply, "intersectoral.use");
       if (!actor) return;
       const { id } = request.params;
       const { status, feedbackNotes } = request.body;

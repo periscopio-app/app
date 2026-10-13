@@ -14,7 +14,8 @@ import {
   users,
   VALID_SPECIALTIES,
 } from "@periscopio/shared";
-import { requireActor, type Actor } from "../security/actor";
+import { requireActor, requireCapability, type Actor } from "../security/actor";
+import { canonicalRole } from "../security/capabilities";
 import { canAccessSchool } from "../security/tenancy";
 import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
@@ -42,6 +43,9 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@periscopio/shared";
 
 type AnyDb = NodePgDatabase<typeof schema>;
+
+/** Perfis que enxergam a rede inteira do município (não ficam presos a uma escola). */
+const NETWORK_LEVEL_ROLES = ["md1", "specialist", "municipal_manager", "board", "researcher"];
 
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -123,7 +127,7 @@ export async function casesRoutes(app: FastifyInstance) {
   // ── Alunos ──────────────────────────────────────────────────────────────
 
   app.post("/api/students", async (request, reply) => {
-    const actor = await requireActor(request, reply, REGISTRY_ROLES);
+    const actor = await requireCapability(request, reply, "student.register");
     if (!actor) return;
 
     const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number };
@@ -158,7 +162,7 @@ export async function casesRoutes(app: FastifyInstance) {
 
   // Importação em lote (planilha/colar): só ano e mês de nascimento — nenhum dado de identificação.
   app.post("/api/schools/:schoolId/students/bulk", async (request, reply) => {
-    const actor = await requireActor(request, reply, REGISTRY_ROLES);
+    const actor = await requireCapability(request, reply, "student.register");
     if (!actor) return;
     const { schoolId } = request.params as { schoolId: string };
     const school = await schoolVisibleTo(actor, schoolId);
@@ -203,7 +207,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/schools/:schoolId/students", async (request, reply) => {
-    const actor = await requireActor(request, reply, REGISTRY_ROLES);
+    const actor = await requireCapability(request, reply, "student.list");
     if (!actor) return;
 
     const { schoolId } = request.params as { schoolId: string };
@@ -218,7 +222,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/schools/:schoolId/professionals", async (request, reply) => {
-    const actor = await requireActor(request, reply, STAFF_DIRECTORY_ROLES);
+    const actor = await requireCapability(request, reply, "directory.staff");
     if (!actor) return;
 
     const { schoolId } = request.params as { schoolId: string };
@@ -234,7 +238,7 @@ export async function casesRoutes(app: FastifyInstance) {
 
   /** Especialistas do núcleo do município, para o médico escolher a quem delegar. Só id, nome e especialidade. */
   app.get("/api/nucleo/professionals", async (request, reply) => {
-    const actor = await requireActor(request, reply, NUCLEO_DIRECTORY_ROLES);
+    const actor = await requireCapability(request, reply, "directory.nucleo");
     if (!actor) return;
     const list = await db
       .select({ id: users.id, name: users.name, specialty: users.specialty, role: users.role, classCode: users.classCode })
@@ -246,7 +250,7 @@ export async function casesRoutes(app: FastifyInstance) {
   // ── Casos ───────────────────────────────────────────────────────────────
 
   app.post("/api/cases", async (request, reply) => {
-    const actor = await requireActor(request, reply, REGISTRY_ROLES);
+    const actor = await requireCapability(request, reply, "case.create");
     if (!actor) return;
 
     const body = request.body as { studentId?: string; dataInicioIntervencao?: string };
@@ -278,7 +282,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/cases", async (request, reply) => {
-    const actor = await requireActor(request, reply, CASE_LIST_ROLES);
+    const actor = await requireCapability(request, reply, "case.list");
     if (!actor) return;
 
     const query = request.query as { states?: string };
@@ -298,8 +302,11 @@ export async function casesRoutes(app: FastifyInstance) {
 
     if (stateList.length === 1) conditions.push(eq(cases.journeyState, stateList[0]));
     else if (stateList.length > 1) conditions.push(inArray(cases.journeyState, stateList));
-    // RE enxerga só a própria escola; o médico enxerga a rede do município (a lista que recebe dos REs).
-    if (actor.role === "ppi" && actor.schoolId) conditions.push(eq(students.schoolId, actor.schoolId));
+    // Perfis da escola (RE, professor, diretor) enxergam só a própria escola, mesmo que o Admin Master
+    // libere a fila para eles; médico/núcleo/rede enxergam o município (a lista que recebem dos REs).
+    if (!isSuper && actor.schoolId && !NETWORK_LEVEL_ROLES.includes(canonicalRole(actor.role))) {
+      conditions.push(eq(students.schoolId, actor.schoolId));
+    }
 
     const list = await db
       .select({
@@ -334,7 +341,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/cases/:caseId/re-assessment", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["ppi", "md1"]);
+    const actor = await requireCapability(request, reply, "fogap.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -376,14 +383,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases/:caseId/re-assessment", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi",
-      "re",
-      "responsavel_escolar",
-      "teacher",
-      "admin_platform",
-      "adm_master",
-    ]);
+    const actor = await requireCapability(request, reply, "fogap.fill");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -450,14 +450,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.put("/api/cases/:caseId/re-assessment", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi",
-      "re",
-      "responsavel_escolar",
-      "teacher",
-      "admin_platform",
-      "adm_master",
-    ]);
+    const actor = await requireCapability(request, reply, "fogap.fill");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -509,14 +502,7 @@ export async function casesRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/cases/:caseId/re-assessment/submit", async (request, reply) => {
-    const actor = await requireActor(request, reply, [
-      "ppi",
-      "re",
-      "responsavel_escolar",
-      "teacher",
-      "admin_platform",
-      "adm_master",
-    ]);
+    const actor = await requireCapability(request, reply, "fogap.fill");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -669,7 +655,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   });
 
   app.post("/api/cases/:caseId/delegate", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "case.delegate");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -747,7 +733,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   });
 
   app.post("/api/cases/:caseId/return", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "case.return");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -801,7 +787,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   // ── Seções do especialista ──────────────────────────────────────────────
 
   app.get("/api/cases/my-delegated-sections", async (request, reply) => {
-    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
+    const actor = await requireCapability(request, reply, "section.read");
     if (!actor) return;
 
     const sections = await db
@@ -831,7 +817,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
   // Contexto do caso para o especialista: FOGAP + resumo final do médico e dos demais (ver specialist-view.service)
   app.get("/api/cases/:caseId/specialist-view", async (request, reply) => {
-    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
+    const actor = await requireCapability(request, reply, "section.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -903,7 +889,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   });
 
   app.patch("/api/cases/sections/:sectionId", async (request, reply) => {
-    const actor = await requireActor(request, reply, SPECIALIST_CLINICAL_ROLES);
+    const actor = await requireCapability(request, reply, "section.fill");
     if (!actor) return;
 
     const { sectionId } = request.params as { sectionId: string };
@@ -1011,7 +997,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   // ── Consolidado (md1 apenas) ─────────────────────────────────────────────
 
   app.get("/api/cases/:caseId/consolidated", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "prontuario.consolidado.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -1072,7 +1058,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     });
 
   app.post("/api/cases/:caseId/close", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "case.close");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -1110,7 +1096,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   // ── Trilha de eventos (md1 apenas, paginada) ─────────────────────────────
 
   app.get("/api/cases/:caseId/events", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "case.events.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
@@ -1144,7 +1130,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
   // ── (Mantido para retrocompatibilidade temporária) ───────────────────────
   // TODO: remover após frontend migrar para /consolidated
   app.get("/api/cases/:caseId/full-summary", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["md1"]);
+    const actor = await requireCapability(request, reply, "prontuario.full_summary.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };

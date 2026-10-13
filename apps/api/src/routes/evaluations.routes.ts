@@ -4,13 +4,13 @@ import { db } from "../db/client";
 import { evaluations, students } from "@periscopio/shared";
 import { canAccessSchool } from "../security/tenancy";
 import { EVALUATION_NOTICE, validateEvaluationInput } from "../services/evaluation-guard";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import { CLINICAL_ROLES } from "../security/roles";
 
 export async function evaluationsRoutes(app: FastifyInstance) {
   // Submeter avaliação de escala clínica (M-CHAT, FOGAP, SRQ-20) - Exige papel clínico
   app.post("/api/evaluations", async (request, reply) => {
-    const actor = await requireActor(request, reply, CLINICAL_ROLES);
+    const actor = await requireCapability(request, reply, "scales.fill");
     if (!actor) return;
 
     const parsed = validateEvaluationInput(request.body);
@@ -47,7 +47,7 @@ export async function evaluationsRoutes(app: FastifyInstance) {
 
   // Listar avaliações clínicas por aluno ou escala - Exige papel clínico
   app.get("/api/evaluations", async (request, reply) => {
-    const actor = await requireActor(request, reply, CLINICAL_ROLES);
+    const actor = await requireCapability(request, reply, "scales.read");
     if (!actor) return;
 
     const { studentId, scale } = request.query as { studentId?: string; scale?: string };

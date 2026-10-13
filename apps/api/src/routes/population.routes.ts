@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import { auditLogs, populationAggregates, schools } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import {
   SERVICES,
@@ -64,7 +64,7 @@ export const norm = (s: string) =>
 export async function populationRoutes(app: FastifyInstance) {
   // ── Mapa de prevalência + profissionais necessários ──────────────────────
   app.get("/api/population/map", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "population.view");
     if (!actor) return;
 
     const q = request.query as Record<string, string | undefined>;
@@ -148,7 +148,7 @@ export async function populationRoutes(app: FastifyInstance) {
 
   // ── Painel exclusivo de Tarumã: KPIs e gráficos prontos, só com agregados ─
   app.get("/api/population/taruma", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "population.view");
     if (!actor) return;
 
     const q = request.query as Record<string, string | undefined>;
@@ -269,7 +269,7 @@ export async function populationRoutes(app: FastifyInstance) {
 
   // ── Cadastro de localização/matrícula (gestor ou RE da escola) ───────────
   app.put("/api/schools/:schoolId/geo", async (request, reply) => {
-    const actor = await requireActor(request, reply, GEO_ROLES);
+    const actor = await requireCapability(request, reply, "population.geo");
     if (!actor) return;
     const { schoolId } = request.params as { schoolId: string };
     const [school] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
@@ -301,7 +301,7 @@ export async function populationRoutes(app: FastifyInstance) {
 
   // Geocodificação pelo endereço cadastrado (Mapbox). Falha com mensagem clara se o token não existir.
   app.post("/api/schools/:schoolId/geocode", async (request, reply) => {
-    const actor = await requireActor(request, reply, GEO_ROLES);
+    const actor = await requireCapability(request, reply, "population.geo");
     if (!actor) return;
     const { schoolId } = request.params as { schoolId: string };
     const [school] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
@@ -331,7 +331,7 @@ export async function populationRoutes(app: FastifyInstance) {
 
   // ── Importação de agregados (admin da plataforma) ─────────────────────────
   app.post("/api/population/import", { bodyLimit: 2 * 1024 * 1024 }, async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "population.import");
     if (!actor) return;
     const parse = importSchema.safeParse(request.body);
     if (!parse.success) {

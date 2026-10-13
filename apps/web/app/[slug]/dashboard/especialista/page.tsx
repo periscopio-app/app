@@ -6,6 +6,7 @@ import { api, type CaseSection, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
+import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 
 const SPECIALTY_NAMES: Record<string, string> = {
   servico_social: "Assistente Social (AS)",
@@ -367,6 +368,8 @@ export default function EspecialistaDashboardPage({
                     </div>
                   </div>
                 )}
+
+                <TeaScreeningPanel caseId={activeSection.caseId} />
 
                 {ctx && <CaseContextPanel ctx={ctx} />}
 

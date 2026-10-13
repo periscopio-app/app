@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
-import { api } from "@/lib/api";
+import { useCapabilities } from "@/lib/capabilities";
 import { BarChart3, MapPinned,
   FileText,
   Stethoscope,
@@ -20,6 +20,7 @@ import { BarChart3, MapPinned,
   CalendarClock,
   ClipboardList,
   ShieldAlert,
+  SlidersHorizontal,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 
@@ -33,13 +34,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
-  const [userRole, setUserRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get<{ user: { role: string } }>("/api/me")
-      .then(({ user }) => setUserRole(user.role))
-      .catch(() => null);
-  }, []);
+  const { me, has, hasAny, ready } = useCapabilities();
+  const userRole = me?.role ?? null;
 
   // Infer slug from URL if user is in /[slug]/...
   useEffect(() => {
@@ -81,70 +77,51 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const clinicalItems = [
-    { role: "ppi", label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
-    { role: "school_manager", label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
-    { role: "municipal_manager", label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
-    { role: "md1", label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
-    { role: "specialist", label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
-  ];
-
-  const agendaItem = { label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board", exact: false };
-  const agendaRoles = ["ppi", "md1", "board"];
-  const mapaItem = { label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão", exact: false };
-  const mapaRoles = ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"];
-
-  const biItem = { label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3, badge: "Gestão", exact: false };
-
-  const visibleClinical = userRole
-    ? [
-        ...clinicalItems.filter((i) => i.role === userRole).map(({ role: _r, ...rest }) => ({ ...rest, exact: false })),
-        ...(agendaRoles.includes(userRole) ? [agendaItem] : []),
-        ...(mapaRoles.includes(userRole) ? [biItem, mapaItem] : []),
-      ]
-    : [];
+  // O menu segue as CAIXINHAS do Administrador Master (privilégios), não só o perfil.
+  const visibleClinical = [
+    { show: has("fogap.fill"), label: "Avaliação RE (FOGAP)", href: `/${currentSlug}/dashboard/re`, icon: FileText, badge: "RE" },
+    { show: has("management.view"), label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList, badge: "Gestão" },
+    { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
+    { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
+    { show: hasAny(["board.request", "board.manage"]), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
+    { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3, badge: "Gestão" },
+    { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned, badge: "Gestão" },
+  ]
+    .filter((i) => i.show)
+    .map(({ show: _s, ...rest }) => ({ ...rest, exact: false }));
   const isSuper =
     userRole === "admin_platform" ||
     userRole === "adm_master" ||
     session?.user?.email === "bruno@oceanoazul.dev.br" ||
     (session?.user?.email ? session.user.email.endsWith("@oceanoazul.dev.br") : false);
 
-  const visibleAdmin = isSuper || userRole === "admin_platform"
-    ? [
-        { label: "Usuários & Privilégios", href: "/admin/users", icon: ShieldCheck, badge: "Master", exact: false },
-        { label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck, badge: "LGPD", exact: false },
-        { label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup", exact: false },
-      ]
-    : [];
+  const visibleAdmin = [
+    { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal, badge: "Master" },
+    { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck, badge: "Master" },
+    { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck, badge: "LGPD" },
+    { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2, badge: "Setup" },
+  ]
+    .filter((i) => i.show)
+    .map(({ show: _s, ...rest }) => ({ ...rest, exact: false }));
 
-  // Bloqueio de navegação por perfil nas telas (Frontend Route Guard)
-  const getRouteAllowedRoles = (path: string): string[] | null => {
-    if (path.includes("/dashboard/re")) return ["ppi", "re", "responsavel_escolar"];
-    if (path.includes("/dashboard/medico")) return ["md1", "medico", "md"];
-    if (path.includes("/dashboard/especialista"))
-      return [
-        "specialist",
-        "as",
-        "servico_social",
-        "neuropsicologo",
-        "psicomotricista",
-        "psicoterapeuta",
-        "psicologo",
-        "psicologa",
-        "fonoaudiologo",
-        "fonoaudiologa",
-        "psicologo_familiar",
-        "psicopedagogo_clinico",
-      ];
-    if (path.includes("/dashboard/gestao"))
-      return ["school_manager", "diretor", "municipal_manager", "gestor_municipal", "board", "board_especialistas"];
-    if (path.includes("/dashboard/agenda")) return ["ppi", "md1", "board", "board_especialistas"];
-    if (path.startsWith("/admin/")) return ["admin_platform", "adm_master"];
+  // Bloqueio de navegação por privilégio (a API é quem decide de verdade; isto só evita uma tela vazia).
+  const requiredForRoute = (path: string): string[] | null => {
+    if (path.includes("/dashboard/re")) return ["fogap.fill", "fogap.read"];
+    if (path.includes("/dashboard/medico")) return ["case.delegate", "prontuario.consolidado.read"];
+    if (path.includes("/dashboard/especialista")) return ["section.read"];
+    if (path.includes("/dashboard/gestao")) return ["management.view"];
+    if (path.includes("/dashboard/agenda")) return ["board.request", "board.manage"];
+    if (path.includes("/dashboard/bi")) return ["bi.view"];
+    if (path.includes("/dashboard/mapa")) return ["population.view"];
+    if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
+    if (path.startsWith("/admin/users")) return ["users.manage"];
+    if (path.startsWith("/admin/lgpd")) return ["lgpd.manage"];
+    if (path.startsWith("/admin/setup")) return ["schools.provision"];
     return null;
   };
 
-  const allowedForRoute = getRouteAllowedRoles(pathname);
-  const isBlocked = userRole && !isSuper && allowedForRoute && !allowedForRoute.includes(userRole);
+  const needed = requiredForRoute(pathname);
+  const isBlocked = ready && !!me && !isSuper && !!needed && !hasAny(needed);
 
   const navItems = [
     ...(visibleClinical.length > 0 ? [{ group: "Fluxo Clínico", items: visibleClinical }] : []),

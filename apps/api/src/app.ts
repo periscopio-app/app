@@ -10,6 +10,8 @@ import { accessRoutes } from "./routes/access.routes";
 import { casesRoutes } from "./routes/cases.routes";
 import { leadsRoutes } from "./routes/leads.routes";
 import { usersRoutes } from "./routes/users.routes";
+import { privilegesRoutes } from "./routes/privileges.routes";
+import { teaRoutes } from "./routes/tea.routes";
 import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
 import { notificationsRoutes } from "./routes/notifications.routes";
@@ -116,6 +118,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(casesRoutes);
   app.register(leadsRoutes);
   app.register(usersRoutes);
+  app.register(privilegesRoutes);
+  app.register(teaRoutes);
   app.register(evaluationsRoutes);
   app.register(coursesRoutes);
   app.register(notificationsRoutes);

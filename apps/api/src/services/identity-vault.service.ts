@@ -11,6 +11,11 @@ export interface IdentityVaultAccessRequest {
   studentSchoolId: string;
   studentTenantId: string;
   accessReason: string;
+  /**
+   * Resultado da caixinha do Admin Master (capacidade vault.reveal). Quando informado, substitui a
+   * checagem fixa de papel clínico; tenant, escola e justificativa continuam obrigatórios.
+   */
+  roleAllowedByPolicy?: boolean;
 }
 
 export interface IdentityVaultAccessResult {
@@ -35,10 +40,11 @@ export interface IdentityVaultAccessResult {
 export function canAccessStudentIdentityVault(
   request: IdentityVaultAccessRequest
 ): IdentityVaultAccessResult {
-  const { actor, studentId, studentSchoolId, studentTenantId, accessReason } = request;
+  const { actor, studentId, studentSchoolId, studentTenantId, accessReason, roleAllowedByPolicy } = request;
 
   // 1. O papel precisa ser um papel clínico autorizado (Jamais admin/gestores)
-  if (!hasRole(actor.role, CLINICAL_ROLES)) {
+  const roleOk = roleAllowedByPolicy ?? hasRole(actor.role, CLINICAL_ROLES);
+  if (!roleOk) {
     return {
       allowed: false,
       reason: "Acesso negado: perfis administrativos não possuem acesso ao cofre de identidade.",

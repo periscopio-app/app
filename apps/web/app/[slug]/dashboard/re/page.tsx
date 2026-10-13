@@ -37,6 +37,7 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
+import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 
 import {
   FileText,
@@ -970,6 +971,7 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <CaseAttachmentsCard caseId={activeCase.id} />
+                  <TeaScreeningPanel caseId={activeCase.id} />
                 </div>
               </div>
 

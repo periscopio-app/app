@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "../db/client";
 import { expertBoardSettings, expertMeetingRequests, expertSlots, schools, users } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireCapability, requireAnyCapability } from "../security/actor";
+import { can } from "../services/privilege.service";
 import { BOARD_MANAGER_ROLES as MANAGER_ROLES, BOARD_REQUESTER_ROLES as REQUESTER_ROLES } from "../security/permissions";
 import { sendTemplatedEmail } from "../email/templated";
 import {
@@ -30,9 +31,9 @@ async function getSettings(tenantId: string) {
 export async function expertMeetingsRoutes(app: FastifyInstance) {
   // Horários futuros livres (qualquer papel que pode pedir ou gerir)
   app.get("/api/expert-meetings/slots", async (request, reply) => {
-    const actor = await requireActor(request, reply, [...REQUESTER_ROLES, ...MANAGER_ROLES]);
+    const actor = await requireAnyCapability(request, reply, ["board.request", "board.manage"]);
     if (!actor) return;
-    const isManager = (MANAGER_ROLES as readonly string[]).includes(actor.role);
+    const isManager = await can(actor, "board.manage");
     const rows = await db
       .select()
       .from(expertSlots)
@@ -50,7 +51,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
 
   // Dra. cria horários
   app.post("/api/expert-meetings/slots", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGER_ROLES);
+    const actor = await requireCapability(request, reply, "board.manage");
     if (!actor) return;
     const body = (request.body ?? {}) as { startsAt?: unknown; endsAt?: unknown };
     const range = validateSlotRange(body.startsAt, body.endsAt);
@@ -66,7 +67,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
 
   // Dra. cancela horário livre
   app.delete("/api/expert-meetings/slots/:id", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGER_ROLES);
+    const actor = await requireCapability(request, reply, "board.manage");
     if (!actor) return;
     const { id } = request.params as { id: string };
     const [slot] = await db
@@ -80,13 +81,13 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
 
   // Sala fixa
   app.get("/api/expert-meetings/settings", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGER_ROLES);
+    const actor = await requireCapability(request, reply, "board.manage");
     if (!actor) return;
     return getSettings(actor.tenantId);
   });
 
   app.put("/api/expert-meetings/settings", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGER_ROLES);
+    const actor = await requireCapability(request, reply, "board.manage");
     if (!actor) return;
     const body = (request.body ?? {}) as { meetUrl?: unknown };
     const v = validateMeetUrl(body.meetUrl);
@@ -103,7 +104,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
 
   // Escola pede reunião
   app.post("/api/expert-meetings", async (request, reply) => {
-    const actor = await requireActor(request, reply, REQUESTER_ROLES);
+    const actor = await requireCapability(request, reply, "board.request");
     if (!actor) return;
     const parsed = validateMeetingRequest(request.body);
     if (!parsed.ok) return reply.status(400).send({ error: parsed.error });
@@ -166,9 +167,9 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
 
   // Lista: board vê todos; solicitante vê os seus
   app.get("/api/expert-meetings", async (request, reply) => {
-    const actor = await requireActor(request, reply, [...REQUESTER_ROLES, ...MANAGER_ROLES]);
+    const actor = await requireAnyCapability(request, reply, ["board.request", "board.manage"]);
     if (!actor) return;
-    const isManager = (MANAGER_ROLES as readonly string[]).includes(actor.role);
+    const isManager = await can(actor, "board.manage");
     const rows = await db
       .select({
         id: expertMeetingRequests.id,
@@ -200,7 +201,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
   // Dra. confirma ou recusa
   for (const action of ["confirm", "decline"] as const) {
     app.patch(`/api/expert-meetings/:id/${action}`, async (request, reply) => {
-      const actor = await requireActor(request, reply, MANAGER_ROLES);
+      const actor = await requireCapability(request, reply, "board.manage");
       if (!actor) return;
       const { id } = request.params as { id: string };
       const note = typeof (request.body as any)?.note === "string" ? String((request.body as any).note).trim().slice(0, 300) : null;

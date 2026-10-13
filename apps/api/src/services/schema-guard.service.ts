@@ -5,7 +5,7 @@ import { db } from "../db/client";
 
 /**
  * Garante, de forma idempotente, as estruturas novas no banco (auditoria enriquecida,
- * trigger de imutabilidade e cofre de identidade). Espelha drizzle/0015_audit_trail_vault.sql
+ * trigger de imutabilidade, cofre de identidade, privilégios e triagem TEA). Espelha drizzle/0015_audit_trail_vault.sql
  * para que o deploy funcione mesmo antes de rodar `pnpm db:migrate`.
  */
 let ensured: Promise<void> | null = null;
@@ -15,6 +15,7 @@ function migrationSql(): string[] {
   const files = [
     "0015_audit_trail_vault.sql",
     "0016_row_level_security.sql",
+    "0017_privileges_and_tea.sql",
   ];
   const allSql: string[] = [];
 

@@ -3,7 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
 import { consentTerms, consentAcceptances } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireActor, requireCapability } from "../security/actor";
 import { recordAudit } from "../services/audit.service";
 
 const TERMO_PADRAO_V1 = {
@@ -163,7 +163,7 @@ export async function consentRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "consent.write");
       if (!actor) return;
 
       const body = request.body;
@@ -279,7 +279,7 @@ export async function consentRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "consent.read");
       if (!actor) return;
 
       const { caseId } = request.params;
@@ -335,7 +335,7 @@ export async function consentRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "consent.write");
       if (!actor) return;
 
       const { id } = request.params;

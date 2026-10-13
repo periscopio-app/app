@@ -120,3 +120,28 @@ def test_groq_gpt_oss_usa_raciocinio_baixo_e_cai_para_sem_modo_json_no_400(monke
     assert llm.plan_with_llm("x", {}, []) == {"metric": "cases"}
     assert bodies[0]["reasoning_effort"] == "low" and bodies[0]["max_completion_tokens"] >= 1000
     assert "response_format" in bodies[0] and "response_format" not in bodies[1]
+
+
+def test_complete_json_usa_o_system_informado_e_nunca_levanta(monkeypatch):
+    _clear(monkeypatch)
+    assert llm.complete_json("x", "sys") is None  # sem provedor
+    monkeypatch.setenv("GROQ_API_KEY", "q"); monkeypatch.setenv("BI_LLM_MODEL", "m")
+    seen = {}
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return json.dumps({"choices": [{"message": {"content": '{"ok":1}'}}]}).encode()
+
+    def fake(req, timeout=0):
+        seen["body"] = json.loads(req.data)
+        return Resp()
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", fake)
+    assert llm.complete_json("dados", "SISTEMA-TEA", max_tokens=500) == {"ok": 1}
+    assert seen["body"]["messages"][0]["content"] == "SISTEMA-TEA"
+    assert seen["body"]["max_completion_tokens"] == 1000
+
+    def boom(*a, **k): raise OSError("rede")
+    monkeypatch.setattr(llm.urllib.request, "urlopen", boom)
+    assert llm.complete_json("dados", "S") is None

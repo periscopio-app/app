@@ -17,6 +17,7 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
+import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { FogapViewer } from "@/components/dashboard/FogapViewer";
 import {
   ClipboardList,
@@ -390,6 +391,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <CaseAttachmentsCard caseId={activeCase.id} />
+                  <TeaScreeningPanel caseId={activeCase.id} />
                 </div>
               </div>
 
