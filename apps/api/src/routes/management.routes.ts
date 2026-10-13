@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { auditLogs, cases, reAssessments, schools, students } from "@periscopio/shared";
 import { db } from "../db/client";
-import { requireActor, type Actor } from "../security/actor";
+import { requireCapability, type Actor } from "../security/actor";
+import { canonicalRole } from "../security/capabilities";
 import { MANAGEMENT_VIEW_ROLES } from "../security/permissions";
 import { JOURNEY_LABELS } from "../services/bi-semantic.service";
 
@@ -19,8 +20,9 @@ const REFERRED_STATES = ["revisao_medica", "delegado", "retornado", "encerrado"]
 type Scope = { ok: true; schoolId: string | null } | { ok: false; status: number; error: string };
 
 async function resolveScope(actor: Actor, requestedSchoolId?: string): Promise<Scope> {
-  if (actor.role === "school_manager") {
-    // Diretor: sempre a própria escola, ignorando qualquer filtro enviado.
+  const level = canonicalRole(actor.role);
+  if (level === "school_manager" || (actor.schoolId && (level === "ppi" || level === "teacher"))) {
+    // Diretor (e perfis da escola liberados pelo Admin Master): sempre a própria escola, ignorando qualquer filtro enviado.
     if (!actor.schoolId) return { ok: false, status: 403, error: "Seu perfil não está vinculado a uma escola" };
     return { ok: true, schoolId: actor.schoolId };
   }
@@ -52,7 +54,7 @@ function sumarioDe(payload: unknown) {
 export async function managementRoutes(app: FastifyInstance) {
   // Sumário do RE (somente avaliações já enviadas ao médico)
   app.get("/api/management/re-summaries", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGEMENT_VIEW_ROLES);
+    const actor = await requireCapability(request, reply, "management.view");
     if (!actor) return;
     const scope = await resolveScope(actor, (request.query as { schoolId?: string }).schoolId);
     if (!scope.ok) return reply.status(scope.status).send({ error: scope.error });
@@ -100,7 +102,7 @@ export async function managementRoutes(app: FastifyInstance) {
 
   // Lista final de alunos encaminhados ao núcleo assistencial
   app.get("/api/management/nucleo-referrals", async (request, reply) => {
-    const actor = await requireActor(request, reply, MANAGEMENT_VIEW_ROLES);
+    const actor = await requireCapability(request, reply, "management.view");
     if (!actor) return;
     const scope = await resolveScope(actor, (request.query as { schoolId?: string }).schoolId);
     if (!scope.ok) return reply.status(scope.status).send({ error: scope.error });

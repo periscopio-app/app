@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
 import { studentIdentityVault, students } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
+import { canAccessSchool } from "../security/tenancy";
 import { canAccessStudentIdentityVault } from "../services/identity-vault.service";
 import { recordAudit } from "../services/audit.service";
 import { CLINICAL_ROLES, isSuperAdminEmail } from "../security/roles";
@@ -76,7 +77,7 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, [...CLINICAL_ROLES, "admin_platform"]);
+      const actor = await requireCapability(request, reply, "vault.register");
       if (!actor) return;
 
       const { studentId } = request.params;
@@ -88,7 +89,7 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       }
 
       const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
-      if (!student) {
+      if (!student || !canAccessSchool(actor, student.tenantId, student.schoolId)) {
         reply.status(404);
         return { error: "Aluno não encontrado." };
       }
@@ -192,7 +193,7 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "vault.reveal");
       if (!actor) return;
 
       const { studentId } = request.params;
@@ -215,6 +216,7 @@ export async function identityVaultRoutes(app: FastifyInstance) {
         studentSchoolId: student.schoolId,
         studentTenantId: student.tenantId,
         accessReason: accessReason || "",
+        roleAllowedByPolicy: true, // a caixinha vault.reveal já foi exigida acima
       });
 
       if (!authCheck.allowed && !isSuperAdminEmail(actor.email)) {

@@ -4,7 +4,8 @@ import crypto from "crypto";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "../db/client";
 import { users, schools, tenants } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireActor, requireCapability } from "../security/actor";
+import { effectiveCapabilities } from "../services/privilege.service";
 import { isRole, type Role } from "../security/roles";
 import { recordAudit } from "../services/audit.service";
 
@@ -118,14 +119,16 @@ export async function usersRoutes(app: FastifyInstance) {
       .limit(1);
 
     if (!user) { reply.status(404); return { error: "Usuário não encontrado" }; }
-    return { user };
+    // `capabilities` = o que esta pessoa pode ver/fazer HOJE (padrão + caixinhas do Admin Master).
+    const capabilities = await effectiveCapabilities(actor);
+    return { user, capabilities };
   });
 
   /**
    * 1a. Listar escolas (para dropdown no cadastro de usuário)
    */
   app.get("/api/admin/schools", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
 
     const list = await db
@@ -140,7 +143,7 @@ export async function usersRoutes(app: FastifyInstance) {
    * 1. Obter catálogo de papéis e regras de privilégios
    */
   app.get("/api/admin/roles", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
     return { roles: SYSTEM_ROLES_CATALOG };
   });
@@ -149,7 +152,7 @@ export async function usersRoutes(app: FastifyInstance) {
    * 2. Listar todos os usuários da plataforma
    */
   app.get("/api/admin/users", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
 
     const list = await db
@@ -180,7 +183,7 @@ export async function usersRoutes(app: FastifyInstance) {
    * 3. Criar novo usuário e associar perfil/privilégios
    */
   app.post("/api/admin/users", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
 
     const body = request.body as {
@@ -298,7 +301,7 @@ export async function usersRoutes(app: FastifyInstance) {
    * 4. Atualizar perfil/privilégios e dados de um usuário
    */
   app.patch("/api/admin/users/:id", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
 
     const { id } = request.params as { id: string };
@@ -363,7 +366,7 @@ export async function usersRoutes(app: FastifyInstance) {
    * 5. Excluir usuário
    */
   app.delete("/api/admin/users/:id", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
 
     const { id } = request.params as { id: string };

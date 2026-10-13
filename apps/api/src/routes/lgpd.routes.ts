@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../db/client";
 import { lgpdRequests } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import { recordAudit } from "../services/audit.service";
 
 export const RETENTION_POLICIES = [
@@ -186,7 +186,7 @@ export async function lgpdRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, ["admin_platform"]);
+      const actor = await requireCapability(request, reply, "lgpd.manage");
       if (!actor) return;
 
       const requests = await db
@@ -248,7 +248,7 @@ export async function lgpdRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, ["admin_platform"]);
+      const actor = await requireCapability(request, reply, "lgpd.manage");
       if (!actor) return;
 
       const { id } = request.params;
@@ -338,7 +338,7 @@ export async function lgpdRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply, ["admin_platform"]);
+      const actor = await requireCapability(request, reply, "lgpd.manage");
       if (!actor) return;
 
       return {

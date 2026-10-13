@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import { db } from "../db/client";
 import { tenants, schools, users, onboardingInvites } from "@periscopio/shared";
 import { sendEmail } from "../email";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import { professionalInviteEmail } from "../email/templates";
 import { upsertCredential } from "../auth/credentials";
 
@@ -105,7 +105,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
    * Cria: tenant e school, gera Magic Link de onboarding e envia via Resend.
    */
   app.post("/api/admin/instances", async (request, reply) => {
-    const actor = await requireActor(request, reply, ["admin_platform"]);
+    const actor = await requireCapability(request, reply, "schools.provision");
     if (!actor) return;
 
     const body = request.body as {

@@ -3,7 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
 import { clinicalAttachments, cases } from "@periscopio/shared";
-import { requireActor } from "../security/actor";
+import { requireCapability } from "../security/actor";
 import { validateAttachmentUpload, validateSignedUrlAccess } from "../services/attachment.service";
 import { recordAudit } from "../services/audit.service";
 import { isSuperAdminEmail } from "../security/roles";
@@ -55,7 +55,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "attachments.write");
       if (!actor) return;
 
       const { caseId } = request.params;
@@ -84,6 +84,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         filename: body.fileName,
         mimeType: body.mimeType,
         sizeInBytes: body.fileSizeBytes,
+        roleAllowedByPolicy: true, // caixinha attachments.write já exigida acima
       });
 
       if (!validation.allowed) {
@@ -154,7 +155,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "attachments.write");
       if (!actor) return;
 
       const { caseId } = request.params;
@@ -258,7 +259,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "attachments.read");
       if (!actor) return;
 
       const { caseId } = request.params;
@@ -313,7 +314,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const actor = await requireActor(request, reply);
+      const actor = await requireCapability(request, reply, "attachments.read");
       if (!actor) return;
 
       const { caseId, attachmentId } = request.params;
@@ -338,6 +339,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         attachmentId,
         caseId,
         caseTenantId: attachment.tenantId,
+        roleAllowedByPolicy: true, // caixinha attachments.read já exigida acima
       });
 
       if (!accessCheck.allowed && !isSuperAdminEmail(actor.email)) {

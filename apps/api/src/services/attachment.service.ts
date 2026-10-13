@@ -12,6 +12,8 @@ export interface AttachmentUploadParams {
   filename: string;
   mimeType: string;
   sizeInBytes: number;
+  /** Resultado da caixinha do Admin Master (attachments.write). Se informado, substitui a checagem fixa de papel. */
+  roleAllowedByPolicy?: boolean;
 }
 
 export interface SignedUrlRequestParams {
@@ -24,6 +26,8 @@ export interface SignedUrlRequestParams {
   attachmentId: string;
   caseId: string;
   caseTenantId: string;
+  /** Resultado da caixinha do Admin Master (attachments.read). Se informado, substitui a checagem fixa de papel. */
+  roleAllowedByPolicy?: boolean;
 }
 
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -38,10 +42,10 @@ export function validateAttachmentUpload(params: AttachmentUploadParams): {
   objectKey?: string;
   error?: string;
 } {
-  const { actor, caseId, caseTenantId, filename, mimeType, sizeInBytes } = params;
+  const { actor, caseId, caseTenantId, filename, mimeType, sizeInBytes, roleAllowedByPolicy } = params;
 
   // 1. Apenas papéis clínicos podem anexar laudos e relatórios
-  if (!hasRole(actor.role, CLINICAL_ROLES)) {
+  if (!(roleAllowedByPolicy ?? hasRole(actor.role, CLINICAL_ROLES))) {
     return { allowed: false, error: "Acesso negado: apenas perfis clínicos podem enviar anexos ao prontuário." };
   }
 
@@ -76,9 +80,9 @@ export function validateSignedUrlAccess(params: SignedUrlRequestParams): {
   expiresInSeconds?: number;
   error?: string;
 } {
-  const { actor, caseTenantId } = params;
+  const { actor, caseTenantId, roleAllowedByPolicy } = params;
 
-  if (!hasRole(actor.role, CLINICAL_ROLES)) {
+  if (!(roleAllowedByPolicy ?? hasRole(actor.role, CLINICAL_ROLES))) {
     return { allowed: false, error: "Acesso negado: perfis administrativos não possuem acesso a anexos clínicos." };
   }
 

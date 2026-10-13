@@ -11,7 +11,8 @@ import {
   schools,
   students,
 } from "@periscopio/shared";
-import { requireActor, type Actor } from "../security/actor";
+import { requireCapability, type Actor } from "../security/actor";
+import { can } from "../services/privilege.service";
 import { canAccessSchool } from "../security/tenancy";
 import {
   AGE_BRACKETS,
@@ -305,7 +306,7 @@ async function callRag(body: unknown): Promise<RagReply | null> {
 export async function biRoutes(app: FastifyInstance) {
   // ── Catálogo: o que dá para perguntar ────────────────────────────────────
   app.get("/api/bi/catalog", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
@@ -329,7 +330,7 @@ export async function biRoutes(app: FastifyInstance) {
       services: SERVICES,
       glossary: GLOSSARY,
       assistantEnabled: !!process.env.BI_RAG_URL,
-      canApprove: (APPROVER_ROLES as readonly string[]).includes(actor.role),
+      canApprove: await can(actor, "bi.approve"),
       privacy:
         "Alunos aparecem só como contagem anônima. Grupos com menos de 5 casos são ocultados. O assistente nunca vê nome, código ou data de nascimento.",
     };
@@ -337,7 +338,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Consulta estruturada (usada pelos filtros da tela) ───────────────────
   app.post("/api/bi/query", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const parsed = z.object({ plan: planSchema }).safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: "Consulta inválida", issues: parsed.error.issues.slice(0, 3) });
@@ -364,7 +365,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Painel inicial ───────────────────────────────────────────────────────
   app.get("/api/bi/overview", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
@@ -393,7 +394,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Sumário Executivo da Rede e Pacientes (base original de prontuários) ──
   app.get("/api/bi/summary", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const tenantId = await resolveTenantId(actor, query);
@@ -402,7 +403,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Pergunta em linguagem natural (assistente RAG em Python) ─────────────
   app.post("/api/bi/ask", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const parsed = z.object({ question: z.string().min(3).max(500) }).safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: "Escreva uma pergunta de 3 a 500 caracteres" });
@@ -502,7 +503,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Feedback: é assim que o assistente melhora ───────────────────────────
   app.post("/api/bi/feedback", async (request, reply) => {
-    const actor = await requireActor(request, reply, READ_ROLES);
+    const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const parsed = z
       .object({ questionId: z.string().uuid(), rating: z.union([z.literal(1), z.literal(-1)]), correctedPlan: planSchema.optional() })
@@ -517,7 +518,7 @@ export async function biRoutes(app: FastifyInstance) {
     if (!q) {
       return reply.status(404).send({ error: "Pergunta não encontrada" });
     }
-    const approver = (APPROVER_ROLES as readonly string[]).includes(actor.role);
+    const approver = await can(actor, "bi.approve");
     // Só gestão aprova direto; os demais viram candidatos para revisão (evita contaminar o aprendizado).
     const approved = approver && rating === 1 && !!(q.plan || correctedPlan);
     await db
@@ -529,7 +530,7 @@ export async function biRoutes(app: FastifyInstance) {
 
   // ── Fila de revisão (gestão) ─────────────────────────────────────────────
   app.get("/api/bi/questions", async (request, reply) => {
-    const actor = await requireActor(request, reply, APPROVER_ROLES);
+    const actor = await requireCapability(request, reply, "bi.approve");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const tenantId = await resolveTenantId(actor, query);
@@ -553,7 +554,7 @@ export async function biRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/bi/questions/:id/approve", async (request, reply) => {
-    const actor = await requireActor(request, reply, APPROVER_ROLES);
+    const actor = await requireCapability(request, reply, "bi.approve");
     if (!actor) return;
     const { id } = request.params as { id: string };
     const approve = (request.body as { approve?: boolean } | null)?.approve !== false;

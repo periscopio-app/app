@@ -120,6 +120,13 @@
       "when": 1791852000000,
       "tag": "0016_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791938400000,
+      "tag": "0017_privileges_and_tea",
+      "breakpoints": true
     }
   ]
 }

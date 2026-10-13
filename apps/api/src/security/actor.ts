@@ -4,6 +4,8 @@ import { db } from "../db/client";
 import { users } from "@periscopio/shared";
 import { auth } from "../auth";
 import { hasRole, isRole, isSuperAdminEmail, type Role } from "./roles";
+import { decideCapability } from "../services/privilege.service";
+import type { CapabilityKey } from "./capabilities";
 
 export type { Role } from "./roles";
 
@@ -13,6 +15,7 @@ export interface Actor {
   tenantId: string;
   schoolId: string | null;
   role: Role;
+  specialty?: string | null;
 }
 
 /**
@@ -55,6 +58,7 @@ export async function requireActor(
         tenantId: users.tenantId,
         schoolId: users.schoolId,
         role: users.role,
+        specialty: users.specialty,
         accessEnabled: users.accessEnabled,
       })
       .from(users)
@@ -86,6 +90,7 @@ export async function requireActor(
           tenantId: user.tenantId,
           schoolId: user.schoolId,
           role: role ?? "admin_platform",
+          specialty: user.specialty ?? null,
         }
       : {
           id: "00000000-0000-0000-0000-000000000001",
@@ -108,3 +113,50 @@ export async function requireActor(
   }
 }
 
+
+/**
+ * Exige uma capacidade configurável (ver security/capabilities.ts).
+ * O padrão espelha a matriz do PM; o Administrador Master pode mudar por perfil ou por pessoa.
+ * Sessão ausente → 401; sem a capacidade → 403 (com a chave, para a interface explicar).
+ */
+export async function requireCapability(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  capability: CapabilityKey
+): Promise<Actor | null> {
+  const actor = await requireActor(request, reply);
+  if (!actor) return null;
+  try {
+    const decision = await decideCapability(actor, capability);
+    if (!decision.allowed) {
+      await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação", capability });
+      return null;
+    }
+    return actor;
+  } catch (error) {
+    request.log.error({ err: error }, "falha ao avaliar privilégio");
+    await reply.status(503).send({ error: "Não foi possível validar os privilégios agora" });
+    return null;
+  }
+}
+
+/** Passa se a pessoa tem QUALQUER uma das capacidades (ex.: pedir ou gerir reuniões do Board). */
+export async function requireAnyCapability(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  capabilities: readonly CapabilityKey[]
+): Promise<Actor | null> {
+  const actor = await requireActor(request, reply);
+  if (!actor) return null;
+  try {
+    for (const capability of capabilities) {
+      if ((await decideCapability(actor, capability)).allowed) return actor;
+    }
+    await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação", capability: capabilities[0] });
+    return null;
+  } catch (error) {
+    request.log.error({ err: error }, "falha ao avaliar privilégio");
+    await reply.status(503).send({ error: "Não foi possível validar os privilégios agora" });
+    return null;
+  }
+}

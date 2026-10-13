@@ -70,12 +70,12 @@ def _parse(text: str) -> dict | None:
     return out if isinstance(out, dict) else None
 
 
-def _call_gemini(prompt: str) -> str:
+def _call_gemini(prompt: str, system: str = SYSTEM, max_tokens: int = 400) -> str:
     model = os.environ["BI_LLM_MODEL"].removeprefix("models/")
     body = {
-        "systemInstruction": {"parts": [{"text": SYSTEM}]},
+        "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0, "maxOutputTokens": 400, "responseMimeType": "application/json"},
+        "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens, "responseMimeType": "application/json"},
     }
     req = urllib.request.Request(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
@@ -89,16 +89,16 @@ def _call_gemini(prompt: str) -> str:
     return "".join(p.get("text", "") for p in parts)
 
 
-def _call_groq(prompt: str) -> str:
+def _call_groq(prompt: str, system: str = SYSTEM, max_tokens: int = 1500) -> str:
     """Groq (API compatível com OpenAI). O ID do modelo vem de BI_LLM_MODEL (ex.: openai/gpt-oss-120b)."""
     model = os.environ["BI_LLM_MODEL"]
     body = {
         "model": model,
         "temperature": 0,
         # modelos de raciocínio gastam parte do limite pensando: folga para o JSON não sair cortado
-        "max_completion_tokens": 1500,
+        "max_completion_tokens": max_tokens,
         "response_format": {"type": "json_object"},
-        "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
     }
     if "gpt-oss" in model:
         body["reasoning_effort"] = "low"
@@ -125,13 +125,13 @@ def _call_groq(prompt: str) -> str:
     return data["choices"][0]["message"].get("content") or ""
 
 
-def _call_anthropic(prompt: str) -> str:
+def _call_anthropic(prompt: str, system: str = SYSTEM, max_tokens: int = 400) -> str:
     import anthropic  # import tardio: o serviço sobe sem a dependência configurada
 
     msg = anthropic.Anthropic().messages.create(
         model=os.environ.get("BI_LLM_MODEL", "claude-haiku-4-5-20251001"),
-        max_tokens=400,
-        system=SYSTEM,
+        max_tokens=max_tokens,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
         timeout=20,
     )
@@ -149,3 +149,17 @@ def plan_with_llm(question: str, catalog: dict, examples: list[dict]) -> dict | 
         return _parse(text)
     except Exception:
         return None  # qualquer falha cai nas regras; nunca derruba a pergunta
+
+
+def complete_json(prompt: str, system: str, max_tokens: int = 1200) -> dict | None:
+    """Chamada genérica (mesmo provedor e mesmas travas do planejador): devolve um objeto JSON ou None. Nunca levanta exceção."""
+    which = provider()
+    if not which:
+        return None
+    try:
+        call = {"groq": _call_groq, "gemini": _call_gemini}.get(which, _call_anthropic)
+        # modelos de raciocínio gastam parte do limite pensando: folga extra no Groq
+        limit = max_tokens * 2 if which == "groq" else max_tokens
+        return _parse(call(prompt, system, limit))
+    except Exception:
+        return None

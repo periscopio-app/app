@@ -4,3 +4,5 @@ export * from "./question-engine";
 export * from "./snap4-catalog";
 export * from "./abc-catalog";
 export * from "./validation";
+export * from "./tea-catalog";
+export * from "./tea-scoring";

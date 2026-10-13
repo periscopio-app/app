@@ -619,3 +619,65 @@ export const clinicalAttachments = pgTable("clinical_attachments", {
 });
 
 
+
+/**
+ * Privilégios configuráveis pelo Administrador Master.
+ * Regra por PERFIL (escopo: rede/tenant, ou global com o UUID zero) e exceção por PESSOA.
+ * Ausência de linha = vale o padrão do catálogo em apps/api/src/security/capabilities.ts.
+ */
+export const GLOBAL_PRIVILEGE_SCOPE = "00000000-0000-0000-0000-000000000000";
+
+export const privilegeRoleGrants = pgTable(
+  "privilege_role_grants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scopeTenantId: uuid("scope_tenant_id").notNull().default(GLOBAL_PRIVILEGE_SCOPE),
+    role: varchar("role", { length: 40 }).notNull(),
+    capability: varchar("capability", { length: 80 }).notNull(),
+    allowed: boolean("allowed").notNull(),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ unique: uniqueIndex("privilege_role_grants_unique").on(t.scopeTenantId, t.role, t.capability) })
+);
+
+export const privilegeUserGrants = pgTable(
+  "privilege_user_grants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    capability: varchar("capability", { length: 80 }).notNull(),
+    allowed: boolean("allowed").notNull(),
+    reason: text("reason"),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ unique: uniqueIndex("privilege_user_grants_unique").on(t.userId, t.capability) })
+);
+
+/**
+ * Triagem TEA: um registro por caso e instrumento (ata | asq | mchat | srs2 | abc).
+ * Depois de status = 'enviado', as respostas ficam imutáveis (trigger no banco).
+ * Não guarda nome, data de nascimento nem documento: o aluno é sempre o código do caso.
+ */
+export const teaScreenings = pgTable(
+  "tea_screenings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    caseId: uuid("case_id").notNull().references(() => cases.id),
+    instrument: varchar("instrument", { length: 20 }).notNull(),
+    instrumentVersion: varchar("instrument_version", { length: 30 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("rascunho"),
+    respondent: varchar("respondent", { length: 30 }),
+    appliedOn: date("applied_on"),
+    answers: jsonb("answers").notNull().default({}),
+    scoring: jsonb("scoring"),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    submittedBy: uuid("submitted_by").references(() => users.id),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ caseInstrument: uniqueIndex("tea_screenings_case_instrument_unique").on(t.caseId, t.instrument) })
+);
