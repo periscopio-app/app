@@ -34,7 +34,7 @@ const PEOPLE = [
 async function main() {
   const apply = process.argv.includes("--apply");
   const password = process.env.SEED_DEMO_PASSWORD;
-  if (apply && (!password || password.length < 12)) throw new Error("Defina SEED_DEMO_PASSWORD (mín. 12 caracteres) no ambiente.");
+  if (apply && (!password || password.length < 8)) throw new Error("Defina SEED_DEMO_PASSWORD (mín. 8 caracteres) no ambiente.");
   console.log(apply ? "APLICANDO perfil de demonstração" : "SIMULAÇÃO (nada será gravado)");
 
   let [tenant] = await db.select().from(tenants).where(eq(tenants.municipalityCode, "DEMO")).limit(1);
@@ -54,11 +54,13 @@ async function main() {
     const email = `${p.key}@${DOMAIN}`;
     const found = tenant ? (await db.select().from(users).where(and(eq(users.tenantId, tenant.id), eq(users.email, email))).limit(1))[0] : undefined;
     console.log(`  ${p.role.padEnd(18)} ${email} ${found ? "(já existe)" : "(será criado)"}`);
-    if (!apply || found || !tenant) continue;
-    await db.insert(users).values({
-      tenantId: tenant.id, schoolId: p.school && school ? school.id : null, email, name: p.name, role: p.role,
-      specialty: "specialty" in p ? p.specialty : null, accessEnabled: true,
-    });
+    if (!apply || !tenant) continue;
+    if (!found) {
+      await db.insert(users).values({
+        tenantId: tenant.id, schoolId: p.school && school ? school.id : null, email, name: p.name, role: p.role,
+        specialty: "specialty" in p ? p.specialty : null, accessEnabled: true,
+      });
+    }
     await upsertCredential({ email, name: p.name, password: password! });
   }
 
