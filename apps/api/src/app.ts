@@ -29,6 +29,7 @@ import { consentRoutes } from "./routes/consent.routes";
 import { lgpdRoutes } from "./routes/lgpd.routes";
 import { identityVaultRoutes } from "./routes/identity-vault.routes";
 import { attachmentsRoutes } from "./routes/attachments.routes";
+import { pilotIndicatorsRoutes } from "./routes/pilot-indicators.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -143,6 +144,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(lgpdRoutes);
   app.register(identityVaultRoutes);
   app.register(attachmentsRoutes);
+  app.register(pilotIndicatorsRoutes);
 
   return app;
 }
