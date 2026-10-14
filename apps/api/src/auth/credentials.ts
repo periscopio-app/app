@@ -96,6 +96,7 @@ export async function healCredentialAccounts(): Promise<number> {
 /**
  * Garante que os usuários master configurados no ambiente (.env) existam no neon_auth
  * e em public.users com as senhas corretas definidas no ambiente (SEED_MASTER_n_PASSWORD).
+ * Aceita SEED_MASTER_n_PASSWORD_HASH (hash pronto, preferido) ou SEED_MASTER_n_PASSWORD (que vale se ambos existirem).
  * Master sem senha no ambiente é ignorado; o código não carrega senha padrão.
  */
 export async function seedMasterAccounts(): Promise<void> {
@@ -107,11 +108,13 @@ export async function seedMasterAccounts(): Promise<void> {
       email: process.env.SEED_MASTER_1_EMAIL || "bruno@oceanoazul.dev.br",
       name: process.env.SEED_MASTER_1_NAME || "Bruno Bisogni",
       password: process.env.SEED_MASTER_1_PASSWORD,
+      passwordHash: process.env.SEED_MASTER_1_PASSWORD_HASH,
     },
     {
       email: process.env.SEED_MASTER_2_EMAIL || "admin@projetoperiscopio.com.br",
       name: process.env.SEED_MASTER_2_NAME || "Administrador Master",
       password: process.env.SEED_MASTER_2_PASSWORD,
+      passwordHash: process.env.SEED_MASTER_2_PASSWORD_HASH,
     },
   ];
 
@@ -123,10 +126,12 @@ export async function seedMasterAccounts(): Promise<void> {
   `, [globalTenantId]).catch(() => {});
 
   for (const m of masters) {
-    // Sem senha no ambiente, o master não é criado nem redefinido: nunca há senha padrão no código.
-    if (!m.email || !m.password) continue;
+    // Sem senha (nem hash) no ambiente, o master não é criado nem redefinido: nunca há senha no código.
+    if (!m.email || !(m.passwordHash || m.password)) continue;
     const email = m.email.toLowerCase().trim();
-    const hashed = await hashPassword(m.password);
+    // SEED_MASTER_n_PASSWORD_HASH (gerado por `pnpm hash:password`) mantém a senha sem guardá-la em texto.
+    // Se SEED_MASTER_n_PASSWORD também existir, ela vale (decisão explícita de quem configurou o ambiente).
+    const hashed = m.password ? await hashPassword(m.password) : m.passwordHash!.trim();
 
     // 1. Garantir neon_auth.user
     const existing = await client.query(
@@ -163,7 +168,7 @@ export async function seedMasterAccounts(): Promise<void> {
     } else {
       await client.query(
         `INSERT INTO neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-         VALUES ($1, $2, 'credential', $2, $3, NOW(), NOW())`,
+         VALUES ($1, $2::text, 'credential', $2::uuid, $3, NOW(), NOW())`,
         [crypto.randomUUID(), userId, hashed]
       );
     }
