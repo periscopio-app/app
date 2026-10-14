@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS "newsletter_issues" (
 
 CREATE TABLE IF NOT EXISTS "support_tickets" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "tenant_id" uuid REFERENCES "tenants"("id"),
-  "user_id" uuid REFERENCES "users"("id"),
+  "tenant_id" uuid,
+  "user_id" uuid,
   "user_name" text,
   "user_email" varchar(255) NOT NULL,
   "user_role" varchar(50),
@@ -40,7 +40,19 @@ CREATE TABLE IF NOT EXISTS "support_tickets" (
   "priority" varchar(20) DEFAULT 'normal' NOT NULL,
   "resolution_notes" text,
   "resolved_at" timestamp with time zone,
-  "resolved_by" uuid REFERENCES "users"("id"),
+  "resolved_by" uuid,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+ALTER TABLE "newsletter_subscribers" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "newsletter_issues" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "support_tickets" ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'periscopio_app') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON "newsletter_subscribers", "newsletter_issues", "support_tickets" TO periscopio_app;
+  END IF;
+END $$;
+

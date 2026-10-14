@@ -141,6 +141,13 @@
       "when": 1792111200000,
       "tag": "0019_pilot_symptom_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792197600000,
+      "tag": "0020_newsletter_and_support",
+      "breakpoints": true
     }
   ]
 }

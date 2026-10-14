@@ -65,10 +65,14 @@ export async function supportRoutes(app: FastifyInstance) {
   app.post("/api/support/tickets", async (request, reply) => {
     // Pode ser autenticado ou anônimo (caso o usuário esteja com erro de login)
     let actor = null;
-    try {
+    const hasAuth = !!(
+      request.headers.authorization ||
+      request.headers.cookie ||
+      (process.env.NODE_ENV !== "production" && request.headers["x-test-email"])
+    );
+    if (hasAuth) {
       actor = await requireActor(request, reply);
-    } catch {
-      // continua como anônimo se não autenticado
+      if (reply.sent) return;
     }
 
     const parsed = createTicketSchema.safeParse(request.body);

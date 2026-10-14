@@ -744,8 +744,8 @@ export const newsletterIssues = pgTable("newsletter_issues", {
  */
 export const supportTickets = pgTable("support_tickets", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").references(() => tenants.id),
-  userId: uuid("user_id").references(() => users.id),
+  tenantId: uuid("tenant_id"),
+  userId: uuid("user_id"),
   userName: text("user_name"),
   userEmail: varchar("user_email", { length: 255 }).notNull(),
   userRole: varchar("user_role", { length: 50 }),
@@ -759,7 +759,7 @@ export const supportTickets = pgTable("support_tickets", {
   priority: varchar("priority", { length: 20 }).default("normal").notNull(), // baixa | normal | alta | critica
   resolutionNotes: text("resolution_notes"),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedBy: uuid("resolved_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
