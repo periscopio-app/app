@@ -121,59 +121,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-5 pt-4 border-t border-neutral-200">
-          <div className="text-xs font-semibold text-neutral-600 mb-2 flex items-center justify-between">
-            <span>⚡ Acesso Rápido (Demonstração & Master):</span>
-            <span className="text-[10px] text-neutral-400">1 clique preenche</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setEmail("bruno@oceanoazul.dev.br");
-                setPassword("Amor131313@");
-              }}
-              className="p-2 text-left bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition"
-            >
-              <div className="font-bold text-neutral-800">👑 Master Admin</div>
-              <div className="text-[10px] text-neutral-500 truncate">bruno@oceanoazul.dev.br</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail("gestor.municipal@demo.periscopio.test");
-                setPassword("Amor131313@");
-              }}
-              className="p-2 text-left bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition"
-            >
-              <div className="font-bold text-neutral-800">🏫 Gestor Municipal</div>
-              <div className="text-[10px] text-neutral-500 truncate">demo.periscopio.test</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail("re@demo.periscopio.test");
-                setPassword("Amor131313@");
-              }}
-              className="p-2 text-left bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition"
-            >
-              <div className="font-bold text-neutral-800">🧠 Psicopedagogo (RE)</div>
-              <div className="text-[10px] text-neutral-500 truncate">re@demo.periscopio.test</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail("medico@demo.periscopio.test");
-                setPassword("Amor131313@");
-              }}
-              className="p-2 text-left bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition"
-            >
-              <div className="font-bold text-neutral-800">🩺 Médico (MD1)</div>
-              <div className="text-[10px] text-neutral-500 truncate">medico@demo.periscopio.test</div>
-            </button>
-          </div>
-        </div>
-
         <div className="auth-footer">
           <p>
             Acesso por cadastro. <Link href="/primeiro-acesso">Primeiro acesso ou esqueci a senha</Link>:
