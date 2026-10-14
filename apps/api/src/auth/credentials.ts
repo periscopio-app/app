@@ -95,7 +95,8 @@ export async function healCredentialAccounts(): Promise<number> {
 
 /**
  * Garante que os usuários master configurados no ambiente (.env) existam no neon_auth
- * e em public.users com as senhas corretas definidas no ambiente.
+ * e em public.users com as senhas corretas definidas no ambiente (SEED_MASTER_n_PASSWORD).
+ * Master sem senha no ambiente é ignorado; o código não carrega senha padrão.
  */
 export async function seedMasterAccounts(): Promise<void> {
   const client = await (db as any).$client;
@@ -105,12 +106,12 @@ export async function seedMasterAccounts(): Promise<void> {
     {
       email: process.env.SEED_MASTER_1_EMAIL || "bruno@oceanoazul.dev.br",
       name: process.env.SEED_MASTER_1_NAME || "Bruno Bisogni",
-      password: process.env.SEED_MASTER_1_PASSWORD || "Amor131313@",
+      password: process.env.SEED_MASTER_1_PASSWORD,
     },
     {
       email: process.env.SEED_MASTER_2_EMAIL || "admin@projetoperiscopio.com.br",
       name: process.env.SEED_MASTER_2_NAME || "Administrador Master",
-      password: process.env.SEED_MASTER_2_PASSWORD || "Periscopio@Master2026!",
+      password: process.env.SEED_MASTER_2_PASSWORD,
     },
   ];
 
@@ -122,6 +123,7 @@ export async function seedMasterAccounts(): Promise<void> {
   `, [globalTenantId]).catch(() => {});
 
   for (const m of masters) {
+    // Sem senha no ambiente, o master não é criado nem redefinido: nunca há senha padrão no código.
     if (!m.email || !m.password) continue;
     const email = m.email.toLowerCase().trim();
     const hashed = await hashPassword(m.password);
