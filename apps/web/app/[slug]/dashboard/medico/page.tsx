@@ -14,6 +14,7 @@ import {
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
@@ -386,47 +387,81 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   journeyState={activeCase.journeyState}
                 />
 
-                {/* Proteção de Dados, Consentimento e Anexos Clínicos (LGPD) */}
-                <div className="grid grid-cols-1 gap-4 pt-1">
-                  <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  <CaseAttachmentsCard caseId={activeCase.id} />
-                  <TeaScreeningPanel caseId={activeCase.id} />
-                </div>
-              </div>
-
-              {/* Case action tabs header */}
-              <div className="flex items-center justify-between px-6 py-3.5 border-b border-linha">
-                <div>
-                  <h3 className="text-sm font-bold text-black">Ações Médicas e Multiprofissionais</h3>
-                  <p className="text-[11px] text-neutral-500">Revisão diagnóstica, delegação ao núcleo e encerramento clínico</p>
-                </div>
-                {/* Action tabs */}
-                <nav className="flex flex-wrap gap-1">
-
-                  {[
-                    { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
-                    { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },
-                    { id: "return" as ActiveView, label: "Devolver", icon: RotateCcw, action: () => { setView("return"); setActionMsg(null); } },
-                    { id: "consolidated" as ActiveView, label: "Consolidado", icon: ClipboardList, action: loadConsolidated },
-                    { id: "close" as ActiveView, label: "Encerrar", icon: CheckCircle, action: () => { setView("close"); setActionMsg(null); } },
-                    { id: "trail" as ActiveView, label: "Trilha", icon: Lock, action: loadTrail },
-                  ].map(({ id, label, icon: Icon, action }) => (
-                    <button
-                      key={id}
-                      onClick={action}
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                        view === id
-                          ? "bg-roxo-100 border border-roxo text-black"
-                          : "text-neutral-800 hover:bg-fundo hover:text-black"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </nav>
-              </div>
+                {/* Navegação Horizontal do Prontuário Clínico */}
+                <div className="pt-2">
+                  <ProntuarioHorizontalTabs
+                    caseId={activeCase.id}
+                    studentId={activeCase.studentId}
+                    studentCode={activeCase.studentCode}
+                    isDoctorOrMaster={true}
+                    childrenOverview={
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-linha pb-3">
+                          <h3 className="font-semibold text-black flex items-center gap-2">
+                            <FileSearch className="h-4 w-4 text-black" />
+                            Avaliação da RE & Ficha FOGAP
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={loadReAssessment}
+                            className="text-xs text-roxo font-bold hover:underline"
+                          >
+                            Atualizar FOGAP
+                          </button>
+                        </div>
+                        {reLoading ? (
+                          <p className="text-sm text-neutral-800">Carregando avaliação...</p>
+                        ) : !reAssessment ? (
+                          <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                            <p className="text-sm text-neutral-800">
+                              Nenhuma avaliação FOGAP enviada para este caso ainda.
+                            </p>
+                          </div>
+                        ) : (
+                          <FogapViewer
+                            payload={reAssessment.payload}
+                            status={reAssessment.status}
+                            submittedAt={reAssessment.submittedAt}
+                            studentCode={activeCase.studentCode}
+                            birthYear={activeCase.birthYear}
+                            birthMonth={activeCase.birthMonth}
+                            schoolName={activeCase.schoolName}
+                          />
+                        )}
+                      </div>
+                    }
+                    childrenActions={
+                      <div className="space-y-4">
+                        {/* Case action tabs header */}
+                        <div className="flex items-center justify-between px-2 py-2 border-b border-linha">
+                          <div>
+                            <h3 className="text-sm font-bold text-black">Ações Médicas e Multiprofissionais</h3>
+                            <p className="text-[11px] text-neutral-500">Revisão diagnóstica, delegação ao núcleo e encerramento clínico</p>
+                          </div>
+                          <nav className="flex flex-wrap gap-1">
+                            {[
+                              { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
+                              { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },
+                              { id: "return" as ActiveView, label: "Devolver", icon: RotateCcw, action: () => { setView("return"); setActionMsg(null); } },
+                              { id: "consolidated" as ActiveView, label: "Consolidado", icon: ClipboardList, action: loadConsolidated },
+                              { id: "close" as ActiveView, label: "Encerrar", icon: CheckCircle, action: () => { setView("close"); setActionMsg(null); } },
+                              { id: "trail" as ActiveView, label: "Trilha", icon: Lock, action: loadTrail },
+                            ].map(({ id, label, icon: Icon, action }) => (
+                              <button
+                                key={id}
+                                onClick={action}
+                                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                                  view === id
+                                    ? "bg-roxo-100 border border-roxo text-black"
+                                    : "text-neutral-800 hover:bg-fundo hover:text-black"
+                                }`}
+                              >
+                                <Icon className="h-3.5 w-3.5" />
+                                {label}
+                              </button>
+                            ))}
+                          </nav>
+                        </div>
 
               <div className="p-6">
                 {actionMsg && (
@@ -748,9 +783,15 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 )}
               </div>
             </div>
-          )}
+          }
+        />
+      </div>
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>
   );
 }
+

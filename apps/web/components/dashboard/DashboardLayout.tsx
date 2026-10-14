@@ -24,6 +24,7 @@ import { BarChart3, MapPinned,
   Activity,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
+import { ProfessionalConsentModal } from "@/components/dashboard/ProfessionalConsentModal";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -368,7 +369,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
           ) : (
-            children
+            <>
+              <ProfessionalConsentModal />
+              {children}
+            </>
           )}
         </div>
       </main>

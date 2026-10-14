@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { api, type CaseSection, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
-import { Stethoscope, AlertCircle, Lock, CheckCircle } from "lucide-react";
+import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
+import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-react";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 
 const SPECIALTY_NAMES: Record<string, string> = {
@@ -155,6 +156,12 @@ export default function EspecialistaDashboardPage({
   async function handleSave(markAsCompleted: boolean) {
     if (!activeSection) return;
     if (activeSection.status === "concluido") return;
+
+    if (markAsCompleted && notes.trim().length < 100) {
+      setSaveMsg("O parecer clínico deve conter no mínimo 100 caracteres para fundamentação técnica adequada (exigência Zod).");
+      return;
+    }
+
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -284,94 +291,117 @@ export default function EspecialistaDashboardPage({
                   journeyState={activeSection.status === "concluido" ? "encerrado" : "delegado"}
                 />
 
-                {/* Section header */}
-                <div className="flex items-start justify-between border-t border-linha pt-3">
-                  <div>
-                    <span className="text-xs font-bold text-roxo-900 bg-roxo-50 border border-roxo-200 rounded-full px-2.5 py-0.5">
-                      {SPECIALTY_NAMES[activeSection.specialty] ?? activeSection.specialty}
-                    </span>
-                    <h2 className="mt-2 text-base font-bold text-black">
-                      Parecer Clínico Multiprofissional
-                    </h2>
-                  </div>
-                  <span
-                    className={`text-xs font-bold rounded-full px-2.5 py-1 ${
-                      activeSection.status === "concluido"
-                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                        : activeSection.status === "em_andamento"
-                        ? "bg-sky-50 text-sky-800 border border-sky-200"
-                        : "bg-amber-50 text-amber-900 border border-amber-200"
-                    }`}
-                  >
-                    {activeSection.status === "concluido" ? "Concluído" : activeSection.status === "em_andamento" ? "Em andamento" : "Pendente"}
-                  </span>
-                </div>
+                {/* Navegação Horizontal do Prontuário Clínico para o Especialista */}
+                <div className="pt-2">
+                  <ProntuarioHorizontalTabs
+                    caseId={activeSection.caseId}
+                    studentCode={activeSection.studentCode}
+                    isDoctorOrMaster={false}
+                    specialtyOnlySummary={true}
+                    userSpecialty={activeSection.specialty}
+                    childrenOverview={
+                      <div className="space-y-4">
+                        {/* Section header */}
+                        <div className="flex items-start justify-between border-b border-linha pb-3">
+                          <div>
+                            <span className="text-xs font-bold text-roxo-900 bg-roxo-50 border border-roxo-200 rounded-full px-2.5 py-0.5">
+                              {SPECIALTY_NAMES[activeSection.specialty] ?? activeSection.specialty}
+                            </span>
+                            <h2 className="mt-2 text-base font-bold text-black">
+                              Parecer Clínico Multiprofissional
+                            </h2>
+                          </div>
+                          <span
+                            className={`text-xs font-bold rounded-full px-2.5 py-1 ${
+                              activeSection.status === "concluido"
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : activeSection.status === "em_andamento"
+                                ? "bg-sky-50 text-sky-800 border border-sky-200"
+                                : "bg-amber-50 text-amber-900 border border-amber-200"
+                            }`}
+                          >
+                            {activeSection.status === "concluido" ? "Concluído" : activeSection.status === "em_andamento" ? "Em andamento" : "Pendente"}
+                          </span>
+                        </div>
 
-                {isReadOnly && (
-                  <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-black">
-                    <CheckCircle className="h-4 w-4 shrink-0" />
-                    Parecer concluído e registrado no prontuário. Edição bloqueada.
-                  </div>
-                )}
+                        {isReadOnly && (
+                          <div className="flex items-center gap-2 rounded-xl border border-sucesso/20 bg-sucesso/5 px-4 py-3 text-sm text-black">
+                            <CheckCircle className="h-4 w-4 shrink-0" />
+                            Parecer concluído e registrado no prontuário. Edição bloqueada.
+                          </div>
+                        )}
 
-                {saveMsg && (
-                  <div
-                    className={`rounded-xl px-4 py-3 text-sm ${
-                      saveMsg.includes("concluído") || saveMsg.includes("salvo")
-                        ? "bg-sucesso/10 text-black"
-                        : "bg-erro/10 text-black"
-                    }`}
-                  >
-                    {saveMsg}
-                  </div>
-                )}
+                        {saveMsg && (
+                          <div
+                            className={`rounded-xl px-4 py-3 text-sm ${
+                              saveMsg.includes("concluído") || saveMsg.includes("salvo")
+                                ? "bg-sucesso/10 text-black"
+                                : "bg-erro/10 text-black"
+                            }`}
+                          >
+                            {saveMsg}
+                          </div>
+                        )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-black mb-1.5">
-                    Parecer clínico — {activeSection.specialty}
-                    {!isReadOnly && <span className="text-black ml-1">*</span>}
-                  </label>
-                  <textarea
-                    rows={10}
-                    disabled={isReadOnly}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder={`Descreva suas observações clínicas, marcos avaliados, evolução e recomendações terapêuticas para ${activeSection.specialty}...`}
-                    className="w-full rounded-xl border border-linha px-3 py-3 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800"
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-semibold text-black">
+                              Parecer clínico — {SPECIALTY_NAMES[activeSection.specialty] ?? activeSection.specialty}
+                              {!isReadOnly && <span className="text-black ml-1">*</span>}
+                            </label>
+                            <span
+                              className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                                notes.trim().length >= 100
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}
+                            >
+                              {notes.trim().length} / 100 caracteres mínimos
+                            </span>
+                          </div>
+                          <textarea
+                            rows={8}
+                            disabled={isReadOnly}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder={`Descreva detalhadamente suas observações clínicas, marcos avaliados, evolução e recomendações terapêuticas para ${activeSection.specialty} (mínimo de 100 caracteres)...`}
+                            className="w-full rounded-xl border border-linha px-3 py-3 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800"
+                          />
+                        </div>
+
+                        {!isReadOnly && (
+                          <div className="flex items-center justify-between pt-2 border-t border-linha">
+                            <div className="flex items-center gap-1.5 text-[11px] text-neutral-800">
+                              <Lock className="h-3 w-3" />
+                              Mínimo de 100 caracteres exigido pelo Zod para conclusão imutável.
+                            </div>
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => handleSave(false)}
+                                className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-black hover:bg-fundo transition disabled:opacity-60"
+                              >
+                                Salvar rascunho
+                              </button>
+                              <button
+                                type="button"
+                                disabled={saving || notes.trim().length < 100}
+                                onClick={() => handleSave(true)}
+                                className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                {saving ? "Salvando..." : "Concluir parecer (100+ car.)"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {ctx && <CaseContextPanel ctx={ctx} />}
+                      </div>
+                    }
                   />
                 </div>
-
-                {!isReadOnly && (
-                  <div className="flex items-center justify-between pt-2 border-t border-linha">
-                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-800">
-                      <Lock className="h-3 w-3" />
-                      Ao concluir, o parecer fica imutável no prontuário.
-                    </div>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => handleSave(false)}
-                        className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-black hover:bg-fundo transition disabled:opacity-60"
-                      >
-                        Salvar rascunho
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving || !notes.trim()}
-                        onClick={() => handleSave(true)}
-                        className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        {saving ? "Salvando..." : "Concluir parecer"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <TeaScreeningPanel caseId={activeSection.caseId} />
-
-                {ctx && <CaseContextPanel ctx={ctx} />}
 
                 <p className="text-[11px] text-neutral-800 border-t border-linha pt-3">
                   🔒 Assegure que nenhum identificador direto não autorizado conste no texto livre.

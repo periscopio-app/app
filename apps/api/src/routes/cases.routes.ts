@@ -918,11 +918,24 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     };
   });
 
-  const sectionPatchSchema = z.object({
-    summary: z.record(z.unknown()).optional(),
-    notes: z.string().optional(),
-    markAsCompleted: z.boolean().optional(),
-  });
+  const sectionPatchSchema = z
+    .object({
+      summary: z.record(z.unknown()).optional(),
+      notes: z.string().optional(),
+      markAsCompleted: z.boolean().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.markAsCompleted) {
+          return typeof data.notes === "string" && data.notes.trim().length >= 100;
+        }
+        return true;
+      },
+      {
+        message: "O parecer clínico deve conter no mínimo 100 caracteres para fundamentação técnica adequada.",
+        path: ["notes"],
+      }
+    );
 
   app.patch("/api/cases/sections/:sectionId", async (request, reply) => {
     const actor = await requireCapability(request, reply, "section.fill");

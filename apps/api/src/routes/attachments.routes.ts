@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
-import { clinicalAttachments, cases } from "@periscopio/shared";
+import { clinicalAttachments, cases, students } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
 import { validateAttachmentUpload, validateSignedUrlAccess } from "../services/attachment.service";
 import { recordAudit } from "../services/audit.service";
@@ -72,6 +72,12 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         return { error: "Caso clínico não encontrado." };
       }
 
+      const [studentRec] = await db
+        .select({ schoolId: students.schoolId })
+        .from(students)
+        .where(eq(students.id, caseRecord.studentId))
+        .limit(1);
+
       const validation = validateAttachmentUpload({
         actor: {
           id: actor.id,
@@ -85,6 +91,8 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         mimeType: body.mimeType,
         sizeInBytes: body.fileSizeBytes,
         roleAllowedByPolicy: true, // caixinha attachments.write já exigida acima
+        schoolId: studentRec?.schoolId || actor.schoolId || undefined,
+        studentId: caseRecord.studentId,
       });
 
       if (!validation.allowed) {

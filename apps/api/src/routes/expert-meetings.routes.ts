@@ -206,15 +206,17 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
       const note = typeof (request.body as any)?.note === "string" ? String((request.body as any).note).trim().slice(0, 300) : null;
       const settings = await getSettings(actor.tenantId);
-      if (action === "confirm" && !settings.meetUrl) {
-        return reply.status(409).send({ error: "Configure o link fixo do Google Meet antes de confirmar." });
+      let callUrl = settings.meetUrl;
+      if (action === "confirm" && !callUrl) {
+        // Fallback para serviço gratuito de videochamada integrada via Jitsi Meet
+        callUrl = `https://meet.jit.si/periscopio-board-${actor.tenantId.slice(0, 8)}-${id.slice(0, 8)}`;
       }
 
       const [meeting] = await db
         .update(expertMeetingRequests)
         .set({
           status: action === "confirm" ? "confirmed" : "declined",
-          meetUrl: action === "confirm" ? settings.meetUrl : null,
+          meetUrl: action === "confirm" ? callUrl : null,
           decisionNote: note,
           decidedBy: actor.id,
           decidedAt: new Date(),
@@ -252,7 +254,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
               ? {
                   to: requester.email,
                   alias: "expert-meeting-confirmed",
-                  variables: { ...common, SCHOOL_NAME: school?.name ?? "sua escola", TOPIC: meeting.topic, MEET_URL: settings.meetUrl! },
+                  variables: { ...common, SCHOOL_NAME: school?.name ?? "sua escola", TOPIC: meeting.topic, MEET_URL: callUrl || "https://meet.jit.si" },
                 }
               : {
                   to: requester.email,

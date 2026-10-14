@@ -14,6 +14,8 @@ export interface AttachmentUploadParams {
   sizeInBytes: number;
   /** Resultado da caixinha do Admin Master (attachments.write). Se informado, substitui a checagem fixa de papel. */
   roleAllowedByPolicy?: boolean;
+  schoolId?: string;
+  studentId?: string;
 }
 
 export interface SignedUrlRequestParams {
@@ -42,7 +44,7 @@ export function validateAttachmentUpload(params: AttachmentUploadParams): {
   objectKey?: string;
   error?: string;
 } {
-  const { actor, caseId, caseTenantId, filename, mimeType, sizeInBytes, roleAllowedByPolicy } = params;
+  const { actor, caseId, caseTenantId, filename, mimeType, sizeInBytes, roleAllowedByPolicy, schoolId, studentId } = params;
 
   // 1. Apenas papéis clínicos podem anexar laudos e relatórios
   if (!(roleAllowedByPolicy ?? hasRole(actor.role, CLINICAL_ROLES))) {
@@ -64,9 +66,13 @@ export function validateAttachmentUpload(params: AttachmentUploadParams): {
     return { allowed: false, error: "Formato de arquivo não permitido. Apenas PDF, JPG, PNG e WEBP são aceitos." };
   }
 
-  // 5. Geração de chave opaca sem PII (Evita nome original contendo nome de paciente)
+  // 5. Geração de chave opaca sem PII (pasta da escola + uuid do aluno no bucket do Supabase)
   const fileExt = filename.split(".").pop()?.toLowerCase() || "bin";
-  const objectKey = `tenants/${actor.tenantId}/cases/${caseId}/${crypto.randomUUID()}.${fileExt}`;
+  const uniqueFileId = crypto.randomUUID();
+  const objectKey =
+    schoolId && studentId
+      ? `schools/${schoolId}/${studentId}/${uniqueFileId}.${fileExt}`
+      : `tenants/${actor.tenantId}/cases/${caseId}/${uniqueFileId}.${fileExt}`;
 
   return { allowed: true, objectKey };
 }

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import crypto from "crypto";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "../db/client";
-import { users, schools, tenants } from "@periscopio/shared";
+import { users, schools, tenants, consentTerms, consentAcceptances } from "@periscopio/shared";
 import { requireActor, requireCapability } from "../security/actor";
 import { effectiveCapabilities } from "../services/privilege.service";
 import { isRole, type Role } from "../security/roles";
@@ -197,6 +197,7 @@ export async function usersRoutes(app: FastifyInstance) {
       specialty?: string;
       schoolId?: string;
       tenantId?: string;
+      lgpdConsentAccepted?: boolean;
     };
 
     if (!body.email || !body.name || !body.role) {
@@ -266,6 +267,49 @@ export async function usersRoutes(app: FastifyInstance) {
         })
         .returning();
 
+      // Registrar termo de consentimento e responsabilidade médica/LGPD se aceito
+      if (body.lgpdConsentAccepted) {
+        let [profTerm] = await db
+          .select()
+          .from(consentTerms)
+          .where(and(eq(consentTerms.tenantId, tenantId), eq(consentTerms.type, "termo_profissional_lgpd")))
+          .limit(1);
+
+        if (!profTerm) {
+          [profTerm] = await db
+            .insert(consentTerms)
+            .values({
+              tenantId,
+              version: "v1.0",
+              type: "termo_profissional_lgpd",
+              title: "Termo de Responsabilidade Clínica e Proteção de Dados (LGPD e CFM/CFP)",
+              summary: "Compromisso formal de observância do sigilo profissional de saúde e proteção integral de dados sensíveis de crianças e adolescentes.",
+              content: "TERMO DE RESPONSABILIDADE CLÍNICA E PROTEÇÃO DE DADOS (LGPD):\n1. Observância integral do sigilo profissional (CFM/CFP).\n2. Tratamento exclusivo para a finalidade de apoio pedagógico e encaminhamento responsável.\n3. Proibição de compartilhamento não autorizado de prontuários e dados de saúde de menores.",
+              active: true,
+            })
+            .onConflictDoNothing()
+            .returning();
+        }
+
+        if (profTerm) {
+          const rawEvidence = `${profTerm.content}|${body.name}|${body.cpf || ""}|${body.role}|${request.ip || "127.0.0.1"}|${new Date().toISOString()}`;
+          const evidenceSha256 = crypto.createHash("sha256").update(rawEvidence).digest("hex");
+          await db.insert(consentAcceptances).values({
+            tenantId,
+            termId: profTerm.id,
+            userId: newUser.id,
+            signerName: body.name,
+            signerDocument: body.cpf || null,
+            signerRole: body.role,
+            signerEmail: email,
+            ipAddress: request.ip || "127.0.0.1",
+            userAgent: (request.headers["user-agent"] as string) || "Cadastro Inicial",
+            evidenceSha256,
+            status: "accepted",
+          });
+        }
+      }
+
       await recordAudit(
         {
           tenantId,
@@ -279,6 +323,7 @@ export async function usersRoutes(app: FastifyInstance) {
             email: newUser.email,
             role: newUser.role,
             schoolId: newUser.schoolId,
+            lgpdConsentAccepted: !!body.lgpdConsentAccepted,
           },
         },
         request
@@ -295,6 +340,96 @@ export async function usersRoutes(app: FastifyInstance) {
       reply.status(500);
       return { error: err.message || "Erro ao criar usuário." };
     }
+  });
+
+  /**
+   * Consulta status de termo profissional e LGPD do usuário autenticado
+   */
+  app.get("/api/me/professional-consent", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+
+    const [acceptance] = await db
+      .select({ id: consentAcceptances.id, acceptedAt: consentAcceptances.acceptedAt })
+      .from(consentAcceptances)
+      .where(and(eq(consentAcceptances.userId, actor.id), eq(consentAcceptances.status, "accepted")))
+      .limit(1);
+
+    return {
+      hasAccepted: !!acceptance,
+      acceptedAt: acceptance?.acceptedAt || null,
+    };
+  });
+
+  /**
+   * Registra aceite do termo profissional e LGPD pelo próprio usuário conectado
+   */
+  app.post("/api/me/professional-consent/accept", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+
+    let [profTerm] = await db
+      .select()
+      .from(consentTerms)
+      .where(and(eq(consentTerms.tenantId, actor.tenantId), eq(consentTerms.type, "termo_profissional_lgpd")))
+      .limit(1);
+
+    if (!profTerm) {
+      [profTerm] = await db
+        .insert(consentTerms)
+        .values({
+          tenantId: actor.tenantId,
+          version: "v1.0",
+          type: "termo_profissional_lgpd",
+          title: "Termo de Responsabilidade Clínica e Proteção de Dados (LGPD e CFM/CFP)",
+          summary: "Compromisso formal de observância do sigilo profissional de saúde e proteção integral de dados sensíveis de crianças e adolescentes.",
+          content: "TERMO DE RESPONSABILIDADE CLÍNICA E PROTEÇÃO DE DADOS (LGPD):\n1. Observância integral do sigilo profissional (CFM/CFP).\n2. Tratamento exclusivo para a finalidade de apoio pedagógico e encaminhamento responsável.\n3. Proibição de compartilhamento não autorizado de prontuários e dados de saúde de menores.",
+          active: true,
+        })
+        .onConflictDoNothing()
+        .returning();
+    }
+
+    if (!profTerm) {
+      return reply.status(500).send({ error: "Termo padrão não pôde ser inicializado." });
+    }
+
+    const rawEvidence = `${profTerm.content}|${actor.name || actor.email}|${actor.role}|${request.ip || "127.0.0.1"}|${new Date().toISOString()}`;
+    const evidenceSha256 = crypto.createHash("sha256").update(rawEvidence).digest("hex");
+
+    const [acceptance] = await db
+      .insert(consentAcceptances)
+      .values({
+        tenantId: actor.tenantId,
+        termId: profTerm.id,
+        userId: actor.id,
+        signerName: actor.name || actor.email,
+        signerRole: actor.role,
+        signerEmail: actor.email,
+        ipAddress: request.ip || "127.0.0.1",
+        userAgent: (request.headers["user-agent"] as string) || "Navegador",
+        evidenceSha256,
+        status: "accepted",
+      })
+      .returning();
+
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "consent.professional_accepted",
+        entityType: "consent_acceptance",
+        entityId: acceptance.id,
+      },
+      request
+    );
+
+    return {
+      success: true,
+      message: "Termo de responsabilidade clínica e LGPD aceito com sucesso.",
+      acceptedAt: acceptance.acceptedAt,
+    };
   });
 
   /**

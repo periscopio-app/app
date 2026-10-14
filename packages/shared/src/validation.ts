@@ -101,6 +101,9 @@ export const professionalSchema = z.object({
   specialty: z.enum(ALLOWED_SPECIALTIES, {
     errorMap: () => ({ message: "Especialidade inválida" }),
   }),
+  lgpdConsentAccepted: z.boolean().refine((val) => val === true, {
+    message: "É obrigatório aceitar o Termo de Responsabilidade Clínica e Proteção de Dados (LGPD).",
+  }).optional(),
 });
 
 export const professionalsListSchema = z
@@ -109,3 +112,20 @@ export const professionalsListSchema = z
   .max(50, "No máximo 50 profissionais por envio");
 
 export type ProfessionalFormData = z.infer<typeof professionalSchema>;
+
+/**
+ * Validação rigorosa de texto clínico, parecer de especialista e conduta médica.
+ * Exige um mínimo de 100 caracteres para garantir embasamento técnico, descritivo e rastreabilidade conforme LGPD e diretrizes clínicas do NEMT.
+ */
+export const clinicalOpinionTextSchema = z
+  .string({ required_error: "O parecer clínico é obrigatório" })
+  .trim()
+  .min(100, "O parecer ou descrição clínica deve conter no mínimo 100 caracteres para fundamentação técnica adequada.");
+
+export const specialistOpinionSchema = z.object({
+  notes: clinicalOpinionTextSchema,
+  specialty: z.string().min(2).optional(),
+  markAsCompleted: z.boolean().optional(),
+});
+
+export type SpecialistOpinionFormData = z.infer<typeof specialistOpinionSchema>;

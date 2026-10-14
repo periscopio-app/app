@@ -11,6 +11,7 @@ export type { Role } from "./roles";
 
 export interface Actor {
   id: string;
+  name?: string | null;
   email: string;
   tenantId: string;
   schoolId: string | null;
@@ -54,6 +55,7 @@ export async function requireActor(
     const [user] = await db
       .select({
         id: users.id,
+        name: users.name,
         email: users.email,
         tenantId: users.tenantId,
         schoolId: users.schoolId,
@@ -86,6 +88,7 @@ export async function requireActor(
     const actor: Actor = user
       ? {
           id: user.id,
+          name: user.name ?? null,
           email: user.email,
           tenantId: user.tenantId,
           schoolId: user.schoolId,
@@ -94,6 +97,7 @@ export async function requireActor(
         }
       : {
           id: "00000000-0000-0000-0000-000000000001",
+          name: "Admin Master",
           email,
           tenantId: "00000000-0000-0000-0000-000000000001",
           schoolId: null,
