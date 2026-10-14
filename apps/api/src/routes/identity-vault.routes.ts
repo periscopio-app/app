@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
-import { studentIdentityVault, students } from "@periscopio/shared";
-import { requireCapability } from "../security/actor";
+import { auditLogs, studentIdentityVault, students } from "@periscopio/shared";
+import { requireActor, requireCapability } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
 import { canAccessStudentIdentityVault } from "../services/identity-vault.service";
 import { recordAudit } from "../services/audit.service";
@@ -262,4 +262,78 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       };
     }
   );
+
+  /**
+   * 3. Consultar status do cofre (se já existe cadastro civil cifrado) sem revelar PII
+   */
+  app.get<{ Params: { studentId: string } }>(
+    "/api/students/:studentId/vault/status",
+    async (request, reply) => {
+      const actor = await requireActor(request, reply);
+      if (!actor) return;
+
+      const { studentId } = request.params;
+      const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
+      if (!student) {
+        reply.status(404);
+        return { error: "Aluno não encontrado." };
+      }
+
+      const [vaultRecord] = await db
+        .select({
+          id: studentIdentityVault.id,
+          hasDocument: studentIdentityVault.encryptedDocument,
+          hasContact: studentIdentityVault.encryptedContact,
+          updatedAt: studentIdentityVault.updatedAt,
+          createdAt: studentIdentityVault.createdAt,
+        })
+        .from(studentIdentityVault)
+        .where(eq(studentIdentityVault.studentId, studentId))
+        .limit(1);
+
+      return {
+        hasData: !!vaultRecord,
+        hasDocument: !!vaultRecord?.hasDocument,
+        hasContact: !!vaultRecord?.hasContact,
+        updatedAt: vaultRecord?.updatedAt || null,
+        createdAt: vaultRecord?.createdAt || null,
+      };
+    }
+  );
+
+  /**
+   * 4. Trilha de auditoria das revelações e operações do cofre (Governança DPO e Admin)
+   */
+  app.get("/api/admin/vault/audit-logs", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+
+    if (actor.role !== "admin_platform" && actor.role !== "board" && !isSuperAdminEmail(actor.email)) {
+      reply.status(403);
+      return { error: "Acesso restrito ao Encarregado pelo Tratamento de Dados (DPO) e Administrador Master." };
+    }
+
+    const logs = await db
+      .select({
+        id: auditLogs.id,
+        userId: auditLogs.actorId,
+        userEmail: auditLogs.userEmail,
+        action: auditLogs.action,
+        entityType: auditLogs.entity,
+        entityId: auditLogs.entityId,
+        ipAddress: auditLogs.ipAddress,
+        userAgent: auditLogs.userAgent,
+        payload: auditLogs.payload,
+        createdAt: auditLogs.createdAt,
+      })
+      .from(auditLogs)
+      .where(
+        inArray(auditLogs.action, ["student.vault_revealed", "student.vault_updated"])
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(100);
+
+    return { logs };
+  });
 }
+

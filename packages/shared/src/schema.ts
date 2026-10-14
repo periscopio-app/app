@@ -704,3 +704,63 @@ export const symptomMeasurements = pgTable("symptom_measurements", {
   recordedRole: varchar("recorded_role", { length: 40 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Assinantes da Newsletter & Boletins Científicos e Pedagógicos.
+ * Em conformidade com o Art. 8º da LGPD (consentimento e opt-out transparente).
+ */
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  name: text("name"),
+  role: varchar("role", { length: 50 }).default("outro"), // professor | especialista | medico | gestor | outro
+  status: varchar("status", { length: 20 }).default("ativo").notNull(), // ativo | cancelado
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+  subscribedAt: timestamp("subscribed_at", { withTimezone: true }).defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+});
+
+/**
+ * Edições / Boletins Informativos da Newsletter.
+ * Artigos científicos, novidades da plataforma e diretrizes de acolhimento.
+ */
+export const newsletterIssues = pgTable("newsletter_issues", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 50 }).default("geral").notNull(), // saude_mental | diretrizes_pedagogicas | plataforma_novidades | artigo_cientifico
+  status: varchar("status", { length: 20 }).default("publicado").notNull(), // rascunho | publicado
+  sentCount: integer("sent_count").default(0).notNull(),
+  authorId: uuid("author_id").references(() => users.id),
+  publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Sistema de Suporte, Dúvidas e Diagnóstico de Erros da Plataforma.
+ * Permite aos usuários tirar dúvidas ou relatar falhas técnicas com captura de telemetria.
+ */
+export const supportTickets = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+  userId: uuid("user_id").references(() => users.id),
+  userName: text("user_name"),
+  userEmail: varchar("user_email", { length: 255 }).notNull(),
+  userRole: varchar("user_role", { length: 50 }),
+  category: varchar("category", { length: 40 }).default("duvida").notNull(), // duvida | erro_sistema | sugestao | urgente
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  pageUrl: text("page_url"),
+  browserInfo: text("browser_info"),
+  errorDetails: text("error_details"), // stack trace, logs de erro ou código retornado
+  status: varchar("status", { length: 20 }).default("aberto").notNull(), // aberto | em_atendimento | resolvido | fechado
+  priority: varchar("priority", { length: 20 }).default("normal").notNull(), // baixa | normal | alta | critica
+  resolutionNotes: text("resolution_notes"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+

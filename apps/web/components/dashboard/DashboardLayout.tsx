@@ -22,9 +22,11 @@ import { BarChart3, MapPinned,
   ShieldAlert,
   SlidersHorizontal,
   Activity,
+  HelpCircle,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { ProfessionalConsentModal } from "@/components/dashboard/ProfessionalConsentModal";
+import { SupportWidget } from "@/components/dashboard/SupportWidget";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -105,6 +107,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity },
     { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck },
     { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck },
+    { show: isSuper, label: "Suporte & Chamados", href: "/admin/suporte", icon: HelpCircle },
+    { show: isSuper, label: "Boletins & Newsletter", href: "/admin/newsletter", icon: FileText },
     { show: has("schools.provision") || isSuper, label: "Provisionar Escola", href: "/admin/setup", icon: Building2 },
   ]
     .filter((i) => i.show)
@@ -376,6 +380,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
         </div>
       </main>
+      <SupportWidget />
     </div>
   );
 }

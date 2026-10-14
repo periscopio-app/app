@@ -27,22 +27,39 @@ interface RetentionPolicy {
   controllerResponsibility: string;
 }
 
+interface VaultAuditItem {
+  id: string;
+  userEmail: string;
+  action: string;
+  entityId: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  payload?: {
+    studentCode?: string;
+    accessReason?: string;
+  } | null;
+  createdAt: string;
+}
+
 export default function AdminLGPDPage() {
   const [requests, setRequests] = useState<LGPDRequestItem[]>([]);
   const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
+  const [vaultLogs, setVaultLogs] = useState<VaultAuditItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"requests" | "retention">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "retention" | "vault">("requests");
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [reqData, retData] = await Promise.all([
+      const [reqData, retData, vaultData] = await Promise.all([
         api.get<{ requests: LGPDRequestItem[] }>("/api/lgpd/requests").catch(() => ({ requests: [] })),
         api.get<{ policies: RetentionPolicy[] }>("/api/lgpd/retention/policies").catch(() => ({ policies: [] })),
+        api.get<{ logs: VaultAuditItem[] }>("/api/admin/vault/audit-logs").catch(() => ({ logs: [] })),
       ]);
       setRequests(reqData.requests || []);
       setPolicies(retData.policies || []);
+      setVaultLogs(vaultData.logs || []);
     } catch {
       // erro tratado silenciosamente
     } finally {
@@ -123,6 +140,16 @@ export default function AdminLGPDPage() {
               }`}
             >
               Matriz de Retenção & Expurgo
+            </button>
+            <button
+              onClick={() => setActiveTab("vault")}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl border transition ${
+                activeTab === "vault"
+                  ? "bg-purple-100 text-purple-900 border-purple-300"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              Cofre de Identidade & Auditoria ({vaultLogs.length})
             </button>
           </div>
         </div>
@@ -292,6 +319,117 @@ export default function AdminLGPDPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "vault" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-black flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-purple-700" />
+                  Governança do Cofre de Identidade do Aluno & Auditoria de Acesso
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Art. 37 da LGPD: registro das operações de revelação civil temporária e prova de conformidade do encarregado.
+                </p>
+              </div>
+              <button
+                onClick={fetchData}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Atualizar Auditoria
+              </button>
+            </div>
+
+            {/* Destaques Técnicos de Governança */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-xs uppercase tracking-wider">
+                  <Database className="w-4 h-4" /> Criptografia AES-256 GCM
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Os dados civis (nome, CPF, contato) ficam cifrados em repouso no banco e completamente desacoplados da camada de BI e relatórios.
+                </p>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4" /> Justificativa Obrigatória
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Todo ato clínico de revelação de identidade exige justificativa formal prévia (mínimo 5 caracteres) registrada de forma imutável.
+                </p>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider">
+                  <Clock className="w-4 h-4" /> Trilha Append-Only
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Proteção por gatilho SQL no Postgres: a tabela de auditoria não permite <code className="bg-slate-100 px-1 py-0.5 rounded text-[11px]">UPDATE</code> nem <code className="bg-slate-100 px-1 py-0.5 rounded text-[11px]">DELETE</code>.
+                </p>
+              </div>
+            </div>
+
+            {/* Tabela de Auditoria do Cofre */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Histórico de Revelações e Acessos ao Cofre ({vaultLogs.length})
+                </h3>
+              </div>
+              {vaultLogs.length === 0 ? (
+                <div className="p-12 text-center text-slate-500">
+                  <CheckCircle2 className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                  <p className="font-semibold text-black text-sm">Nenhum evento de revelação registrado ainda.</p>
+                  <p className="text-xs text-slate-500">Os acessos clínicos ao cofre de identidade serão auditados aqui automaticamente.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 font-semibold uppercase tracking-wider">
+                      <tr>
+                        <th className="py-3 px-4">Data / Horário</th>
+                        <th className="py-3 px-4">Profissional</th>
+                        <th className="py-3 px-4">Ação</th>
+                        <th className="py-3 px-4">Código do Aluno</th>
+                        <th className="py-3 px-4">Justificativa Registrada</th>
+                        <th className="py-3 px-4">IP de Origem</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {vaultLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                          <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600">
+                            {new Date(log.createdAt).toLocaleString("pt-BR")}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-black">
+                            {log.userEmail || "Sistema"}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                              log.action === "student.vault_revealed"
+                                ? "bg-purple-100 text-purple-900 border border-purple-200"
+                                : "bg-blue-100 text-blue-900 border border-blue-200"
+                            }`}>
+                              {log.action === "student.vault_revealed" ? "Revelação Clínica" : "Atualização de Cadastro"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                            {log.payload?.studentCode || log.entityId.slice(0, 8)}
+                          </td>
+                          <td className="py-3 px-4 text-slate-800 max-w-xs truncate" title={log.payload?.accessReason || "N/A"}>
+                            {log.payload?.accessReason || "Atualização de custódia"}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                            {log.ipAddress || "127.0.0.1"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
