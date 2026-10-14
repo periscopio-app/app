@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "newsletter_issues" (
   "category" varchar(50) DEFAULT 'geral' NOT NULL,
   "status" varchar(20) DEFAULT 'publicado' NOT NULL,
   "sent_count" integer DEFAULT 0 NOT NULL,
-  "author_id" uuid REFERENCES "users"("id"),
+  "author_id" uuid,
   "published_at" timestamp with time zone DEFAULT now() NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -53,6 +53,23 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'periscopio_app') THEN
     GRANT SELECT, INSERT, UPDATE, DELETE ON "newsletter_subscribers", "newsletter_issues", "support_tickets" TO periscopio_app;
+
+    DROP POLICY IF EXISTS newsletter_subscribers_policy ON "newsletter_subscribers";
+    CREATE POLICY newsletter_subscribers_policy ON "newsletter_subscribers" FOR ALL TO periscopio_app
+      USING (tenant_id IS NULL OR tenant_id = public.app_current_tenant() OR public.app_cross_tenant())
+      WITH CHECK (tenant_id IS NULL OR tenant_id = public.app_current_tenant() OR public.app_cross_tenant());
+
+    DROP POLICY IF EXISTS newsletter_issues_read ON "newsletter_issues";
+    CREATE POLICY newsletter_issues_read ON "newsletter_issues" FOR SELECT TO periscopio_app USING (true);
+
+    DROP POLICY IF EXISTS newsletter_issues_write ON "newsletter_issues";
+    CREATE POLICY newsletter_issues_write ON "newsletter_issues" FOR ALL TO periscopio_app
+      USING (public.app_cross_tenant()) WITH CHECK (public.app_cross_tenant());
+
+    DROP POLICY IF EXISTS support_tickets_policy ON "support_tickets";
+    CREATE POLICY support_tickets_policy ON "support_tickets" FOR ALL TO periscopio_app
+      USING (tenant_id IS NULL OR tenant_id = public.app_current_tenant() OR public.app_cross_tenant())
+      WITH CHECK (tenant_id IS NULL OR tenant_id = public.app_current_tenant() OR public.app_cross_tenant());
   END IF;
 END $$;
 

@@ -926,8 +926,8 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     })
     .refine(
       (data) => {
-        if (data.markAsCompleted) {
-          return typeof data.notes === "string" && data.notes.trim().length >= 100;
+        if (typeof data.notes === "string" && data.notes.trim().length > 0) {
+          return data.notes.trim().length >= 100;
         }
         return true;
       },

@@ -732,7 +732,7 @@ export const newsletterIssues = pgTable("newsletter_issues", {
   category: varchar("category", { length: 50 }).default("geral").notNull(), // saude_mental | diretrizes_pedagogicas | plataforma_novidades | artigo_cientifico
   status: varchar("status", { length: 20 }).default("publicado").notNull(), // rascunho | publicado
   sentCount: integer("sent_count").default(0).notNull(),
-  authorId: uuid("author_id").references(() => users.id),
+  authorId: uuid("author_id"),
   publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
