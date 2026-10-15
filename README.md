@@ -46,4 +46,7 @@ Todo dado de domínio carrega `tenant_id` (município). Ver modelo de dados comp
 - **Cofre de Identidade:** Governança civil em dois fatores, motivo clínico registrado e trilha de auditoria para o DPO (Art. 37 LGPD).
 - **Sistema de Newsletter:** Leitura pública (`/newsletter`), inscrição com opt-out imediato (Art. 8º LGPD) e painel administrativo (`/admin/newsletter`) para disparos via Resend.
 - **Central de Suporte & Diagnóstico:** Widget flutuante com FAQ, abertura de chamados, captura automática de telemetria técnica (URL, navegador, stack trace) e gestão no painel master (`/admin/suporte`).
+- **Autoatendimento com Assistente RAG:** Botão superior integrado que responde dúvidas do protocolo NEMT e da plataforma antes da abertura de chamados, com transição e pré-preenchimento automático de tickets.
+- **Painel de Suporte em Tema Claro:** Bloco de telemetria técnica e visualização de incidentes em light mode para maior contraste e ergonomia visual.
+
 
