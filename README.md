@@ -37,3 +37,13 @@ pnpm dev:web   # http://localhost:3000
 ## Multi-tenant
 
 Todo dado de domínio carrega `tenant_id` (município). Ver modelo de dados completo no Notion do produto.
+
+## Módulos do Piloto & Governança
+
+- **Agenda & Videochamadas:** Integração gratuita via Jitsi Meet para reuniões com o Board de Especialistas, preenchimento de slots e confirmação via e-mails transacionais (Resend).
+- **Prontuário com Abas Horizontais:** Visão estruturada, segmentação LGPD por especialidade clínica e validação Zod (100+ caracteres mínimos no parecer).
+- **Termo de Responsabilidade Médica / LGPD:** Modal bloqueante obrigatório para profissionais de saúde com cálculo de hash SHA-256 e auditoria imutável.
+- **Cofre de Identidade:** Governança civil em dois fatores, motivo clínico registrado e trilha de auditoria para o DPO (Art. 37 LGPD).
+- **Sistema de Newsletter:** Leitura pública (`/newsletter`), inscrição com opt-out imediato (Art. 8º LGPD) e painel administrativo (`/admin/newsletter`) para disparos via Resend.
+- **Central de Suporte & Diagnóstico:** Widget flutuante com FAQ, abertura de chamados, captura automática de telemetria técnica (URL, navegador, stack trace) e gestão no painel master (`/admin/suporte`).
+
