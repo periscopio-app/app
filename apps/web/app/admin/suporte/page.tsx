@@ -314,31 +314,31 @@ export default function AdminSuportePage() {
                   </div>
                 </div>
 
-                {/* Telemetria e Diagnóstico de Erro */}
+                {/* Telemetria e Diagnóstico de Erro (Tema Claro) */}
                 {(selectedTicket.pageUrl || selectedTicket.errorDetails || selectedTicket.browserInfo) && (
-                  <div className="p-4 bg-slate-900 text-white rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
-                      <Monitor className="w-4 h-4" /> Diagnóstico Técnico & Telemetria do Incidente
+                  <div className="p-4 bg-slate-50/80 border border-slate-200 text-slate-800 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-sky-800">
+                      <Monitor className="w-4 h-4 text-sky-600" /> Diagnóstico Técnico & Telemetria do Incidente
                     </div>
                     {selectedTicket.pageUrl && (
                       <div className="text-xs">
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Página de Ocorrência:</span>
-                        <a href={selectedTicket.pageUrl} target="_blank" rel="noopener noreferrer" className="text-sky-300 hover:underline font-mono text-[11px] break-all">
+                        <span className="text-slate-500 block text-[10px] uppercase font-bold mb-0.5">Página de Ocorrência:</span>
+                        <a href={selectedTicket.pageUrl} target="_blank" rel="noopener noreferrer" className="text-sky-700 hover:underline font-mono text-[11px] break-all bg-white px-2.5 py-1 rounded-lg border border-slate-200 inline-block">
                           {selectedTicket.pageUrl}
                         </a>
                       </div>
                     )}
                     {selectedTicket.errorDetails && (
                       <div className="text-xs">
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Mensagem de Erro / Stack:</span>
-                        <pre className="bg-slate-950 p-2.5 rounded-lg text-rose-300 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-slate-800">
+                        <span className="text-slate-500 block text-[10px] uppercase font-bold mb-0.5">Mensagem de Erro / Stack:</span>
+                        <pre className="bg-rose-50/70 p-3 rounded-lg text-rose-900 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-rose-200 leading-relaxed">
                           {selectedTicket.errorDetails}
                         </pre>
                       </div>
                     )}
                     {selectedTicket.browserInfo && (
-                      <div className="text-[11px] text-slate-400 font-mono">
-                        User-Agent: {selectedTicket.browserInfo}
+                      <div className="text-[11px] text-slate-600 font-mono bg-white p-2 rounded-lg border border-slate-200">
+                        <strong className="text-slate-700">User-Agent:</strong> {selectedTicket.browserInfo}
                       </div>
                     )}
                   </div>
