@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { HelpCircle, X, Bug, MessageSquare, ChevronDown, ChevronUp, Send, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { HelpCircle, X, Bug, MessageSquare, ChevronDown, ChevronUp, Send, CheckCircle2, AlertTriangle, Sparkles, ArrowRight, ThumbsUp, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface FAQItem {
@@ -11,9 +11,25 @@ interface FAQItem {
   answer: string;
 }
 
+interface RagResponse {
+  success: boolean;
+  question: string;
+  answer: string;
+  confidence: number;
+  canOpenTicket: boolean;
+  suggestions?: string[];
+  source?: string;
+}
+
 export function SupportWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"faq" | "duvida" | "erro">("faq");
+  const [activeTab, setActiveTab] = useState<"rag" | "duvida" | "erro" | "faq">("rag");
+
+  // RAG / Assistente state
+  const [ragQuestion, setRagQuestion] = useState("");
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragResult, setRagResult] = useState<RagResponse | null>(null);
+  const [ragResolved, setRagResolved] = useState(false);
 
   // FAQ state
   const [faqList, setFaqList] = useState<FAQItem[]>([]);
@@ -28,6 +44,18 @@ export function SupportWidget() {
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Escutar evento global de abertura (ex: botão Suporte do topo/menu)
+  useEffect(() => {
+    const handleOpen = (e: any) => {
+      setIsOpen(true);
+      if (e?.detail?.tab) {
+        setActiveTab(e.detail.tab);
+      }
+    };
+    window.addEventListener("open-support-widget", handleOpen);
+    return () => window.removeEventListener("open-support-widget", handleOpen);
+  }, []);
+
   useEffect(() => {
     if (isOpen && faqList.length === 0) {
       api
@@ -36,6 +64,36 @@ export function SupportWidget() {
         .catch(() => {});
     }
   }, [isOpen, faqList.length]);
+
+  const handleAskRag = async (q?: string) => {
+    const query = (q || ragQuestion).trim();
+    if (query.length < 3) return;
+
+    setRagLoading(true);
+    setRagResult(null);
+    setRagResolved(false);
+    setErrorMessage(null);
+
+    try {
+      const res = await api.post<RagResponse>("/api/support/ask-rag", {
+        question: query,
+      });
+      setRagResult(res);
+      setRagQuestion(query);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Erro ao consultar o assistente de suporte.");
+    } finally {
+      setRagLoading(false);
+    }
+  };
+
+  const handleForwardToTicket = () => {
+    setTitle(ragResult?.question || ragQuestion);
+    setDescription(
+      `Dúvida consultada com o Assistente RAG:\n"${ragResult?.question || ragQuestion}"\n\nResposta do Assistente:\n${ragResult?.answer || ""}\n\nObservação adicional do usuário:\nPreciso de suporte da equipe para esclarecer melhor este caso.`
+    );
+    setActiveTab("duvida");
+  };
 
   const handleSubmit = async (e: React.FormEvent, category: "duvida" | "erro_sistema") => {
     e.preventDefault();
@@ -107,36 +165,47 @@ export function SupportWidget() {
             </div>
 
             {/* Abas */}
-            <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-semibold">
+            <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-semibold overflow-x-auto">
               <button
-                onClick={() => { setActiveTab("faq"); setFeedbackSuccess(null); }}
-                className={`flex-1 py-3 text-center border-b-2 transition ${
-                  activeTab === "faq"
-                    ? "border-sky-600 text-sky-700 bg-white"
+                onClick={() => { setActiveTab("rag"); setFeedbackSuccess(null); }}
+                className={`flex-1 py-3 px-2 text-center border-b-2 transition flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "rag"
+                    ? "border-purple-600 text-purple-700 bg-white"
                     : "border-transparent text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                Dúvidas (FAQ)
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Assistente RAG</span>
               </button>
               <button
                 onClick={() => { setActiveTab("duvida"); setFeedbackSuccess(null); }}
-                className={`flex-1 py-3 text-center border-b-2 transition ${
+                className={`flex-1 py-3 px-2 text-center border-b-2 transition whitespace-nowrap ${
                   activeTab === "duvida"
                     ? "border-sky-600 text-sky-700 bg-white"
                     : "border-transparent text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                Tirar Dúvida
+                Abrir Chamado
               </button>
               <button
                 onClick={() => { setActiveTab("erro"); setFeedbackSuccess(null); }}
-                className={`flex-1 py-3 text-center border-b-2 transition ${
+                className={`flex-1 py-3 px-2 text-center border-b-2 transition whitespace-nowrap ${
                   activeTab === "erro"
                     ? "border-rose-600 text-rose-700 bg-white"
                     : "border-transparent text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 Relatar Erro
+              </button>
+              <button
+                onClick={() => { setActiveTab("faq"); setFeedbackSuccess(null); }}
+                className={`flex-1 py-3 px-2 text-center border-b-2 transition whitespace-nowrap ${
+                  activeTab === "faq"
+                    ? "border-sky-600 text-sky-700 bg-white"
+                    : "border-transparent text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                FAQ
               </button>
             </div>
 
@@ -153,6 +222,122 @@ export function SupportWidget() {
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {/* Aba 1: Assistente RAG (Autoatendimento imediato) */}
+              {activeTab === "rag" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-bold">Assistente Periscópio RAG</strong>
+                      <span className="text-purple-800 text-[11px] leading-relaxed">
+                        Faça sua pergunta sobre o protocolo clínico, FOGAP, escalas ou uso da plataforma. O assistente responde instantaneamente antes de abrir um chamado.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Input de Pergunta */}
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={ragQuestion}
+                        onChange={(e) => setRagQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleAskRag();
+                          }
+                        }}
+                        placeholder="Ex: Como funciona o envio do FOGAP pelo RE?"
+                        className="w-full pl-3 pr-20 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-black placeholder:text-slate-400 focus:outline-none focus:border-purple-500 shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleAskRag()}
+                        disabled={ragLoading || ragQuestion.trim().length < 3}
+                        className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition flex items-center gap-1 disabled:opacity-40"
+                      >
+                        {ragLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        <span>Perguntar</span>
+                      </button>
+                    </div>
+
+                    {/* Dúvidas Frequentes Rápidas */}
+                    {!ragResult && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Dúvidas Frequentes:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            "Como funciona o envio do FOGAP?",
+                            "Quem acessa o Cofre de Identidade?",
+                            "Como agendar reunião com o Board?",
+                            "Por que o parecer exige 100 caracteres?",
+                            "Como recuperar minha senha?",
+                          ].map((sug, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => void handleAskRag(sug)}
+                              className="text-[11px] text-left px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 border border-slate-200 transition"
+                            >
+                              {sug}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Resposta do RAG */}
+                  {ragResult && (
+                    <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-3 animate-fadeIn">
+                      <div className="flex items-center justify-between text-[11px] border-b border-slate-200 pb-2">
+                        <span className="font-bold text-slate-700 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Resposta da IA / RAG:
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">
+                          Protocolo Oficial
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-800 leading-relaxed whitespace-pre-line">
+                        {ragResult.answer}
+                      </div>
+
+                      {/* Feedback e Transição para Ticket */}
+                      {!ragResolved ? (
+                        <div className="pt-3 border-t border-slate-200 space-y-2.5">
+                          <p className="text-[11px] font-semibold text-slate-600">Essa resposta resolveu sua dúvida?</p>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setRagResolved(true)}
+                              className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Sim, foi resolvido!</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleForwardToTicket}
+                              className="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                            >
+                              <span>Ainda preciso de ajuda</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Ficamos felizes em ajudar! Se precisar de algo mais, digite acima ou volte sempre.</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

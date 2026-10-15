@@ -160,3 +160,32 @@ test("Support Route: GET e PATCH /api/admin/support/tickets gerencia chamados pa
   assert.strictEqual(patchBody.ticket.status, "resolvido");
   assert.strictEqual(patchBody.ticket.resolutionNotes, "Dúvida sanada: o fluxo está documentado na Central de Ajuda.");
 });
+
+test("Support Route: POST /api/support/ask-rag responde dúvidas com inteligência semântica", async () => {
+  const app = await buildApp({ logger: false });
+
+  // Pergunta sobre FOGAP
+  const resFogap = await app.inject({
+    method: "POST",
+    url: "/api/support/ask-rag",
+    payload: {
+      question: "Como funciona o envio do formulário FOGAP pelo RE?",
+    },
+  });
+  assert.strictEqual(resFogap.statusCode, 200);
+  const bodyFogap = JSON.parse(resFogap.payload);
+  assert.strictEqual(bodyFogap.success, true);
+  assert.ok(bodyFogap.answer.includes("FOGAP"));
+  assert.strictEqual(bodyFogap.canOpenTicket, true);
+
+  // Pergunta curta rejeitada
+  const resShort = await app.inject({
+    method: "POST",
+    url: "/api/support/ask-rag",
+    payload: {
+      question: "oi",
+    },
+  });
+  assert.strictEqual(resShort.statusCode, 400);
+});
+

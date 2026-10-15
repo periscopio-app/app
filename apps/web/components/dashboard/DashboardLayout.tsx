@@ -342,15 +342,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <span>+ Novo Prontuário</span>
               </Link>
             )}
-            <a
-              href="https://wa.me/5511984444994"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-black border border-[#E1E9ED] transition"
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("open-support-widget", { detail: { tab: "rag" } }));
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-black border border-[#E1E9ED] transition cursor-pointer"
+              title="Central de Suporte & Autoatendimento com IA RAG"
             >
+              <HelpCircle className="w-3.5 h-3.5 text-[#007A99]" />
               <span>Suporte</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-neutral-800" />
-            </a>
+            </button>
           </div>
         </header>
 

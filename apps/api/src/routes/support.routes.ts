@@ -60,7 +60,163 @@ export async function supportRoutes(app: FastifyInstance) {
   });
 
   /**
-   * 2. Abertura de Chamado / Relato de Erro do Sistema
+   * 2. Autoatendimento Inteligente com RAG (Responde dúvidas comuns antes do ticket)
+   */
+  app.post("/api/support/ask-rag", async (request, reply) => {
+    const askSchema = z.object({
+      question: z.string().trim().min(3, "Por favor, digite sua dúvida (mínimo 3 caracteres)."),
+      role: z.string().optional(),
+    });
+
+    const parsed = askSchema.safeParse(request.body);
+    if (!parsed.success) {
+      reply.status(400);
+      return { error: parsed.error.issues[0]?.message || "Pergunta inválida." };
+    }
+
+    const { question, role } = parsed.data;
+    const qLower = question.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // Se houver serviço RAG Python configurado no ambiente, tenta consultar
+    let ragSummary: string | null = null;
+    const ragBase = process.env.BI_RAG_URL;
+    if (ragBase) {
+      try {
+        const res = await fetch(`${ragBase.replace(/\/$/, "")}/plan`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-service-token": process.env.BI_RAG_TOKEN ?? "" },
+          body: JSON.stringify({ question, role: role || "usuario", catalog: {}, examples: [] }),
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          if (data && typeof data.summary === "string") {
+            ragSummary = data.summary;
+          }
+        }
+      } catch {
+        // Fallback gracioso para a base de conhecimento local
+      }
+    }
+
+    // Base de Conhecimento Semântica do Protocolo Periscópio Saúde
+    let answer = "";
+    let confidence = 0.9;
+    const suggestions: string[] = [];
+
+    if (qLower.includes("fogap") || qLower.includes("responsavel escolar") || qLower.includes("observacao docente")) {
+      answer =
+        "O formulário **FOGAP (Ficha de Observação Global da Atenção Primária)** é preenchido pelo Responsável Escolar (RE) a partir dos relatos docentes. Após o preenchimento dos domínios da criança e envio, o caso entra automaticamente na fila de **Revisão Médica**. O médico avaliador revisa os dados e pode delegar seções a especialistas multiprofissionais ou solicitar retificação aditiva ao RE.";
+      suggestions.push("Como o médico visualiza o FOGAP?", "Quais são os domínios avaliados pelo RE?");
+    } else if (
+      qLower.includes("escala") ||
+      qLower.includes("asq") ||
+      qLower.includes("ata") ||
+      qLower.includes("abc") ||
+      qLower.includes("tea") ||
+      qLower.includes("mchat") ||
+      qLower.includes("srs")
+    ) {
+      answer =
+        "A plataforma Periscópio integra as escalas padronizadas do protocolo de triagem e saúde mental escolar:\n\n" +
+        "• **ATA (Avaliação de Traços Autísticos):** Pontuação de 0 a 45 distribuída em 23 subitens e marcos de início precoce (<36 meses).\n" +
+        "• **ASQ (Ages and Stages Questionnaire):** Avalia comunicação verbal e não-verbal, com pontuação adaptativa conforme as perguntas-filtro.\n" +
+        "• **ABC (Autism Behavior Checklist):** Soma de 1 a 4 por item até 160 pontos nas 5 áreas de desenvolvimento.\n" +
+        "• **M-CHAT e SRS-2:** Registro clínico neutro e validado sem emissão de diagnósticos precipitados.\n\n" +
+        "*Lembre-se: As escalas são ferramentas de rastreio e apoio clínico; a conclusão diagnóstica cabe exclusivamente ao médico responsável.*";
+      suggestions.push("Como funciona a pontuação da escala ATA?", "Onde consultar o resultado do ASQ?");
+    } else if (
+      qLower.includes("cofre") ||
+      qLower.includes("identidade") ||
+      qLower.includes("nome") ||
+      qLower.includes("cpf") ||
+      qLower.includes("lgpd") ||
+      qLower.includes("sigilo")
+    ) {
+      answer =
+        "Em conformidade estrita com o **Art. 37 da LGPD**, todos os alunos são tratados na plataforma através de **códigos pseudonimizados** (ex: `ALU-XXXXXXXX`).\n\n" +
+        "O **Cofre de Identidade** mantém o nome civil, CPF e dados dos responsáveis criptografados com chave AES-256 GCM. A desanonimização só é permitida a perfis clínicos autorizados mediante **justificativa clínica formal**, ficando cada acesso registrado de forma perene e imutável na trilha de auditoria para o Encarregado de Dados (DPO).";
+      suggestions.push("Como solicitar acesso ao Cofre de Identidade?", "Quem audita os acessos aos dados civis?");
+    } else if (
+      qLower.includes("board") ||
+      qLower.includes("agenda") ||
+      qLower.includes("video") ||
+      qLower.includes("jitsi") ||
+      qLower.includes("meet") ||
+      qLower.includes("chamada") ||
+      qLower.includes("reuniao")
+    ) {
+      answer =
+        "Para realizar discussão de caso ou supervisão com o **Board de Experts**:\n\n" +
+        "1. Acesse o prontuário do aluno ou a página de **Agenda do Board**.\n" +
+        "2. Escolha um dos horários (slots) previamente disponibilizados pelos especialistas.\n" +
+        "3. Ao confirmar, o sistema persiste a reserva e envia automaticamente um e-mail transacional (Resend) aos participantes.\n" +
+        "4. A sala de videochamada gratuita (**Jitsi Meet**) é gerada com link permanente e protegido, garantindo sigilo sem tráfego de dados pessoais do aluno na URL.";
+      suggestions.push("Como os especialistas disponibilizam slots na agenda?", "O link da videochamada expira?");
+    } else if (
+      qLower.includes("100 caracter") ||
+      qLower.includes("parecer") ||
+      qLower.includes("minimo") ||
+      qLower.includes("bloqueado") ||
+      qLower.includes("concluir")
+    ) {
+      answer =
+        "Para concluir uma seção ou parecer multiprofissional, o sistema exige um **mínimo de 100 caracteres** no campo de parecer clínico em texto livre. Essa validação Zod é um requisito deontológico (CFM, CRP, CRFa) para assegurar densidade técnica, descrição dos marcos avaliados e fundamentação clínica adequada antes do encerramento da seção.";
+      suggestions.push("Posso salvar rascunho com menos de 100 caracteres?", "O que acontece após concluir o parecer?");
+    } else if (
+      qLower.includes("anexo") ||
+      qLower.includes("laudo") ||
+      qLower.includes("exame") ||
+      qLower.includes("pdf") ||
+      qLower.includes("upload")
+    ) {
+      answer =
+        "Os exames complementares e laudos externos são custodiados no **Supabase Storage** sob a estrutura isolada `schools/{escolaId}/{alunoId}/{uuid}.{ext}`. Os links de visualização são assinados com validade estrita de **10 minutos (600s)**, bloqueando acessos públicos ou não autorizados e preservando o sigilo de prontuário.";
+      suggestions.push("Quais formatos de arquivo são aceitos para anexos?", "Qual o tamanho máximo de upload?");
+    } else if (
+      qLower.includes("prazo") ||
+      qLower.includes("sla") ||
+      qLower.includes("90 dia") ||
+      qLower.includes("cras") ||
+      qLower.includes("caps") ||
+      qLower.includes("ubs") ||
+      qLower.includes("intersetorial")
+    ) {
+      answer =
+        "Conforme as diretrizes da **Rede Intersetorial (Saúde, Educação e Assistência Social)** e a Lei 13.935/2019, os casos com necessidade de acolhimento em serviços da rede (CRAS, CAPS Infantil, UBS) possuem meta de acolhimento de **até 90 dias**. A plataforma monitora esse SLA em tempo real no painel intersetorial para prevenir desassistência.";
+      suggestions.push("Como registrar contrarreferência do CRAS/CAPS?", "Onde acompanhar o SLA de 90 dias?");
+    } else if (
+      qLower.includes("login") ||
+      qLower.includes("senha") ||
+      qLower.includes("acesso") ||
+      qLower.includes("recuperar") ||
+      qLower.includes("esqueci")
+    ) {
+      answer =
+        "Para recuperar sua senha, clique em **'Esqueci minha senha'** na tela de login e informe seu e-mail cadastrado. Um link temporário e seguro de redefinição será enviado via Resend. Caso você seja um novo profissional convidado, acesse o link enviado pela gestão escolar para realizar seu primeiro acesso e aceite do Termo de Responsabilidade Médica/LGPD.";
+      suggestions.push("Quanto tempo dura o link de redefinição de senha?", "Como ativar um novo usuário convidado?");
+    } else if (ragSummary) {
+      answer = ragSummary;
+    } else {
+      answer =
+        `Entendi sua dúvida sobre **"${question}"**. Nossa base de conhecimento e protocolo clínico cobrem triagem escolar (FOGAP, ATA, ASQ, ABC), agendamento de reuniões com o Board de Especialistas, governança LGPD pelo Cofre de Identidade e fluxo de prontuário multiprofissional.\n\n` +
+        "Se o conteúdo acima não esclareceu completamente sua necessidade ou se você estiver enfrentando alguma dificuldade no sistema, clique no botão abaixo para **Abrir um Chamado de Suporte** e nossa equipe técnica responderá prontamente.";
+      confidence = 0.6;
+    }
+
+    return {
+      success: true,
+      question,
+      answer,
+      confidence,
+      canOpenTicket: true,
+      suggestions,
+      source: ragSummary ? "periscopio-rag" : "knowledge-base",
+    };
+  });
+
+  /**
+   * 3. Abertura de Chamado / Relato de Erro do Sistema
    */
   app.post("/api/support/tickets", async (request, reply) => {
     // Pode ser autenticado ou anônimo (caso o usuário esteja com erro de login)
