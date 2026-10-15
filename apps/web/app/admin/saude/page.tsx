@@ -20,7 +20,7 @@ interface Snapshot {
   instance: { node: string; commit: string | null; environment: string; memoryMb: number };
   db: { ok: boolean; latencyMs: number; error: string | null };
   alerts: { level: "alto" | "medio"; text: string }[];
-  config: { key: string; ok: boolean; hint: string }[];
+  config: { key: string; ok: boolean; optional?: boolean; hint: string }[];
   uptimeSeconds: number;
   startedAt: string;
   http: {
@@ -168,12 +168,36 @@ export default function AdminSaudePage() {
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">Configuração do ambiente</h2>
               <ul className="rounded-xl border border-[#E1E9ED] bg-white divide-y divide-[#E1E9ED]">
                 {data.config.map((c) => (
-                  <li key={c.key} className="flex items-start gap-3 p-3">
-                    {c.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 text-red-600 shrink-0" />}
-                    <div>
-                      <p className="text-sm font-mono font-semibold">{c.key}</p>
-                      <p className="text-xs text-slate-500">{c.hint}</p>
+                  <li key={c.key} className="flex items-start justify-between gap-3 p-3">
+                    <div className="flex items-start gap-3">
+                      {c.ok ? (
+                        <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
+                      ) : c.optional ? (
+                        <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
+                      ) : (
+                        <XCircle className="w-4 h-4 mt-0.5 text-red-600 shrink-0" />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-mono font-semibold">{c.key}</p>
+                          {c.optional && (
+                            <span className="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                              Opcional
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">{c.hint}</p>
+                      </div>
                     </div>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                      c.ok 
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                        : c.optional 
+                        ? "bg-amber-50 text-amber-800 border border-amber-200" 
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}>
+                      {c.ok ? "Configurado" : c.optional ? "Não configurado (opcional)" : "Pendente"}
+                    </span>
                   </li>
                 ))}
               </ul>

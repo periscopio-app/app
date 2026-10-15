@@ -10,15 +10,15 @@ function configChecks() {
   const has = (k: string) => !!process.env[k]?.trim();
   const secretOk = (process.env.BETTER_AUTH_SECRET ?? "").length >= 32;
   return [
-    { key: "BETTER_AUTH_SECRET", ok: secretOk, hint: "Segredo de sessão e dos links de acesso (mínimo 32 caracteres)." },
-    { key: "DATABASE_URL", ok: has("DATABASE_URL"), hint: "Conexão com o banco." },
-    { key: "RESEND_API_KEY", ok: has("RESEND_API_KEY"), hint: "Envio de e-mail (convites e recuperação de senha)." },
-    { key: "RESEND_FROM_EMAIL", ok: has("RESEND_FROM_EMAIL"), hint: "Remetente verificado no Resend." },
-    { key: "APP_URL", ok: has("APP_URL") && !/localhost/.test(process.env.APP_URL ?? ""), hint: "Endereço público do site (usado nos links dos e-mails)." },
-    { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), hint: "Origens permitidas para chamar a API." },
-    { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), hint: "Assistente de IA (sem ele, os resumos usam só regras)." },
-    { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), hint: "Armazenamento de anexos." },
-    { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), hint: "Libera /metrics para um coletor externo." },
+    { key: "BETTER_AUTH_SECRET", ok: secretOk, optional: false, hint: "Segredo de sessão e dos links de acesso (mínimo 32 caracteres)." },
+    { key: "DATABASE_URL", ok: has("DATABASE_URL"), optional: false, hint: "Conexão com o banco de dados PostgreSQL." },
+    { key: "RESEND_API_KEY", ok: has("RESEND_API_KEY"), optional: false, hint: "Envio de e-mail (convites, recuperação de senha e newsletter)." },
+    { key: "RESEND_FROM_EMAIL", ok: has("RESEND_FROM_EMAIL"), optional: false, hint: "Remetente verificado no Resend." },
+    { key: "APP_URL", ok: has("APP_URL") && !/localhost/.test(process.env.APP_URL ?? ""), optional: false, hint: "Endereço público do site (usado nos links dos e-mails)." },
+    { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), optional: false, hint: "Origens permitidas para chamar a API." },
+    { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },
+    { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), optional: true, hint: "Armazenamento de anexos clínicos (Supabase Storage para laudos e exames)." },
+    { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), optional: true, hint: "Opcional: libera rota /metrics para coletor externo (Prometheus/Grafana)." },
   ];
 }
 
