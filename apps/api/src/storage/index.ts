@@ -4,23 +4,34 @@ import { createClient } from "@supabase/supabase-js";
  * Cliente Supabase configurado para gerenciamento de arquivos e buckets.
  * Utiliza a URL do projeto Supabase e a Service Role Key (ou Anon Key) no backend.
  */
-const supabaseUrl =
-  process.env.SUPABASE_URL ||
-  (process.env.SUPABASE_PROJECT_REF
-    ? `https://${process.env.SUPABASE_PROJECT_REF}.supabase.co`
-    : undefined);
+let _client: ReturnType<typeof createClient> | null = null;
 
-if (!supabaseUrl) {
-  throw new Error("SUPABASE_URL ou SUPABASE_PROJECT_REF é obrigatória.");
+export function getSupabase() {
+  if (_client) return _client;
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    (process.env.SUPABASE_PROJECT_REF
+      ? `https://${process.env.SUPABASE_PROJECT_REF}.supabase.co`
+      : undefined);
+
+  if (!supabaseUrl) {
+    throw new Error("SUPABASE_URL ou SUPABASE_PROJECT_REF não configurada para armazenamento.");
+  }
+
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_KEY ||
+    "";
+
+  _client = createClient(supabaseUrl, supabaseKey);
+  return _client;
 }
 
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_KEY ||
-  "";
-
-export const supabase = createClient(supabaseUrl!, supabaseKey);
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get: (_, prop: string | symbol) => (getSupabase() as any)[prop],
+});
 
 const BUCKET = process.env.SUPABASE_BUCKET ?? "periscopio-uploads";
 

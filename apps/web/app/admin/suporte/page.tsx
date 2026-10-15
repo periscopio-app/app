@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, HelpCircle, Bug, CheckCircle2, Clock, AlertTriangle, RefreshCw, Send, ShieldAlert, Monitor, Globe, Mail, User } from "lucide-react";
 import { api } from "@/lib/api";
@@ -36,7 +36,7 @@ export default function AdminSuportePage() {
   const [updating, setUpdating] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
       const q = new URLSearchParams();
@@ -55,11 +55,11 @@ export default function AdminSuportePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, statusFilter]);
 
   useEffect(() => {
     fetchTickets();
-  }, [categoryFilter, statusFilter]);
+  }, [fetchTickets]);
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     setUpdating(true);

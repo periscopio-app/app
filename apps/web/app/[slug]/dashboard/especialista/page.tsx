@@ -108,14 +108,15 @@ export default function EspecialistaDashboardPage({
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [ctx, setCtx] = useState<CaseContext | null>(null);
 
+  const activeCaseId = activeSection?.caseId;
   useEffect(() => {
     setCtx(null);
-    if (!activeSection) return;
+    if (!activeCaseId) return;
     api
-      .get<CaseContext>(`/api/cases/${activeSection.caseId}/specialist-view`)
+      .get<CaseContext>(`/api/cases/${activeCaseId}/specialist-view`)
       .then(setCtx)
       .catch(() => setCtx(null));
-  }, [activeSection?.caseId]);
+  }, [activeCaseId]);
 
   useEffect(() => {
     async function boot() {
