@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ShieldCheck, CheckCircle2, AlertTriangle, FileText, UserCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
@@ -36,7 +36,7 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetchConsent = async () => {
+  const fetchConsent = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.get<{ hasActiveConsent: boolean; acceptances: ConsentAcceptance[] }>(
@@ -49,11 +49,11 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId]);
 
   useEffect(() => {
     fetchConsent();
-  }, [caseId]);
+  }, [fetchConsent]);
 
   const openSignModal = async () => {
     try {

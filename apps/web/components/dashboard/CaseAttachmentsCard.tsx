@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Paperclip, Upload, Download, FileText, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -24,7 +24,7 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
   const [uploading, setUploading] = useState(false);
   const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
 
-  const fetchAttachments = async () => {
+  const fetchAttachments = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get<{ attachments: ClinicalAttachment[] }>(`/api/cases/${caseId}/attachments`);
@@ -34,11 +34,11 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId]);
 
   useEffect(() => {
     fetchAttachments();
-  }, [caseId]);
+  }, [fetchAttachments]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

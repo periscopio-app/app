@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
@@ -30,7 +30,7 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: S
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     if (!studentId) return;
     try {
       const res = await api.get<{
@@ -43,11 +43,11 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: S
     } catch {
       // silencioso se não autenticado
     }
-  };
+  }, [studentId]);
 
   useEffect(() => {
     fetchStatus();
-  }, [studentId]);
+  }, [fetchStatus]);
 
   // Campos para cadastro inicial
   const [newFullName, setNewFullName] = useState("");
