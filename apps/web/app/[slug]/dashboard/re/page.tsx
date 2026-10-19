@@ -1027,7 +1027,6 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   {/* Documentos clínicos são do núcleo: não aparecem para o RE (a API também recusa). */}
                   {(caps.has("attachments.read") || caps.has("attachments.write")) && <CaseAttachmentsCard caseId={activeCase.id} />}
-                  <TeaScreeningPanel caseId={activeCase.id} />
                 </div>
               </div>
 
@@ -1910,6 +1909,15 @@ Necessidade de parecer e segunda opinião especializada de equipe multidisciplin
                   )}
                 </div>
               )}
+
+              {/* Triagem TEA: etapa FINAL do RE. Vem depois do FOGAP/SNAP-IV (a RE primeiro registra a observação
+                  escolar; a triagem dos 5 instrumentos só entra no fim e o servidor mostra só o que o perfil preenche). */}
+              <div className="border-t border-linha bg-slate-50/50 p-4 sm:p-5 space-y-3" data-testid="re-etapa-tea">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-700">
+                  Etapa final · depois do FOGAP
+                </p>
+                <TeaScreeningPanel caseId={activeCase.id} />
+              </div>
 
             </div>
           )}
