@@ -62,3 +62,12 @@ export function validatePilotAge(birthYear: number, birthMonth: number, now = ne
   }
   return { ok: true };
 }
+
+/** Série/ano escolar: texto curto (ex.: "3º ano"). Vazio vira null. Sem controles nem caracteres de marcação. */
+export function normalizeGrade(input: unknown): { ok: true; grade: string | null } | { ok: false; error: string } {
+  if (input === undefined || input === null) return { ok: true, grade: null };
+  if (typeof input !== "string") return { ok: false, error: "Série inválida." };
+  const grade = input.replace(/[\u0000-\u001f\u007f<>]/g, "").replace(/\s+/g, " ").trim();
+  if (grade.length > 40) return { ok: false, error: "Série longa demais (máximo 40 caracteres)." };
+  return { ok: true, grade: grade || null };
+}

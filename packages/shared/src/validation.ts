@@ -129,3 +129,38 @@ export const specialistOpinionSchema = z.object({
 });
 
 export type SpecialistOpinionFormData = z.infer<typeof specialistOpinionSchema>;
+
+/**
+ * CPF opcional, mas, quando informado, precisa passar na máscara e nos dois dígitos verificadores.
+ * Vazio vira undefined; válido vira "000.000.000-00".
+ */
+export const optionalCpfSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? v : undefined))
+  .refine((v) => v === undefined || validateCpf(v), {
+    message: "CPF inválido: confira os 11 dígitos e os dígitos verificadores.",
+  })
+  .transform((v) => (v === undefined ? undefined : formatCpf(v)));
+
+/** Aceite do TCLE pelo responsável legal. */
+export const CONSENT_SIGNER_ROLES = ["mae", "pai", "responsavel_legal", "outro"] as const;
+
+export const consentAcceptSchema = z.object({
+  signerName: z
+    .string({ required_error: "Informe o nome completo do responsável." })
+    .trim()
+    .min(5, "Informe o nome completo do responsável (nome e sobrenome).")
+    .max(200, "Nome muito longo."),
+  signerRole: z.enum(CONSENT_SIGNER_ROLES, {
+    errorMap: () => ({ message: "Escolha o grau de parentesco na lista." }),
+  }),
+  signerDocument: optionalCpfSchema,
+});
+
+/** Mensagem de erro do CPF para campos de formulário (null = válido ou vazio). */
+export function cpfFieldError(value: string): string | null {
+  const parsed = optionalCpfSchema.safeParse(value);
+  return parsed.success ? null : parsed.error.issues[0]?.message ?? "CPF inválido.";
+}

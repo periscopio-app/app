@@ -19,7 +19,7 @@ import { canonicalRole } from "../security/capabilities";
 import { canAccessSchool } from "../security/tenancy";
 import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
-import { ageBracketOf, generateStudentCode, validateBirth, validatePilotAge } from "../services/student-code";
+import { ageBracketOf, generateStudentCode, normalizeGrade, validateBirth, validatePilotAge } from "../services/student-code";
 import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
 import {
   FOGAP_FORM_CODE,
@@ -36,7 +36,7 @@ import {
   RE_FORMS,
   RE_JORNADA_FORM_CODE,
 } from "@periscopio/shared";
-import { carregarJornada } from "../services/re-journey.service";
+import { carregarJornada, montarPayloadFogap } from "../services/re-journey.service";
 import {
   allSectionsDone,
   applyTransitionInTx,
@@ -102,7 +102,7 @@ export async function caseVisibleTo(actor: Actor, caseId: string) {
   return student ? { caseItem, student } : null;
 }
 
-async function insertStudent(school: { id: string; tenantId: string; slug: string | null }, birthYear: number, birthMonth: number) {
+async function insertStudent(school: { id: string; tenantId: string; slug: string | null }, birthYear: number, birthMonth: number, grade: string | null = null) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const studentCode = generateStudentCode(school.slug);
     try {
@@ -115,6 +115,7 @@ async function insertStudent(school: { id: string; tenantId: string; slug: strin
           birthYear,
           birthMonth,
           ageBracket: ageBracketOf(birthYear, birthMonth),
+          grade,
         })
         .returning();
       return student;
@@ -136,7 +137,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const actor = await requireCapability(request, reply, "student.register");
     if (!actor) return;
 
-    const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number };
+    const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number; grade?: unknown };
     if (!body.schoolId) return reply.status(400).send({ error: "ID da escola é obrigatório" });
 
     const school = await schoolVisibleTo(actor, body.schoolId);
@@ -147,7 +148,10 @@ export async function casesRoutes(app: FastifyInstance) {
     const pilotAge = validatePilotAge(birth.birthYear, birth.birthMonth);
     if (!pilotAge.ok) return reply.status(400).send({ error: pilotAge.error });
 
-    const student = await insertStudent(school, birth.birthYear, birth.birthMonth);
+    const grade = normalizeGrade(body.grade);
+    if (!grade.ok) return reply.status(400).send({ error: grade.error });
+
+    const student = await insertStudent(school, birth.birthYear, birth.birthMonth, grade.grade);
     await recordAudit(
       {
         tenantId: actor.tenantId,
@@ -160,12 +164,117 @@ export async function casesRoutes(app: FastifyInstance) {
           studentCode: student.studentCode,
           birthYear: student.birthYear,
           birthMonth: student.birthMonth,
+          grade: student.grade,
           schoolId: school.id,
         },
       },
       request
     );
     return reply.status(201).send({ success: true, student });
+  });
+
+  /**
+   * Edição auditada dos dados do aluno (ano/mês de nascimento e série). Cada alteração grava antes e depois na
+   * trilha. Depois do envio ao médico o cadastro fica travado até a devolução (a idade define o grupo do FOGAP).
+   */
+  app.patch("/api/students/:studentId", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "student.register");
+    if (!actor) return;
+    const { studentId } = request.params as { studentId: string };
+    const student = await studentVisibleTo(actor, studentId);
+    if (!student) return reply.status(404).send({ error: "Aluno não encontrado" });
+
+    const body = (request.body ?? {}) as { birthYear?: unknown; birthMonth?: unknown; grade?: unknown };
+    const extra = Object.keys(body).filter((k) => !["birthYear", "birthMonth", "grade"].includes(k));
+    if (extra.length > 0) return reply.status(400).send({ error: `Campo não permitido: ${extra.join(", ")}. Só nascimento e série podem ser editados.` });
+
+    const updates: Partial<typeof students.$inferInsert> = {};
+    const before = { birthYear: student.birthYear, birthMonth: student.birthMonth, grade: student.grade ?? null };
+    const after = { ...before };
+
+    if (body.birthYear !== undefined || body.birthMonth !== undefined) {
+      const birth = validateBirth({
+        birthYear: body.birthYear ?? student.birthYear,
+        birthMonth: body.birthMonth ?? student.birthMonth,
+      });
+      if (!birth.ok) return reply.status(400).send({ error: birth.error });
+      const pilot = validatePilotAge(birth.birthYear, birth.birthMonth);
+      if (!pilot.ok) return reply.status(400).send({ error: pilot.error });
+      after.birthYear = birth.birthYear;
+      after.birthMonth = birth.birthMonth;
+      updates.birthYear = birth.birthYear;
+      updates.birthMonth = birth.birthMonth;
+      updates.ageBracket = ageBracketOf(birth.birthYear, birth.birthMonth);
+    }
+    if (body.grade !== undefined) {
+      const grade = normalizeGrade(body.grade);
+      if (!grade.ok) return reply.status(400).send({ error: grade.error });
+      after.grade = grade.grade;
+      updates.grade = grade.grade;
+    }
+
+    const changedFields = (Object.keys(after) as (keyof typeof after)[]).filter((k) => after[k] !== before[k]);
+    if (changedFields.length === 0) return { success: true, changed: [], student };
+
+    // Casos já enviados ao médico ficam travados até a devolução.
+    const enviados = await db
+      .select({ id: cases.id })
+      .from(cases)
+      .where(and(eq(cases.studentId, student.id), eq(cases.tenantId, student.tenantId), ne(cases.journeyState, "rascunho"), ne(cases.journeyState, "encerrado")))
+      .limit(1);
+    if (enviados.length > 0) {
+      return reply.status(409).send({ error: "O caso já foi enviado ao médico. Peça a devolução para corrigir os dados do aluno." });
+    }
+
+    const [updated] = await db
+      .update(students)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(students.id, student.id), eq(students.tenantId, student.tenantId)))
+      .returning();
+
+    await recordAudit(
+      {
+        tenantId: student.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "update_student",
+        entityType: "student",
+        entityId: student.id,
+        payload: { studentCode: student.studentCode, changedFields, before, after },
+      },
+      request
+    );
+    return { success: true, changed: changedFields, student: updated };
+  });
+
+  /** Histórico de criação e edições dos dados do aluno (quem, quando, antes e depois). */
+  app.get("/api/students/:studentId/history", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "student.list");
+    if (!actor) return;
+    const { studentId } = request.params as { studentId: string };
+    const student = await studentVisibleTo(actor, studentId);
+    if (!student) return reply.status(404).send({ error: "Aluno não encontrado" });
+
+    const rows = await db
+      .select({
+        id: auditLogs.id,
+        action: auditLogs.action,
+        by: auditLogs.userEmail,
+        at: auditLogs.createdAt,
+        payload: auditLogs.payload,
+      })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.entityId, student.id),
+          eq(auditLogs.entity, "student"),
+          eq(auditLogs.tenantId, student.tenantId),
+          inArray(auditLogs.action, ["create_student", "update_student"])
+        )
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(50);
+    return { history: rows };
   });
 
   // Importação em lote (planilha/colar): só ano e mês de nascimento — nenhum dado de identificação.
@@ -181,22 +290,27 @@ export async function casesRoutes(app: FastifyInstance) {
     if (rows.length > 500) return reply.status(400).send({ error: "Máximo de 500 alunos por importação" });
 
     const errors: { row: number; error: string }[] = [];
-    const valid: { birthYear: number; birthMonth: number }[] = [];
+    const valid: { birthYear: number; birthMonth: number; grade: string | null }[] = [];
     rows.forEach((r, i) => {
-      const extra = Object.keys(r ?? {}).filter((k) => k !== "birthYear" && k !== "birthMonth");
+      const extra = Object.keys(r ?? {}).filter((k) => k !== "birthYear" && k !== "birthMonth" && k !== "grade");
       if (extra.length > 0) {
-        errors.push({ row: i + 1, error: `Campo não permitido: ${extra.join(", ")}. Envie só ano e mês de nascimento.` });
+        errors.push({ row: i + 1, error: `Campo não permitido: ${extra.join(", ")}. Envie só ano e mês de nascimento e, se quiser, a série.` });
+        return;
+      }
+      const g = normalizeGrade((r as { grade?: unknown })?.grade);
+      if (!g.ok) {
+        errors.push({ row: i + 1, error: g.error });
         return;
       }
       const b = validateBirth(r ?? {});
       if (!b.ok) errors.push({ row: i + 1, error: b.error });
       else if (!validatePilotAge(b.birthYear, b.birthMonth).ok) errors.push({ row: i + 1, error: "Fora da faixa do piloto (6 anos a 9 anos e 11 meses)." });
-      else valid.push({ birthYear: b.birthYear, birthMonth: b.birthMonth });
+      else valid.push({ birthYear: b.birthYear, birthMonth: b.birthMonth, grade: g.grade });
     });
     if (errors.length > 0) return reply.status(400).send({ error: "Planilha com erros; nada foi importado", errors: errors.slice(0, 20) });
 
     const created = [];
-    for (const v of valid) created.push(await insertStudent(school, v.birthYear, v.birthMonth));
+    for (const v of valid) created.push(await insertStudent(school, v.birthYear, v.birthMonth, v.grade));
     await recordAudit(
       {
         tenantId: actor.tenantId,
@@ -275,6 +389,7 @@ export async function casesRoutes(app: FastifyInstance) {
       studentCode: student.studentCode,
       birthYear: student.birthYear,
       birthMonth: student.birthMonth,
+      grade: student.grade ?? null,
       schoolName: school?.name ?? null,
     });
 
@@ -347,6 +462,7 @@ export async function casesRoutes(app: FastifyInstance) {
         studentCode: students.studentCode,
         birthYear: students.birthYear,
         birthMonth: students.birthMonth,
+        grade: students.grade,
         schoolName: schools.name,
         assignedToName: users.name,
         assignedToRole: users.role,
@@ -556,45 +672,67 @@ export async function casesRoutes(app: FastifyInstance) {
       .where(and(...whereConditions))
       .limit(1);
 
-    // Sequência obrigatória A → B → C → D → E → F → G (opcional) → H → I: o servidor confere, não só a tela.
+    // Formulário único A→I: campos em branco são permitidos (regra da Dra. Ana Cecília), mas o RE precisa ver a lista
+    // do que falta e confirmar. O servidor confere, não só a tela.
+    const confirmou = z.object({ confirmarLacunas: z.boolean().optional() }).safeParse(request.body ?? {});
+    const confirmarLacunas = confirmou.success && confirmou.data.confirmarLacunas === true;
     const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
-    if (!jornada.situacao.podeEnviar) {
+    const lacunas = jornada.situacao.lacunas;
+    if (lacunas.length > 0 && !confirmarLacunas) {
       return reply.status(422).send({
-        error: "Não é possível enviar: faltam formulários da jornada do RE (A a I).",
-        pendencias: jornada.situacao.pendencias,
+        code: "LACUNAS",
+        error: `Faltam ${lacunas.length} campo(s) sem resposta. Revise a lista ou confirme o envio assim mesmo.`,
+        total: lacunas.length,
+        lacunas,
       });
     }
 
-    if (!existing) return reply.status(404).send({ error: "Nenhuma avaliação em rascunho para enviar" });
-    if (existing.status !== "rascunho" && existing.status !== "devolvido") {
+    if (existing && existing.status !== "rascunho" && existing.status !== "devolvido") {
       return reply.status(409).send({ error: "Avaliação já enviada" });
     }
 
-
-    const dataError = validarPayloadFogap(existing.payload);
+    // Idade, grupo e série vêm do cadastro do aluno (recalculados no envio, caso o cadastro tenha sido corrigido).
+    const fogapPayload = montarPayloadFogap({ student: visible.student, atual: existing?.payload });
+    const dataError = validarPayloadFogap(fogapPayload);
     if (dataError) return reply.status(422).send({ error: dataError });
 
-    // Valida prontoParaRevisao — todos os itens do grupo devem estar respondidos
-    const { pronto, pendencias } = prontoParaRevisao(existing.payload as FogapPayload);
+    const { pronto, pendencias } = prontoParaRevisao(fogapPayload);
     if (!pronto) {
       return reply.status(422).send({
-        error: "Não é possível enviar: informe a idade da criança e confirme que ela está na faixa do piloto.",
+        error: "Não é possível enviar: confira a data de nascimento do aluno — a idade precisa estar na faixa do piloto (6 a 9 anos e 11 meses).",
         pendencias,
       });
     }
 
-    let submitted: typeof existing;
+    let submitted!: typeof reAssessments.$inferSelect;
 
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
 
-      const [updated] = await txDb
-        .update(reAssessments)
-        .set({ status: "enviado", submittedAt: new Date(), submittedBy: actor.id, updatedAt: new Date() })
-        .where(eq(reAssessments.id, existing.id))
-        .returning();
-
-      submitted = updated;
+      if (existing) {
+        const [updated] = await txDb
+          .update(reAssessments)
+          .set({ payload: fogapPayload, status: "enviado", submittedAt: new Date(), submittedBy: actor.id, updatedAt: new Date() })
+          .where(eq(reAssessments.id, existing.id))
+          .returning();
+        submitted = updated;
+      } else {
+        const [created] = await txDb
+          .insert(reAssessments)
+          .values({
+            tenantId: visible.caseItem.tenantId,
+            caseId,
+            formCode: FOGAP_FORM_CODE,
+            formVersion: FOGAP_VERSION,
+            status: "enviado",
+            payload: fogapPayload,
+            createdBy: actor.id,
+            submittedAt: new Date(),
+            submittedBy: actor.id,
+          })
+          .returning();
+        submitted = created;
+      }
 
       // Os demais formulários da jornada (A a G e o estado da jornada) travam junto com o Sumário.
       await txDb
@@ -614,7 +752,7 @@ export async function casesRoutes(app: FastifyInstance) {
     });
 
     // Gera sumário estruturado para o próximo profissional (Médico e Núcleo Assistencial)
-    const payload = existing.payload as FogapPayload;
+    const payload = fogapPayload;
     const studentCode = visible.student.studentCode;
     const sumario = payload.secao_sumario ?? {};
     const diffs = Array.isArray(sumario.dificuldades_persistentes) && sumario.dificuldades_persistentes.length > 0
@@ -628,14 +766,15 @@ export async function casesRoutes(app: FastifyInstance) {
       ...FOGAP_DESTINOS.filter((d) => f1.encaminhado?.[d.key]).map((d) => `${d.label} (${f1.encaminhado![d.key]})`),
       ...(f1.encaminhado?.outro_nome?.trim() ? [`${f1.encaminhado.outro_nome.trim()}${f1.encaminhado.outro ? ` (${f1.encaminhado.outro})` : ""}`] : []),
     ];
+    const [escolaDoCaso] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, visible.student.schoolId)).limit(1);
     const caseSummary = `[Sumário do Caso pelo Responsável Escolar (RE)]
-Aluno: ${studentCode} | Grupo FOGAP: ${payload.grupo ?? "Piloto"}${f1.serie?.trim() ? ` | Série: ${f1.serie.trim()}` : ""}
+Aluno: ${studentCode} | Nascimento: ${String(visible.student.birthMonth ?? "").padStart(2, "0")}/${visible.student.birthYear ?? "—"} | Série: ${f1.serie?.trim() || "não informada"} | Escola: ${escolaDoCaso?.name ?? "—"} | Grupo FOGAP: ${payload.grupo ?? "Piloto"}
 Queixa do professor: ${f1.queixa_professor?.trim() || "não informada"}
 Hipótese do RE (registro do profissional): ${f1.hipotese_espectro?.trim() || "não informada"}
 Dificuldades persistentes: ${diffs}
 Encaminhado a: ${destinos.length ? destinos.join("; ") : "sem destino registrado"}
 Histórico de intervenção escolar: ${conduta}
-Jornada do RE: formulários A a F concluídos; G (SNAP-IV) ${jornada.situacao.passos.find((p) => p.id === "g")?.estado === "pulado" ? "não aplicado (opcional)" : "concluído"}; H (ATA) ${jornada.situacao.passos.find((p) => p.id === "h")?.estado === "aguardando_responsavel" ? "aguardando o responsável" : "concluído"}; I (Sumário) concluído.
+Jornada do RE: ${lacunas.length === 0 ? "todos os campos respondidos" : `${lacunas.length} campo(s) em branco, enviados com confirmação do RE`}; G (SNAP-IV) ${jornada.situacao.passos.find((p) => p.id === "g")?.estado === "pulado" ? "não aplicado (opcional)" : "aplicado ou em branco"}; H (ATA) ${jornada.situacao.passos.find((p) => p.id === "h")?.estado === "aguardando_responsavel" ? "aguardando o responsável" : "registrada"}.
 Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação diagnóstica pelo Médico (MD) e acompanhamento sociofamiliar pelo Assistente Social (AS).`;
 
 
@@ -654,20 +793,22 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
           studentCode,
           summary: caseSummary,
           grupo: payload.grupo,
+          lacunas: lacunas.length,
+          confirmouLacunas: lacunas.length > 0 ? confirmarLacunas : false,
         },
       },
       request
     );
 
     // Notifica RE que enviou (transitória) + médico do caso (persistente)
-    const eventBase = `protocolo.enviado:${existing.id}`;
+    const eventBase = `protocolo.enviado:${submitted.id}`;
     await notificar({
       tenantId: targetTenantId,
       eventId: `${eventBase}:re`,
       eventType: "protocolo.enviado",
       recipientId: actor.id,
       caseId,
-      instrument: existing.formCode,
+      instrument: submitted.formCode,
       studentCode,
       transient: true,
     });
@@ -684,7 +825,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         eventType: "protocolo.enviado",
         recipientId: medico.id,
         caseId,
-        instrument: existing.formCode,
+        instrument: submitted.formCode,
         studentCode,
         transient: false,
       });
@@ -1085,6 +1226,8 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.formCode, FOGAP_FORM_CODE)))
       .limit(1);
 
+    const [escolaConsolidado] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, visible.student.schoolId)).limit(1);
+
     // Formulários A a G da jornada do RE (somente leitura para o médico)
     const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
     const reJourney = {
@@ -1126,7 +1269,13 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
     return {
       case: visible.caseItem,
-      student: { studentCode: visible.student.studentCode, birthYear: visible.student.birthYear },
+      student: {
+        studentCode: visible.student.studentCode,
+        birthYear: visible.student.birthYear,
+        birthMonth: visible.student.birthMonth,
+        grade: visible.student.grade ?? null,
+        schoolName: escolaConsolidado?.name ?? null,
+      },
       reAssessment: assessment ?? null,
       reJourney,
       sections,

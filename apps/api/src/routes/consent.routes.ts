@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
-import { consentTerms, consentAcceptances } from "@periscopio/shared";
+import { consentTerms, consentAcceptances, consentAcceptSchema } from "@periscopio/shared";
 import { requireActor, requireCapability } from "../security/actor";
 import { recordAudit } from "../services/audit.service";
 
@@ -172,6 +172,20 @@ export async function consentRoutes(app: FastifyInstance) {
         reply.status(400);
         return { error: "Campos obrigatórios: termId, signerName e signerRole." };
       }
+
+      // Nome, parentesco e CPF (opcional, mas validado pelos dígitos verificadores) com zod.
+      const parsed = consentAcceptSchema.safeParse({
+        signerName: body.signerName,
+        signerRole: body.signerRole,
+        signerDocument: body.signerDocument,
+      });
+      if (!parsed.success) {
+        reply.status(400);
+        return { error: parsed.error.issues[0]?.message ?? "Dados do signatário inválidos." };
+      }
+      body.signerName = parsed.data.signerName;
+      body.signerRole = parsed.data.signerRole;
+      body.signerDocument = parsed.data.signerDocument;
 
       const [term] = await db.select().from(consentTerms).where(eq(consentTerms.id, body.termId)).limit(1);
       if (!term) {

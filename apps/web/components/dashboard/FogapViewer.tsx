@@ -16,11 +16,12 @@ interface FogapViewerProps {
   studentCode?: string | null;
   birthYear?: number | null;
   birthMonth?: number | null;
+  grade?: string | null;
   schoolName?: string | null;
   professionalName?: string | null;
 }
 
-export function FogapViewer({ payload, status, submittedAt, studentCode, birthYear, birthMonth, schoolName, professionalName }: FogapViewerProps) {
+export function FogapViewer({ payload, status, submittedAt, studentCode, birthYear, birthMonth, grade, schoolName, professionalName }: FogapViewerProps) {
   if (!payload || typeof payload !== "object") {
     return (
       <div className="p-4 rounded-xl border border-dashed border-slate-300 text-slate-500 text-sm">
@@ -49,6 +50,7 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
         studentCode={studentCode}
         birthYear={birthYear}
         birthMonth={birthMonth}
+        grade={grade}
         schoolName={schoolName}
         payload={payload}
         professionalName={professionalName}

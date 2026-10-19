@@ -7,6 +7,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from bi_rag.planner import make_plan
+from bi_rag.observacoes import draft as draft_observacoes
 from bi_rag.tea import summarize as summarize_tea
 
 app = FastAPI(title="Periscópio BI — assistente", docs_url=None, redoc_url=None)
@@ -46,3 +47,19 @@ def summarize_tea_route(req: TeaRequest, x_service_token: str = Header(default="
         raise HTTPException(status_code=413, detail="resumo grande demais")
     out = summarize_tea(req.digest)
     return {"summary": out, "source": "llm" if out else "disabled"}
+
+
+class ObservacoesRequest(BaseModel):
+    """Rótulos e respostas já sem identificador, montados pela API Node a partir do formulário em edição."""
+    payload: dict
+
+
+@app.post("/draft-observations")
+def draft_observations_route(req: ObservacoesRequest, x_service_token: str = Header(default="")):
+    expected = os.environ.get("BI_RAG_TOKEN", "")
+    if not expected or not hmac.compare_digest(x_service_token, expected):
+        raise HTTPException(status_code=401, detail="não autorizado")
+    if len(str(req.payload)) > 40_000:
+        raise HTTPException(status_code=413, detail="conteúdo grande demais")
+    out = draft_observacoes(req.payload)
+    return {"draft": out, "source": "llm" if out else "disabled"}

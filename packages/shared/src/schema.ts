@@ -92,7 +92,9 @@ export const students = pgTable("students", {
   birthYear: integer("birth_year"),
   birthMonth: integer("birth_month"), // 1–12; null = não informado
   ageBracket: varchar("age_bracket", { length: 20 }), // ex: "04-06", "07-10"
+  grade: varchar("grade", { length: 40 }), // série/ano escolar (dado operacional, não identifica a criança)
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 /**
@@ -702,6 +704,52 @@ export const symptomMeasurements = pgTable("symptom_measurements", {
   itemsTotal: integer("items_total").notNull(),
   recordedBy: uuid("recorded_by").notNull().references(() => users.id),
   recordedRole: varchar("recorded_role", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Tempo ativo de preenchimento por formulário do RE (A a I). Só segundos: nenhum conteúdo clínico. */
+export const reStepTimings = pgTable(
+  "re_step_timings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    schoolId: uuid("school_id").notNull().references(() => schools.id),
+    caseId: uuid("case_id").notNull().references(() => cases.id),
+    step: varchar("step", { length: 10 }).notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    userRole: varchar("user_role", { length: 40 }).notNull(),
+    activeSeconds: integer("active_seconds").notNull().default(0),
+    sessions: integer("sessions").notNull().default(1),
+    firstAt: timestamp("first_at", { withTimezone: true }).defaultNow().notNull(),
+    lastAt: timestamp("last_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ caseStepUser: uniqueIndex("re_step_timings_case_step_user_uq").on(t.caseId, t.step, t.userId) })
+);
+
+/** Tempo de referência (processo em papel) por formulário, informado pela gestão. Base do "tempo ganho". */
+export const reTimeBaselines = pgTable(
+  "re_time_baselines",
+  {
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    step: varchar("step", { length: 10 }).notNull(),
+    baselineMinutes: integer("baseline_minutes").notNull(),
+    note: text("note"),
+    updatedBy: uuid("updated_by").references(() => users.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.tenantId, t.step] }) })
+);
+
+/** Uso de etapa opcional (SNAP-IV "Não vou aplicar"). Somente inserção: o banco bloqueia UPDATE e DELETE. */
+export const reOptionalStepUsage = pgTable("re_optional_step_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  schoolId: uuid("school_id").notNull().references(() => schools.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  step: varchar("step", { length: 10 }).notNull(),
+  action: varchar("action", { length: 20 }).notNull(), // pulado | retomado
+  userId: uuid("user_id").notNull().references(() => users.id),
+  userRole: varchar("user_role", { length: 40 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

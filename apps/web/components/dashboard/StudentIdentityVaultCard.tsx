@@ -8,9 +8,11 @@ import { Modal } from "@/components/ui/Modal";
 interface StudentIdentityVaultCardProps {
   studentId?: string;
   studentCode?: string;
+  /** Incrementa para abrir o pedido de acesso ao nome (usado pelo botão "Ver nome" do cabeçalho do aluno). */
+  abrirSinal?: number;
 }
 
-export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: StudentIdentityVaultCardProps) {
+export function StudentIdentityVaultCard({ studentId = "", studentCode = "", abrirSinal = 0 }: StudentIdentityVaultCardProps) {
   const [revealedData, setRevealedData] = useState<{
     fullName: string;
     document?: string | null;
@@ -48,6 +50,13 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: S
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
+
+  useEffect(() => {
+    if (abrirSinal > 0) {
+      setErrorMsg(null);
+      setModalOpen(true);
+    }
+  }, [abrirSinal]);
 
   // Campos para cadastro inicial
   const [newFullName, setNewFullName] = useState("");
@@ -121,8 +130,8 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: S
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
+    <div id="cofre-identidade" className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 h-full scroll-mt-24">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="p-2 bg-slate-100 text-slate-700 rounded-xl border border-slate-200">
             <Lock className="w-5 h-5" />
@@ -187,19 +196,19 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "" }: S
             <ShieldCheck className="w-4 h-4 text-purple-700" />
             Dados Pessoais Revelados sob Auditoria Clínica:
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-            <div>
-              <span className="text-slate-500 text-[11px] uppercase font-bold">Nome Completo Civil</span>
-              <p className="font-semibold text-black text-sm">{revealedData.fullName}</p>
-            </div>
-            <div>
-              <span className="text-slate-500 text-[11px] uppercase font-bold">Documento / Certidão</span>
-              <p className="font-semibold text-black text-sm">{revealedData.document || "Não cadastrado"}</p>
-            </div>
-            <div>
-              <span className="text-slate-500 text-[11px] uppercase font-bold">Contato Responsável</span>
-              <p className="font-semibold text-black text-sm">{revealedData.contact || "Não cadastrado"}</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 items-stretch">
+            {(
+              [
+                ["Nome Completo Civil", revealedData.fullName],
+                ["Documento / Certidão", revealedData.document || "Não cadastrado"],
+                ["Contato Responsável", revealedData.contact || "Não cadastrado"],
+              ] as const
+            ).map(([rotulo, valor]) => (
+              <div key={rotulo} className="flex min-h-[88px] flex-col rounded-xl border border-purple-200 bg-white p-3" data-testid="cofre-caixa">
+                <span className="text-slate-500 text-[11px] uppercase font-bold">{rotulo}</span>
+                <p className="mt-1 break-words font-semibold text-black text-sm">{valor}</p>
+              </div>
+            ))}
           </div>
         </div>
       ) : (

@@ -37,6 +37,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Menu retrátil no desktop: libera largura para os formulários. Lembrado neste navegador.
+  const [collapsed, setCollapsed] = useState(false);
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
   const { me, has, hasAny, ready } = useCapabilities();
   const userRole = me?.role ?? null;
@@ -53,6 +55,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setCurrentSlug(segments[0]);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("periscopio.menu.recolhido") === "1") setCollapsed(true);
+    } catch {
+      /* sem armazenamento: segue expandido */
+    }
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem("periscopio.menu.recolhido", next ? "1" : "0");
+      } catch {
+        /* ignorado */
+      }
+      return next;
+    });
+  };
 
   // Handle ESC key press to close mobile menu
   useEffect(() => {
@@ -181,21 +203,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside
         className={`
           fixed md:static inset-y-0 left-0 z-50
-          w-72 max-w-[85vw] md:max-w-none md:w-72 bg-white border-r border-[#E1E9ED]
+          w-72 max-w-[85vw] md:max-w-none ${collapsed ? "md:w-[68px]" : "md:w-72"} bg-white border-r border-[#E1E9ED]
           flex flex-col justify-between shadow-2xl md:shadow-sm
-          transform transition-transform duration-300 ease-in-out
+          transform transition-all duration-300 ease-in-out md:overflow-hidden
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
         <div className="flex flex-col h-full overflow-y-auto">
           {/* Logo no Canto Superior + Botão Fechar no Mobile */}
-          <div className="p-5 border-b border-[#E1E9ED]">
+          <div className={`p-5 border-b border-[#E1E9ED] ${collapsed ? "md:p-3" : ""}`}>
             <div className="flex items-center justify-between">
-              <Link href="/" aria-label="Periscópio — início" className="block">
+              <Link href="/" aria-label="Periscópio — início" className={`block ${collapsed ? "md:mx-auto" : ""}`}>
                 <img
                   src="/equipe/logo.webp"
                   alt="Logo do Periscópio Saúde"
-                  className="h-10 w-auto object-contain hover:opacity-90 transition-opacity"
+                  className={`h-10 object-contain hover:opacity-90 transition-opacity ${collapsed ? "md:w-9 md:object-left md:h-9" : "w-auto"}`}
                 />
               </Link>
               <button
@@ -207,7 +229,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className={`mt-3 flex items-center justify-between ${collapsed ? "md:hidden" : ""}`}>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-black bg-[#682880]/10 px-2.5 py-1 rounded-full border border-[#682880]/20">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 Protocolo NEMT Escolar
@@ -215,7 +237,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* School / Tenant Switcher Info */}
-            <div className="mt-3 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] flex items-center justify-between">
+            <div className={`mt-3 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] flex items-center justify-between ${collapsed ? "md:hidden" : ""}`}>
               <div className="flex items-center gap-2 overflow-hidden">
                 <School className="w-4 h-4 text-black shrink-0" />
                 <span className="text-xs font-bold text-black truncate">
@@ -226,10 +248,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 flex-1 space-y-6">
+          <nav className={`p-4 flex-1 space-y-6 ${collapsed ? "md:p-2" : ""}`}>
             {navItems.map((group) => (
               <div key={group.group}>
-                <h3 className="px-3 text-[11px] font-extrabold uppercase tracking-wider text-neutral-800 mb-2">
+                <h3 className={`px-3 text-[11px] font-extrabold uppercase tracking-wider text-neutral-800 mb-2 ${collapsed ? "md:hidden" : ""}`}>
                   {group.group}
                 </h3>
                 <div className="space-y-1">
@@ -241,7 +263,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
+                        title={collapsed ? item.label : undefined}
+                        aria-label={item.label}
                         className={`
+                          ${collapsed ? "md:justify-center md:px-2" : ""}
                           flex items-center justify-between px-3.5 py-3 md:py-2.5 rounded-xl text-sm font-semibold transition-all group
                           ${
                             active
@@ -256,12 +281,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                               active ? "text-black" : "text-neutral-800 group-hover:text-black"
                             }`}
                           />
-                          <span>{item.label}</span>
+                          <span className={collapsed ? "md:hidden" : ""}>{item.label}</span>
                         </div>
 
                         {item.badge && (
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            className={`${collapsed ? "md:hidden" : ""} text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                               active
                                 ? "bg-white/20 text-black border-white/30"
                                 : "bg-[#F0F9FC] text-neutral-800 border-[#E1E9ED]"
@@ -278,7 +303,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             ))}
 
             {/* Quick Access Card */}
-            <div className="p-3.5 rounded-2xl bg-[#F0F9FC] border border-[#E1E9ED]">
+            <div className={`p-3.5 rounded-2xl bg-[#F0F9FC] border border-[#E1E9ED] ${collapsed ? "md:hidden" : ""}`}>
               <div className="flex items-center gap-2 text-xs font-bold text-black">
                 <Sparkles className="w-4 h-4 text-black" />
                 <span>Janela Terapêutica</span>
@@ -290,13 +315,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
 
           {/* User Profile & Footer */}
-          <div className="p-4 border-t border-[#E1E9ED] bg-[#FAFCFE]">
-            <div className="flex items-center justify-between">
+          <div className={`p-4 border-t border-[#E1E9ED] bg-[#FAFCFE] ${collapsed ? "md:p-2" : ""}`}>
+            <div className={`flex items-center justify-between ${collapsed ? "md:flex-col md:gap-2" : ""}`}>
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="w-9 h-9 rounded-full bg-roxo-100 border border-roxo text-black font-bold flex items-center justify-center shrink-0 text-sm shadow-sm">
                   {session?.user?.name ? session.user.name[0].toUpperCase() : "P"}
                 </div>
-                <div className="overflow-hidden">
+                <div className={`overflow-hidden ${collapsed ? "md:hidden" : ""}`}>
                   <div className="text-xs font-bold text-black truncate">
                     {session?.user?.name || "Profissional Periscópio"}
                   </div>
@@ -322,6 +347,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Utility Header (Desktop) */}
         <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/90 backdrop-blur-md border-b border-[#E1E9ED] sticky top-0 z-30 shadow-sm">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            data-testid="menu-retratil"
+            className="mr-3 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] text-black hover:bg-[#E1E9ED] transition"
+            aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expandir menu" : "Recolher menu (mais espaço na tela)"}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-3 w-96 bg-[#F6F9FB] border border-[#E1E9ED] rounded-xl px-3 py-2 text-xs text-black">
             <Search className="w-4 h-4 text-neutral-800" />
             <input
@@ -359,7 +395,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Page Content */}
-        <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <div className={`flex-1 p-4 md:p-8 mx-auto w-full ${collapsed ? "max-w-[1600px]" : "max-w-7xl"}`}>
           {isBlocked ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto text-center shadow-sm space-y-4 my-12 animate-fadeIn">
               <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto border border-amber-200">

@@ -147,6 +147,28 @@ describe("Privilégios por ator (E2E)", { skip }, () => {
     assert.equal((await call("GET", "/api/management/re-summaries", "dirSemEscola")).status, 403);
   });
 
+  test("observabilidade do RE: gestor vê agregados; tempo de referência só quem pode editar; fora do município 404", async () => {
+    const o = await call("GET", "/api/management/re-observability", "municipal");
+    assert.equal(o.status, 200, JSON.stringify(o.body));
+    assert.equal(o.body.smallCell, 5);
+    assert.equal(o.body.tempo.passos.length, 9);
+    assert.equal(o.body.tempo.passos.every((p: any) => p.medianaSegundos.value === null), true, "poucos casos: tudo oculto");
+    assert.equal(o.body.podeEditarBaselines, true);
+    assert.equal(JSON.stringify(o.body).includes("studentCode"), false);
+
+    assert.equal((await call("GET", `/api/management/re-observability?schoolId=${schoolB}`, "municipal")).status, 404);
+    const d = await call("GET", "/api/management/re-observability", "dirA");
+    assert.equal(d.status, 200);
+    assert.equal(d.body.podeEditarBaselines, false);
+    assert.equal((await call("GET", "/api/management/re-observability", "dirSemEscola")).status, 403);
+
+    assert.equal((await call("PUT", "/api/management/re-time-baselines", "dirA", { baselines: [{ step: "a", baselineMinutes: 20 }] })).status, 403);
+    assert.equal((await call("PUT", "/api/management/re-time-baselines", "municipal", { baselines: [{ step: "a", baselineMinutes: 20 }] })).status, 200);
+    assert.equal((await call("PUT", "/api/management/re-time-baselines", "municipal", { baselines: [{ step: "z", baselineMinutes: 20 }] })).status, 400);
+    const depois = await call("GET", "/api/management/re-observability", "municipal");
+    assert.equal(depois.body.tempo.passos.find((p: any) => p.step === "a").baselineMinutos, 20);
+  });
+
   test("as visões da gestão não expõem respostas item a item, texto interno nem identificação", async () => {
     for (const path of ["/api/management/re-summaries", "/api/management/nucleo-referrals"]) {
       const r = await call("GET", path, "municipal");

@@ -89,6 +89,7 @@ export interface CaseItem {
   studentCode: string;
   birthYear: number | null;
   birthMonth: number | null; // 1–12
+  grade?: string | null;
   schoolName?: string | null;
   assignedToName?: string | null;
   assignedToRole?: string | null;
@@ -140,4 +141,5 @@ export interface Student {
   studentCode: string;
   birthYear: number | null;
   birthMonth: number | null; // 1–12
+  grade?: string | null;
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { api, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ObservabilidadeRe } from "@/components/gestao/ObservabilidadeRe";
 
 interface School { id: string; name: string }
 interface Summary {
@@ -25,7 +26,7 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-
 
 export default function GestaoPage() {
   const [me, setMe] = useState<Me | null>(null);
-  const [tab, setTab] = useState<"sumarios" | "lista">("sumarios");
+  const [tab, setTab] = useState<"sumarios" | "lista" | "observabilidade">("sumarios");
   const [summaries, setSummaries] = useState<Summary[] | null>(null);
   const [referrals, setReferrals] = useState<Referral[] | null>(null);
   const [schoolId, setSchoolId] = useState("");
@@ -73,7 +74,7 @@ export default function GestaoPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Visões" className="inline-flex rounded-xl border border-linha bg-white p-1">
-          {([["sumarios", "Sumário do RE", summaries?.length], ["lista", "Encaminhados ao núcleo", referrals?.length]] as const).map(([id, label, n]) => (
+          {([["sumarios", "Sumário do RE", summaries?.length], ["lista", "Encaminhados ao núcleo", referrals?.length], ["observabilidade", "Tempo e andamento", undefined]] as const).map(([id, label, n]) => (
             <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === id ? "bg-roxo-100 border border-roxo" : "border border-transparent"}`}>
               {label}{typeof n === "number" ? ` (${n})` : ""}
@@ -91,6 +92,8 @@ export default function GestaoPage() {
           </>
         )}
       </div>
+
+      {tab === "observabilidade" && <ObservabilidadeRe schoolId={isMunicipal ? schoolId : ""} />}
 
       {tab === "sumarios" && (
         <section aria-label="Sumário do RE" className="space-y-3">
