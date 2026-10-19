@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { auditLogs, cases, reAssessments, schools, students } from "@periscopio/shared";
+import { auditLogs, cases, FOGAP_FORM_CODE, reAssessments, schools, students } from "@periscopio/shared";
 import { db } from "../db/client";
 import { requireCapability, type Actor } from "../security/actor";
 import { canonicalRole } from "../security/capabilities";
@@ -59,7 +59,7 @@ export async function managementRoutes(app: FastifyInstance) {
     const scope = await resolveScope(actor, (request.query as { schoolId?: string }).schoolId);
     if (!scope.ok) return reply.status(scope.status).send({ error: scope.error });
 
-    const conditions = [eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.status, "enviado")];
+    const conditions = [eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.status, "enviado"), eq(reAssessments.formCode, FOGAP_FORM_CODE)];
     if (scope.schoolId) conditions.push(eq(students.schoolId, scope.schoolId));
 
     const rows = await db

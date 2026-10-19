@@ -33,7 +33,10 @@ import {
   SNAP4_FORM_CODE,
   SNAP4_VERSION,
   validarPayloadSnap4,
+  RE_FORMS,
+  RE_JORNADA_FORM_CODE,
 } from "@periscopio/shared";
+import { carregarJornada } from "../services/re-journey.service";
 import {
   allSectionsDone,
   applyTransitionInTx,
@@ -73,7 +76,7 @@ async function studentVisibleTo(actor: Actor, studentId: string) {
   return student;
 }
 
-async function caseVisibleTo(actor: Actor, caseId: string) {
+export async function caseVisibleTo(actor: Actor, caseId: string) {
   const isSuper =
     actor.role === "admin_platform" ||
     actor.role === "adm_master" ||
@@ -378,7 +381,7 @@ export async function casesRoutes(app: FastifyInstance) {
       eq(reAssessments.caseId, caseId),
       eq(reAssessments.tenantId, actor.tenantId),
     ];
-    if (formCode) conditions.push(eq(reAssessments.formCode, formCode));
+    conditions.push(eq(reAssessments.formCode, formCode || FOGAP_FORM_CODE));
 
     const [assessment] = await db
       .select()
@@ -553,6 +556,15 @@ export async function casesRoutes(app: FastifyInstance) {
       .where(and(...whereConditions))
       .limit(1);
 
+    // Sequência obrigatória A → B → C → D → E → F → G (opcional) → H → I: o servidor confere, não só a tela.
+    const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
+    if (!jornada.situacao.podeEnviar) {
+      return reply.status(422).send({
+        error: "Não é possível enviar: faltam formulários da jornada do RE (A a I).",
+        pendencias: jornada.situacao.pendencias,
+      });
+    }
+
     if (!existing) return reply.status(404).send({ error: "Nenhuma avaliação em rascunho para enviar" });
     if (existing.status !== "rascunho" && existing.status !== "devolvido") {
       return reply.status(409).send({ error: "Avaliação já enviada" });
@@ -584,6 +596,19 @@ export async function casesRoutes(app: FastifyInstance) {
 
       submitted = updated;
 
+      // Os demais formulários da jornada (A a G e o estado da jornada) travam junto com o Sumário.
+      await txDb
+        .update(reAssessments)
+        .set({ status: "enviado", submittedAt: new Date(), submittedBy: actor.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(reAssessments.caseId, caseId),
+            eq(reAssessments.tenantId, visible.caseItem.tenantId),
+            inArray(reAssessments.formCode, [RE_JORNADA_FORM_CODE, SNAP4_FORM_CODE, ...Object.values(RE_FORMS).map((f) => f.code)]),
+            inArray(reAssessments.status, ["rascunho", "devolvido"])
+          )
+        );
+
       await applyTransitionInTx(txDb, caseId, "enviado_re", actor, "RE enviou avaliação FOGAP");
       await applyTransitionInTx(txDb, caseId, "revisao_medica", actor, "Caso encaminhado para revisão médica");
     });
@@ -610,6 +635,7 @@ Hipótese do RE (registro do profissional): ${f1.hipotese_espectro?.trim() || "n
 Dificuldades persistentes: ${diffs}
 Encaminhado a: ${destinos.length ? destinos.join("; ") : "sem destino registrado"}
 Histórico de intervenção escolar: ${conduta}
+Jornada do RE: formulários A a F concluídos; G (SNAP-IV) ${jornada.situacao.passos.find((p) => p.id === "g")?.estado === "pulado" ? "não aplicado (opcional)" : "concluído"}; H (ATA) ${jornada.situacao.passos.find((p) => p.id === "h")?.estado === "aguardando_responsavel" ? "aguardando o responsável" : "concluído"}; I (Sumário) concluído.
 Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação diagnóstica pelo Médico (MD) e acompanhamento sociofamiliar pelo Assistente Social (AS).`;
 
 
@@ -891,7 +917,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     const [assessment] = await db
       .select({ payload: reAssessments.payload, status: reAssessments.status })
       .from(reAssessments)
-      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId)))
+      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.formCode, FOGAP_FORM_CODE)))
       .limit(1);
 
     const [closed] = await db
@@ -1056,8 +1082,22 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     const [assessment] = await db
       .select()
       .from(reAssessments)
-      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId)))
+      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.formCode, FOGAP_FORM_CODE)))
       .limit(1);
+
+    // Formulários A a G da jornada do RE (somente leitura para o médico)
+    const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
+    const reJourney = {
+      situacao: jornada.situacao,
+      meta: jornada.meta,
+      ata: jornada.ata,
+      forms: Object.fromEntries(
+        (["a", "b", "c", "d", "e", "f", "g"] as const).map((id) => {
+          const r = jornada.linhas[id];
+          return [id, r ? { status: r.status, payload: r.payload, updatedAt: r.updatedAt } : null];
+        })
+      ),
+    };
 
     const sections = await db
       .select({
@@ -1088,6 +1128,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       case: visible.caseItem,
       student: { studentCode: visible.student.studentCode, birthYear: visible.student.birthYear },
       reAssessment: assessment ?? null,
+      reJourney,
       sections,
     };
   });

@@ -15,6 +15,7 @@ import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
+import { ReJourneyLeitura } from "@/components/re/ReJourneyLeitura";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
@@ -428,6 +429,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             schoolName={activeCase.schoolName}
                           />
                         )}
+                        <ReJourneyLeitura caseId={activeCase.id} />
                       </div>
                     }
                     childrenActions={
@@ -481,7 +483,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   <div className="space-y-4">
                     <h3 className="font-semibold text-black flex items-center gap-2">
                       <FileSearch className="h-4 w-4 text-black" />
-                      Avaliação da RE (FOGAP Demo)
+                      Avaliação da RE (formulários A a I)
                     </h3>
                     {reLoading ? (
                       <p className="text-sm text-neutral-800">Carregando avaliação...</p>
@@ -500,6 +502,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         schoolName={activeCase.schoolName}
                       />
                     )}
+                    <ReJourneyLeitura caseId={activeCase.id} />
                   </div>
                 )}
 

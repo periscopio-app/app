@@ -86,7 +86,7 @@ const LICENSE_TEXT: Record<Meta["license"]["status"], string> = {
   atribuicao: "Uso com atribuição dos autores.",
 };
 
-export function TeaScreeningPanel({ caseId }: { caseId: string }) {
+export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onChanged?: () => void }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [data, setData] = useState<CaseTea | null>(null);
   const [active, setActive] = useState<Code | null>(null);
@@ -176,6 +176,7 @@ export function TeaScreeningPanel({ caseId }: { caseId: string }) {
       await api.post(`/api/cases/${caseId}/tea/${active}/submit`, {});
       await load();
       setMsg({ kind: "ok", text: "Formulário enviado e travado." });
+      onChanged?.();
     } catch (e) {
       setMsg({ kind: "erro", text: errText(e) });
     } finally {

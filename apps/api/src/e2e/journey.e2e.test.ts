@@ -66,6 +66,28 @@ describe("jornada clínica (E2E)", { skip }, () => {
     };
   }
 
+  /** Percorre a jornada A→I pela API (A–F preenchidos, G pulado, H aguardando o responsável, I com sumário). */
+  async function completarJornada(who: string, cid: string) {
+    for (const f of ["a", "b", "c", "d", "e", "f"]) {
+      const put = await call("PUT", `/api/cases/${cid}/re-journey/forms/${f}`, who, { payload: f === "f" ? { data_aplicacao: "2026-10-07" } : { observacoes: "Registro sintético de teste." } });
+      assert.equal(put.status, 200, `salvar ${f}: ${JSON.stringify(put.body)}`);
+      const done = await call("POST", `/api/cases/${cid}/re-journey/steps/${f}/conclude`, who);
+      assert.equal(done.status, 200, `concluir ${f}: ${JSON.stringify(done.body)}`);
+    }
+    const g = await call("POST", `/api/cases/${cid}/re-journey/steps/g/skip`, who, { valor: true });
+    assert.equal(g.status, 200, JSON.stringify(g.body));
+    const h = await call("POST", `/api/cases/${cid}/re-journey/steps/h/await`, who, { valor: true });
+    assert.equal(h.status, 200, JSON.stringify(h.body));
+    const sum = await call("PUT", `/api/cases/${cid}/re-journey/sumario`, who, {
+      secao_sumario: { dificuldades_persistentes: [], conduta: "nao", qual: "", tempo: "", resultado: "" },
+      secao_encaminhamento: { observacoes: "Registro sintético de teste.", data: "2026-10-07" },
+    });
+    assert.equal(sum.status, 200, JSON.stringify(sum.body));
+    const i = await call("POST", `/api/cases/${cid}/re-journey/steps/i/conclude`, who);
+    assert.equal(i.status, 200, JSON.stringify(i.body));
+    assert.equal(i.body.situacao.podeEnviar, true);
+  }
+
   before(async () => {
     const { assertSafeTestDatabase, resetTestDatabase } = await import("../testing/test-db");
     assertSafeTestDatabase(url);
@@ -198,6 +220,13 @@ describe("jornada clínica (E2E)", { skip }, () => {
     const up = await call("PUT", `/api/cases/${caseId}/re-assessment`, "re", { payload: draft });
     assert.equal(up.status, 200, JSON.stringify(up.body));
 
+    // Com o FOGAP completo mas sem a jornada A→I, o servidor ainda recusa o envio.
+    const semJornada = await call("POST", `/api/cases/${caseId}/re-assessment/submit`, "re");
+    assert.equal(semJornada.status, 422, JSON.stringify(semJornada.body));
+    assert.ok(semJornada.body.pendencias.some((p: string) => p.includes("Formulário A")));
+
+    await completarJornada("re", caseId);
+
     const sent = await call("POST", `/api/cases/${caseId}/re-assessment/submit`, "re");
     assert.equal(sent.status, 200, JSON.stringify(sent.body));
 
@@ -220,6 +249,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
     const cid = c.body.case.id;
     const created = await call("POST", `/api/cases/${cid}/re-assessment`, "re", { payload: fogapPronto() });
     assert.equal(created.status, 201, JSON.stringify(created.body));
+    await completarJornada("re", cid);
 
     const r = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "adm");
     assert.ok([403, 404, 409].includes(r.status), `esperado erro de regra, veio ${r.status}: ${JSON.stringify(r.body)}`);
@@ -229,6 +259,95 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(after.body.assessment?.status ?? after.body.status, "rascunho", "a transação foi desfeita: o RE ainda pode enviar");
     const ok = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  });
+
+  test("jornada do RE: a sequência A→I é imposta pelo servidor", async () => {
+    const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: 2019, birthMonth: 3 });
+    assert.equal(s.status, 201, JSON.stringify(s.body));
+    const c = await call("POST", "/api/cases", "re", { studentId: s.body.student.id });
+    const cid = c.body.case.id;
+    const base = `/api/cases/${cid}/re-journey`;
+
+    const inicio = await call("GET", base, "re");
+    assert.equal(inicio.status, 200);
+    assert.equal(inicio.body.situacao.atual, "a");
+    assert.equal(inicio.body.situacao.podeEnviar, false);
+    assert.deepEqual(inicio.body.situacao.passos.map((p: any) => p.estado), ["disponivel", "bloqueado", "bloqueado", "bloqueado", "bloqueado", "bloqueado", "bloqueado", "bloqueado", "bloqueado"]);
+
+    // B não abre antes de A estar concluído
+    const bCedo = await call("PUT", `${base}/forms/b`, "re", { payload: {} });
+    assert.equal(bCedo.status, 409, JSON.stringify(bCedo.body));
+    // Concluir sem salvar é recusado
+    const semSalvar = await call("POST", `${base}/steps/a/conclude`, "re");
+    assert.equal(semSalvar.status, 422);
+    // Valores fora do catálogo são recusados; em branco é permitido
+    const ruim = await call("PUT", `${base}/forms/a`, "re", { payload: { gosta_escola: "talvez" } });
+    assert.equal(ruim.status, 400);
+    const desconhecido = await call("PUT", `${base}/forms/a`, "re", { payload: { nome_do_aluno: "x" } });
+    assert.equal(desconhecido.status, 400, "o formulário não aceita campo fora do catálogo (ex.: nome)");
+    const salvo = await call("PUT", `${base}/forms/a`, "re", {
+      payload: { gosta_escola: "as_vezes", pai_trabalha: "sim", pai_trabalha__texto: "comércio", expressao_oral: { vocabulario: { r: "sim" } } },
+    });
+    assert.equal(salvo.status, 200, JSON.stringify(salvo.body));
+    // Em branco não vira "não"
+    assert.equal(salvo.body.form.payload.mae_trabalha, undefined);
+    const a = await call("POST", `${base}/steps/a/conclude`, "re");
+    assert.equal(a.status, 200);
+    assert.equal(a.body.situacao.atual, "b");
+
+    // Outro perfil/município não enxerga nem altera
+    assert.equal((await call("GET", base, "reB")).status, 404);
+    assert.equal((await call("PUT", `${base}/forms/b`, "reB", { payload: {} })).status, 404);
+
+    // G, H e I continuam travados até F
+    assert.equal((await call("POST", `${base}/steps/g/skip`, "re", { valor: true })).status, 409);
+    assert.equal((await call("POST", `${base}/steps/h/await`, "re", { valor: true })).status, 409);
+    const sumCedo = await call("PUT", `${base}/sumario`, "re", { secao_sumario: {} });
+    assert.equal(sumCedo.status, 409);
+
+    // Concluir o resto e enviar
+    for (const f of ["b", "c", "d", "e", "f"]) {
+      assert.equal((await call("PUT", `${base}/forms/${f}`, "re", { payload: {} })).status, 200);
+      assert.equal((await call("POST", `${base}/steps/${f}/conclude`, "re")).status, 200);
+    }
+    // H: sem ATA enviada não conclui; "aguardando o responsável" deixa seguir
+    assert.equal((await call("POST", `${base}/steps/g/skip`, "re", { valor: true })).status, 200);
+    const hSemAta = await call("POST", `${base}/steps/h/conclude`, "re");
+    assert.equal(hSemAta.status, 422);
+    const aguardando = await call("POST", `${base}/steps/h/await`, "re", { valor: true });
+    assert.equal(aguardando.status, 200);
+    assert.equal(aguardando.body.situacao.passos[7].estado, "aguardando_responsavel");
+
+    const naoPode = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(naoPode.status, 422, "sem o Sumário (I) não envia");
+
+    const sum = await call("PUT", `${base}/sumario`, "re", {
+      secao_sumario: { queixa_professor: "Dificuldade para copiar da lousa.", dificuldades_persistentes: ["Aprendizagem"], conduta: "nao", qual: "", tempo: "", resultado: "" },
+    });
+    assert.equal(sum.status, 200, JSON.stringify(sum.body));
+    assert.equal(sum.body.form.payload.grupo, "G3", "grupo vem do ano/mês de nascimento, não é digitado");
+    assert.equal((await call("POST", `${base}/steps/i/conclude`, "re")).status, 200);
+
+    const enviado = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(enviado.status, 200, JSON.stringify(enviado.body));
+    assert.match(enviado.body.summary, /H \(ATA\) aguardando o responsável/);
+
+    // Depois do envio tudo é somente leitura
+    assert.equal((await call("PUT", `${base}/forms/a`, "re", { payload: {} })).status, 409);
+    assert.equal((await call("POST", `${base}/steps/a/conclude`, "re")).status, 409);
+
+    // Médico lê A–G no consolidado e devolve; o RE volta a poder editar e reenviar
+    const cons = await call("GET", `/api/cases/${cid}/consolidated`, "md");
+    assert.equal(cons.status, 200, JSON.stringify(cons.body));
+    assert.equal(cons.body.reJourney.forms.a.payload.gosta_escola, "as_vezes");
+    assert.equal(cons.body.reJourney.forms.g, null, "G foi pulado: nada salvo");
+
+    const dev = await call("POST", `/api/cases/${cid}/return`, "md", { reason: "Completar a entrevista com o aluno." });
+    assert.equal(dev.status, 200, JSON.stringify(dev.body));
+    const edit = await call("PUT", `${base}/forms/a`, "re", { payload: { gosta_escola: "sim" } });
+    assert.equal(edit.status, 200, JSON.stringify(edit.body));
+    const reenvio = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(reenvio.status, 200, JSON.stringify(reenvio.body));
   });
 
   test("RE não delega; médico delega a especialista e a outra especialidade", async () => {

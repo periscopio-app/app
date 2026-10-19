@@ -6,3 +6,4 @@ export * from "./abc-catalog";
 export * from "./validation";
 export * from "./tea-catalog";
 export * from "./tea-scoring";
+export * from "./re-journey-catalog";
