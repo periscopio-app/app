@@ -3,7 +3,8 @@
  *
  * Fonte: "Avaliação e Intervenção do Pedagogo Responsável Escolar (RE) pela observação e avaliação
  * do aluno com dificuldade persistente" (Cap RE ESCOLAR Plataforma 1809), formulários A a I.
- * A sequência é obrigatória: A → B → C → D → E → F → G (opcional) → H → I.
+ * A ordem de apresentação é A → B → C → D → E → F → G (opcional) → H → I, em um formulário único e contínuo
+ * (sem bloqueio entre blocos). Ao enviar, o sistema lista o que ficou em branco e o RE decide se envia assim mesmo.
  *
  * Regras de produto (não mudar sem validação clínica):
  *  - só o que está no PDF; nenhum campo clínico inventado;
@@ -16,6 +17,8 @@
  * `secao_sumario` do FOGAP (`fogap-catalog`). Os formulários A a F são definidos aqui, como dados,
  * e a mesma definição serve ao backend (validação), ao formulário do RE e à leitura do médico.
  */
+
+import { SNAP4_ITENS } from "./snap4-catalog";
 
 export const RE_JORNADA_FORM_CODE = "re_jornada" as const;
 export const RE_JORNADA_VERSION = "1.0.0-rascunho" as const;
@@ -55,6 +58,8 @@ interface CampoBase {
   key: string;
   label: string;
   ajuda?: string;
+  /** Campo que pode ficar em branco sem aparecer na lista de pendências (ex.: observações finais). */
+  opcional?: boolean;
 }
 
 export interface CampoTexto extends CampoBase {
@@ -69,6 +74,15 @@ export interface CampoTextoLongo extends CampoBase {
 export interface CampoUnica extends CampoBase {
   tipo: "unica";
   opcoes: ReOpcao[];
+  /** Mantém escolha única mesmo com 3 ou mais opções (ex.: sexo, faixa de alunos). */
+  exclusiva?: boolean;
+  /** Campo de observação (`<campo>__obs`). Ligado automaticamente com 3 ou mais opções. */
+  comObs?: boolean;
+}
+
+/** Professor(a) entrevistado(a): preenchido automaticamente com o profissional da escola. Payload: `{ id, nome }`. */
+export interface CampoProfessor extends CampoBase {
+  tipo: "professor";
 }
 
 /** Múltipla escolha (valores em array). `outros` abre um campo de texto livre. */
@@ -76,22 +90,29 @@ export interface CampoMultipla extends CampoBase {
   tipo: "multipla";
   opcoes: ReOpcao[];
   outros?: string;
+  /** Campo de observação (`<campo>__obs`). Ligado automaticamente com 3 ou mais opções (exceto quando há "outros"). */
+  comObs?: boolean;
 }
 
 /**
  * Tabela: cada linha recebe uma resposta (e, opcionalmente, observação e/ou um número).
- * Payload: `{ [linha.key]: { r?: string|null, obs?: string, n?: number|null } }`.
+ * Payload: `{ [linha.key]: { r?: string|string[]|null, obs?: string, n?: number|null } }`.
+ * Com 3 ou mais opções a linha aceita várias respostas (array) e ganha campo de observação.
  */
 export interface CampoMatriz extends CampoBase {
   tipo: "matriz";
   linhas: { key: string; label: string }[];
   opcoes: ReOpcao[];
   comObs?: boolean;
+  /** Linha com várias respostas (ligado automaticamente com 3 ou mais opções). */
+  multipla?: boolean;
+  /** Mantém uma resposta por linha mesmo com 3 ou mais opções (classificação do instrumento). */
+  exclusiva?: boolean;
   /** Se informado, cada linha tem um campo numérico (ex.: "Total de acertos"). */
   comNumero?: string;
 }
 
-export type ReCampo = CampoTexto | CampoTextoLongo | CampoUnica | CampoMultipla | CampoMatriz;
+export type ReCampo = CampoTexto | CampoTextoLongo | CampoUnica | CampoMultipla | CampoMatriz | CampoProfessor;
 
 export interface ReSecao {
   id: string;
@@ -132,11 +153,20 @@ const linhas = (...itens: [string, string][]) => itens.map(([key, label]) => ({ 
 const OBS_FINAL: ReSecao = {
   id: "observacoes",
   titulo: "Observações",
-  campos: [tl("observacoes", "Observações")],
+  campos: [{ ...tl("observacoes", "Observações"), opcional: true }],
 };
 
-const SEXO: CampoUnica = u("sexo", "Sexo", [o("f", "Feminino"), o("m", "Masculino"), o("nao_informado", "Prefiro não informar")]);
-const SERIE: CampoTexto = t("serie", "Série / ano escolar", "Ex.: 3º ano");
+const SEXO: CampoUnica = {
+  ...u("sexo", "Sexo", [o("f", "Feminino"), o("m", "Masculino"), o("nao_informado", "Prefiro não informar")]),
+  exclusiva: true,
+};
+/** Série, escola, nascimento e idade vêm do cadastro do aluno (não se digita nos formulários). */
+const PROFESSOR: CampoProfessor = {
+  key: "professor",
+  label: "Professor(a) entrevistado(a)",
+  ajuda: "Preenchido automaticamente com o professor da escola.",
+  tipo: "professor",
+};
 
 // ── Formulário A — Entrevista Inicial com Aluno do Ensino Fundamental I (6–9) ──────────────────
 
@@ -148,7 +178,8 @@ const FORM_A: ReFormDef = {
   tituloCurto: "Entrevista com o aluno",
   dica: "Converse com o aluno e registre o que ele disser, com as palavras dele. Não escreva nomes de pessoas.",
   pendenciasDeValidacao: [
-    "Campo \"Professor\" do cabeçalho omitido (nome de adulto). Confirmar com o responsável clínico/LGPD se deve entrar como texto livre.",
+    "Campo \"Professor\" do cabeçalho do A omitido (nome de adulto). Confirmar com o responsável clínico/LGPD.",
+    "Série e escola não são digitadas: vêm do cadastro do aluno (editável com auditoria).",
     "O PDF numera de novo \"1.\" em Desenvolvimento Global após Aspecto Intelectual; mantida a ordem do documento.",
     "As colunas Não/Sim/Observações aparecem só no início da tabela de Desenvolvimento Global; aplicadas também às demais tabelas (Jogo, Linguagem Matemática, Oral, Escrita, Espaço e Tempo). Confirmar.",
   ],
@@ -156,8 +187,8 @@ const FORM_A: ReFormDef = {
     {
       id: "cabecalho",
       titulo: "Identificação",
-      descricao: "Nome do aluno não é registrado; o sistema usa só o código.",
-      campos: [SEXO, SERIE],
+      descricao: "Aluno, escola, série e nascimento vêm do cadastro. Nome do aluno não é registrado; o sistema usa só o código.",
+      campos: [SEXO],
     },
     {
       id: "entrevista",
@@ -346,17 +377,17 @@ const FORM_B: ReFormDef = {
   tituloCurto: "Entrevista com o professor",
   dica: "Pergunte ao professor e marque o que ele responder. Não escreva o nome do professor nem do aluno.",
   pendenciasDeValidacao: [
-    "Campo \"Professor\" do cabeçalho omitido (nome de adulto). Confirmar com o responsável clínico/LGPD.",
+    "O nome do professor entrevistado vem automaticamente do cadastro de profissionais da escola (decisão de 19/out). Confirmar com o responsável clínico/LGPD que isso pode aparecer no formulário.",
   ],
   secoes: [
-    { id: "cabecalho", titulo: "Identificação", campos: [SEXO, SERIE] },
+    { id: "cabecalho", titulo: "Professor(a)", campos: [PROFESSOR] },
     {
       id: "queixas",
       titulo: "Queixas e desempenho",
       campos: [
         u("queixas_aprendizagem", "Você tem queixas quanto à aprendizagem dele?", [o("nao", "Não"), o("sim", "Sim", "Quais?")]),
         u("desempenho_aula", "Como é o desempenho dele na aula?", [o("otimo", "Ótimo"), o("bom", "Bom"), o("regular", "Regular"), o("ruim", "Ruim")]),
-        u("alunos_turma", "Quantos alunos tem a sua turma?", [o("ate_20", "Até 20"), o("21_30", "21 a 30"), o("31_40", "31 a 40"), o("mais_40", "Mais de 40")]),
+        { ...u("alunos_turma", "Quantos alunos tem a sua turma?", [o("ate_20", "Até 20"), o("21_30", "21 a 30"), o("31_40", "31 a 40"), o("mais_40", "Mais de 40")]), exclusiva: true },
       ],
     },
     {
@@ -588,11 +619,10 @@ const FORM_D: ReFormDef = {
   tituloCurto: "Observação na escola",
   dica: "Marque o que você viu. Se não observou, deixe em branco: em branco não vale como \"não\".",
   pendenciasDeValidacao: [
-    "Campo \"Professor\" do cabeçalho omitido (nome de adulto). Confirmar com o responsável clínico/LGPD.",
+    "Bloco de identificação removido do D (fica só no A). Série, escola e nascimento vêm do cadastro do aluno.",
     "Escrita \"Demostra alegria\" do PDF corrigida para \"Demonstra alegria\".",
   ],
   secoes: [
-    { id: "cabecalho", titulo: "Identificação", campos: [SEXO, SERIE] },
     {
       id: "sala",
       titulo: "1. Aspecto funcional na sala de aula",
@@ -682,14 +712,14 @@ const FORM_F: ReFormDef = {
   dica: "Digite o total de acertos de cada prova e a classificação que o próprio instrumento indica. O sistema não calcula nem classifica.",
   pendenciasDeValidacao: [
     "Direitos de uso e versão do IPPL-R a confirmar antes de produção (instrumento externo). Aqui só se registra o resultado digitado pelo profissional; as provas e o ponto de corte NÃO estão no sistema.",
-    "Campo \"Escola\" é preenchido pelo cadastro; \"Aplicador\" é o RE logado (sem nome na tela).",
+    "Bloco de identificação removido do F (fica só no A). \"Escola\" vem do cadastro; \"Aplicador\" é o RE logado (sem nome na tela).",
     "O PDF traz o quadro \"Risco para problemas de leitura / Sem risco\" e três linhas de classificação geral; transcritas como escolhas simples. Confirmar a regra de preenchimento com o responsável clínico.",
   ],
   secoes: [
     {
-      id: "cabecalho",
-      titulo: "Identificação",
-      campos: [SEXO, SERIE, t("data_aplicacao", "Data da aplicação", "Formato AAAA-MM-DD")],
+      id: "aplicacao",
+      titulo: "Aplicação",
+      campos: [t("data_aplicacao", "Data da aplicação", "Escolha a data em que a prova foi aplicada.")],
     },
     {
       id: "provas",
@@ -700,6 +730,8 @@ const FORM_F: ReFormDef = {
           label: "Total de acertos e classificação por prova",
           tipo: "matriz",
           opcoes: OPCOES_RISCO_LEITURA,
+          exclusiva: true,
+          comObs: true,
           comNumero: "Total de acertos",
           linhas: linhas(
             ["conhecimento_alfabeto", "1. Conhecimento do alfabeto"],
@@ -718,15 +750,61 @@ const FORM_F: ReFormDef = {
       id: "classificacao_geral",
       titulo: "Classificação geral",
       campos: [
-        u("risco_primeira", "Risco para problemas de leitura (1ª avaliação)", OPCOES_RISCO_LEITURA),
-        u("risco_segunda", "Risco para problemas de leitura (2ª avaliação, pós-intervenção)", OPCOES_RISCO_LEITURA),
+        { ...u("risco_primeira", "Risco para problemas de leitura (1ª avaliação)", OPCOES_RISCO_LEITURA), exclusiva: true },
+        { ...u("risco_segunda", "Risco para problemas de leitura (2ª avaliação, pós-intervenção)", OPCOES_RISCO_LEITURA), exclusiva: true },
         u("desenvolvimento_esperado", "Desenvolvimento dentro do esperado para a idade", OPCOES_NAO_SIM),
       ],
     },
   ],
 };
 
-export const RE_FORMS: Record<ReFormId, ReFormDef> = { a: FORM_A, b: FORM_B, c: FORM_C, d: FORM_D, e: FORM_E, f: FORM_F };
+/**
+ * Regras de opções (pedido de 19/out):
+ *  - 2 opções (Não/Sim etc.): escolha única, como no PDF;
+ *  - 3 ou mais opções: várias respostas permitidas e um campo de observação;
+ *  - exceções de escolha única (`exclusiva`): sexo, faixa de alunos e classificações de risco do IPPL-R,
+ *    onde marcar mais de uma contradiz a própria pergunta/instrumento. Elas também ganham observação (menos o sexo).
+ */
+export const MIN_OPCOES_MULTIPLA = 3;
+
+function regraDoCampo(c: ReCampo): ReCampo {
+  switch (c.tipo) {
+    case "unica": {
+      if (c.opcoes.length < MIN_OPCOES_MULTIPLA) return c;
+      if (c.exclusiva) return { ...c, comObs: c.comObs ?? c.key !== "sexo" };
+      return {
+        key: c.key,
+        label: c.label,
+        ajuda: c.ajuda,
+        opcional: c.opcional,
+        tipo: "multipla",
+        opcoes: c.opcoes,
+        comObs: c.comObs ?? true,
+      };
+    }
+    case "multipla":
+      if (c.opcoes.length < MIN_OPCOES_MULTIPLA || c.outros) return c;
+      return { ...c, comObs: c.comObs ?? true };
+    case "matriz":
+      if (c.opcoes.length < MIN_OPCOES_MULTIPLA) return c;
+      return { ...c, multipla: !c.exclusiva, comObs: c.comObs ?? true };
+    default:
+      return c;
+  }
+}
+
+function aplicarRegrasDeOpcoes(form: ReFormDef): ReFormDef {
+  return { ...form, secoes: form.secoes.map((sec) => ({ ...sec, campos: sec.campos.map(regraDoCampo) })) };
+}
+
+export const RE_FORMS: Record<ReFormId, ReFormDef> = {
+  a: aplicarRegrasDeOpcoes(FORM_A),
+  b: aplicarRegrasDeOpcoes(FORM_B),
+  c: aplicarRegrasDeOpcoes(FORM_C),
+  d: aplicarRegrasDeOpcoes(FORM_D),
+  e: aplicarRegrasDeOpcoes(FORM_E),
+  f: aplicarRegrasDeOpcoes(FORM_F),
+};
 
 // ── Passos da jornada ──────────────────────────────────────────────────────────────────────────
 
@@ -778,16 +856,16 @@ export const omitidosPorPrivacidade: string[] = [
   "Nome do pai/mãe/responsável na ATA (H)",
 ];
 
-// ── Meta da jornada e motor de sequência ───────────────────────────────────────────────────────
+// ── Meta da jornada ────────────────────────────────────────────────────────────────────────────
 
 /**
  * Estado da jornada guardado em uma linha `re_assessments` com `form_code = re_jornada`.
- * Só a API escreve aqui (o cliente nunca envia isto), para que a ordem seja imposta no servidor.
+ * Só a API escreve aqui (o cliente nunca envia isto).
  */
 export interface ReJornadaMeta {
-  /** Passo → data/hora ISO em que o RE concluiu. */
+  /** (legado) Passo → data/hora ISO. Mantido só para ler registros criados antes do formulário único. */
   concluidos: Partial<Record<RePassoId, string>>;
-  /** G é opcional: o RE escolheu não aplicar. */
+  /** G é opcional: o RE escolheu "Não vou aplicar" (auditado em `re_optional_step_usage`). */
   g_pulado: boolean;
   /** H: o responsável ainda não respondeu; a jornada segue. */
   h_aguardando: boolean;
@@ -808,79 +886,224 @@ export function metaComPadroes(raw: unknown): ReJornadaMeta {
   return { concluidos, g_pulado: r.g_pulado === true, h_aguardando: r.h_aguardando === true };
 }
 
-export type RePassoEstado =
-  | "bloqueado"
-  | "disponivel"
-  | "concluido"
-  | "pulado"
-  | "aguardando_responsavel";
+// ── Situação e pendências (formulário único, sem bloqueio entre blocos) ────────────────────────
+
+export type RePassoEstado = "vazio" | "parcial" | "completo" | "pulado" | "aguardando_responsavel";
+
+export interface PassoSituacao {
+  id: RePassoId;
+  letra: string;
+  tituloCurto: string;
+  estado: RePassoEstado;
+  respondidos: number;
+  total: number;
+}
+
+/** Um campo em branco. `rotulo` já vem legível: "Formulário A › Jogo › Memória". */
+export interface Lacuna {
+  passo: RePassoId;
+  /** Chave do campo no payload (para a tela rolar até ele). Vazia nas lacunas de decisão (G, H). */
+  campo: string;
+  /** Linha da matriz, quando for o caso. */
+  linha?: string;
+  rotulo: string;
+}
 
 export interface JornadaSituacao {
-  passos: { id: RePassoId; estado: RePassoEstado; temRascunho: boolean }[];
-  /** Primeiro passo ainda não resolvido (onde o RE deve trabalhar agora). null = tudo resolvido. */
-  atual: RePassoId | null;
-  /** A→F, I concluídos; G concluído ou pulado; H concluído ou aguardando o responsável. */
-  podeEnviar: boolean;
-  pendencias: string[];
+  passos: PassoSituacao[];
+  lacunas: Lacuna[];
 }
 
 export interface JornadaEntradas {
   meta: ReJornadaMeta;
-  /** Passos que já têm alguma coisa salva (rascunho). */
-  comRascunho?: Partial<Record<RePassoId, boolean>>;
-  /** A ATA já foi enviada (e travada) pelo RE. */
-  ataEnviada?: boolean;
+  /** Payload salvo de cada formulário A–F (ausente = nada salvo). */
+  payloads: Partial<Record<ReFormId, unknown>>;
+  /** Payload do SNAP-IV (G), se algo foi salvo. */
+  snap4?: unknown;
+  /** `secao_sumario` do Formulário I, se algo foi salvo. */
+  sumario?: unknown;
+  /** ATA (H): existe rascunho / já foi enviada. */
+  ata: { existe: boolean; enviada: boolean };
+  /** Série cadastrada no aluno (o Sumário I a carrega automaticamente). */
+  serieDoAluno?: string | null;
 }
 
-function resolvido(estado: RePassoEstado): boolean {
-  return estado === "concluido" || estado === "pulado" || estado === "aguardando_responsavel";
+function vazioTexto(v: unknown): boolean {
+  return typeof v !== "string" || v.trim() === "";
+}
+
+function celulaRespondida(cel: any, comNumero: boolean): boolean {
+  if (!cel || typeof cel !== "object") return false;
+  const r = cel.r;
+  if (Array.isArray(r) ? r.length > 0 : typeof r === "string" && r !== "") return true;
+  if (comNumero && typeof cel.n === "number") return true;
+  return false;
+}
+
+function campoRespondido(c: ReCampo, p: Record<string, any>): boolean {
+  const v = p[c.key];
+  switch (c.tipo) {
+    case "texto":
+    case "texto_longo":
+      return !vazioTexto(v);
+    case "unica":
+      return typeof v === "string" && v !== "";
+    case "multipla":
+      return (Array.isArray(v) && v.length > 0) || !vazioTexto(p[`${c.key}__outros`]);
+    case "professor":
+      return Boolean(v && typeof v === "object" && (v.id || !vazioTexto(v.nome)));
+    case "matriz":
+      return false; // tratado por linha
+  }
+}
+
+/** Lista o que ficou em branco em um formulário A–F (campos "opcionais" não entram). */
+export function lacunasDoForm(formId: ReFormId, payload: unknown): Lacuna[] {
+  const form = RE_FORMS[formId];
+  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
+  const out: Lacuna[] = [];
+  for (const sec of form.secoes) {
+    for (const c of sec.campos) {
+      if (c.opcional) continue;
+      const base = `Formulário ${form.letra} › ${sec.titulo}`;
+      if (c.tipo === "matriz") {
+        const m = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
+        for (const l of c.linhas) {
+          if (!celulaRespondida(m[l.key], Boolean(c.comNumero))) {
+            out.push({ passo: formId, campo: c.key, linha: l.key, rotulo: `${base} › ${l.label}` });
+          }
+        }
+      } else if (!campoRespondido(c, p)) {
+        out.push({ passo: formId, campo: c.key, rotulo: `${base} › ${c.label.replace(/\?$/, "")}` });
+      }
+    }
+  }
+  return out;
+}
+
+/** Quantos campos/linhas já têm resposta (para a barra de progresso; em branco continua em branco). */
+export function progressoReForm(formId: ReFormId, payload: unknown): { respondidos: number; total: number } {
+  const form = RE_FORMS[formId];
+  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
+  let total = 0;
+  let respondidos = 0;
+  for (const c of camposDoForm(form)) {
+    if (c.opcional) continue;
+    if (c.tipo === "matriz") {
+      const m = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
+      for (const l of c.linhas) {
+        total += 1;
+        if (celulaRespondida(m[l.key], Boolean(c.comNumero))) respondidos += 1;
+      }
+    } else {
+      total += 1;
+      if (campoRespondido(c, p)) respondidos += 1;
+    }
+  }
+  return { respondidos, total };
+}
+
+function lacunasSnap4(snap4: unknown): { respondidos: number; total: number; faltam: number[] } {
+  const r = ((snap4 as any)?.respostas ?? {}) as Record<string, unknown>;
+  const faltam: number[] = [];
+  let respondidos = 0;
+  for (const it of SNAP4_ITENS) {
+    if (typeof r[it.id] === "string" && r[it.id]) respondidos += 1;
+    else faltam.push(it.n);
+  }
+  return { respondidos, total: SNAP4_ITENS.length, faltam };
+}
+
+export function lacunasDoSumario(sumario: unknown, serieDoAluno?: string | null): Lacuna[] {
+  const s = (sumario && typeof sumario === "object" ? sumario : {}) as Record<string, any>;
+  const out: Lacuna[] = [];
+  const push = (campo: string, rotulo: string) => out.push({ passo: "i", campo, rotulo: `Formulário I › ${rotulo}` });
+  if (vazioTexto(serieDoAluno)) push("serie", "Série do aluno (edite os dados do aluno)");
+  if (vazioTexto(s.queixa_professor)) push("queixa_professor", "Queixa do professor");
+  if (vazioTexto(s.hipotese_espectro)) push("hipotese_espectro", "Hipótese do RE");
+  if (!Array.isArray(s.dificuldades_persistentes) || s.dificuldades_persistentes.length === 0) {
+    push("dificuldades_persistentes", "Dificuldades persistentes");
+  }
+  if (s.conduta !== "sim" && s.conduta !== "nao") push("conduta", "Houve conduta do PpI?");
+  else if (s.conduta === "sim") {
+    if (vazioTexto(s.qual)) push("qual", "Qual conduta");
+    if (vazioTexto(s.tempo)) push("tempo", "Por quanto tempo");
+    if (vazioTexto(s.resultado)) push("resultado", "Resultado da conduta");
+  }
+  return out;
 }
 
 /**
- * Regra única de sequência (usada pela API e pela tela):
- *  - um passo só abre quando todos os anteriores estão resolvidos;
- *  - G resolve-se concluindo ou pulando; H concluindo (ATA enviada) ou marcando "aguardando responsável";
- *  - só se envia ao médico com todos os passos resolvidos e o Sumário (I) concluído.
+ * Situação de cada formulário e lista do que está em branco. Não bloqueia nada: quem decide enviar assim mesmo é o RE.
+ *  - G: "pulado" (botão "Não vou aplicar") ou itens do SNAP-IV; sem nenhuma das duas coisas, vira lacuna de decisão;
+ *  - H: ATA enviada, "aguardando o responsável" ou lacuna de decisão;
+ *  - I: campos do Sumário; a série vem do cadastro do aluno.
  */
 export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
-  const { meta } = entrada;
-  const passos: JornadaSituacao["passos"] = [];
-  let anteriorResolvido = true;
-  let atual: RePassoId | null = null;
-  const pendencias: string[] = [];
+  const passos: PassoSituacao[] = [];
+  const lacunas: Lacuna[] = [];
 
-  for (const p of RE_PASSOS) {
-    let estado: RePassoEstado;
-    if (p.id === "h" && entrada.ataEnviada) {
-      estado = "concluido";
-    } else if (meta.concluidos[p.id]) {
-      estado = "concluido";
-    } else if (p.id === "g" && meta.g_pulado) {
-      estado = "pulado";
-    } else if (p.id === "h" && meta.h_aguardando) {
-      estado = "aguardando_responsavel";
+  for (const passo of RE_PASSOS) {
+    const base = { id: passo.id, letra: passo.letra, tituloCurto: passo.tituloCurto };
+    if (passo.tipo === "formulario") {
+      const id = passo.id as ReFormId;
+      const payload = entrada.payloads[id];
+      const prog = progressoReForm(id, payload);
+      const falt = lacunasDoForm(id, payload);
+      lacunas.push(...falt);
+      const estado: RePassoEstado = falt.length === 0 ? "completo" : prog.respondidos === 0 ? "vazio" : "parcial";
+      passos.push({ ...base, estado, ...prog });
+    } else if (passo.tipo === "snap4") {
+      if (entrada.meta.g_pulado) {
+        passos.push({ ...base, estado: "pulado", respondidos: 0, total: 0 });
+        continue;
+      }
+      const sn = lacunasSnap4(entrada.snap4);
+      if (sn.respondidos === 0) {
+        lacunas.push({ passo: "g", campo: "", rotulo: 'Formulário G › SNAP-IV não aplicado: preencha ou clique em "Não vou aplicar"' });
+      } else if (sn.faltam.length > 0) {
+        lacunas.push({ passo: "g", campo: "", rotulo: `Formulário G › SNAP-IV: sem resposta nos itens ${sn.faltam.join(", ")}` });
+      }
+      passos.push({
+        ...base,
+        estado: sn.respondidos === 0 ? "vazio" : sn.faltam.length === 0 ? "completo" : "parcial",
+        respondidos: sn.respondidos,
+        total: sn.total,
+      });
+    } else if (passo.tipo === "ata") {
+      if (entrada.ata.enviada) passos.push({ ...base, estado: "completo", respondidos: 1, total: 1 });
+      else if (entrada.meta.h_aguardando) passos.push({ ...base, estado: "aguardando_responsavel", respondidos: 0, total: 1 });
+      else {
+        lacunas.push({
+          passo: "h",
+          campo: "",
+          rotulo: entrada.ata.existe
+            ? 'Formulário H › ATA em rascunho: envie ou marque "Aguardando o responsável"'
+            : 'Formulário H › ATA não registrada: envie ou marque "Aguardando o responsável"',
+        });
+        passos.push({ ...base, estado: entrada.ata.existe ? "parcial" : "vazio", respondidos: 0, total: 1 });
+      }
     } else {
-      estado = anteriorResolvido ? "disponivel" : "bloqueado";
+      const falt = lacunasDoSumario(entrada.sumario, entrada.serieDoAluno);
+      lacunas.push(...falt);
+      const total = 5;
+      const respondidos = Math.max(0, total - falt.filter((l) => l.campo !== "serie").length);
+      passos.push({
+        ...base,
+        estado: falt.length === 0 ? "completo" : entrada.sumario ? "parcial" : "vazio",
+        respondidos,
+        total,
+      });
     }
-    // Um passo "concluído" que vem depois de um não resolvido (dado inconsistente) volta a ficar travado.
-    if (!anteriorResolvido && resolvido(estado)) estado = "bloqueado";
-
-    passos.push({ id: p.id, estado, temRascunho: Boolean(entrada.comRascunho?.[p.id]) });
-    if (!resolvido(estado)) {
-      if (atual === null) atual = p.id;
-      pendencias.push(`Falta o Formulário ${p.letra} — ${p.tituloCurto}.`);
-    }
-    anteriorResolvido = anteriorResolvido && resolvido(estado);
   }
-
-  return { passos, atual, podeEnviar: pendencias.length === 0, pendencias };
+  return { passos, lacunas };
 }
 
 export function passoEstado(sit: JornadaSituacao, id: RePassoId): RePassoEstado {
-  return sit.passos.find((p) => p.id === id)?.estado ?? "bloqueado";
+  return sit.passos.find((p) => p.id === id)?.estado ?? "vazio";
 }
 
-// ── Validação e progresso dos formulários A–F ──────────────────────────────────────────────────
+// ── Validação e normalização dos formulários A–F ───────────────────────────────────────────────
 
 const VALOR_LIVRE_MAX = RE_TEXTO_MAX;
 
@@ -892,6 +1115,38 @@ export function camposDoForm(form: ReFormDef): ReCampo[] {
   return form.secoes.flatMap((s) => s.campos);
 }
 
+/** Chaves que existiam antes (identificação digitada) e que agora vêm do cadastro do aluno. Ignoradas e removidas. */
+const CHAVES_LEGADAS: Record<ReFormId, string[]> = {
+  a: ["serie"],
+  b: ["sexo", "serie"],
+  c: [],
+  d: ["sexo", "serie"],
+  e: [],
+  f: ["sexo", "serie"],
+};
+
+/** Aceita rascunhos antigos: remove chaves legadas e passa respostas únicas para lista onde o campo agora é múltiplo. */
+export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string, unknown>): Record<string, unknown> {
+  const campos = new Map(camposDoForm(RE_FORMS[formId]).map((c) => [c.key, c] as const));
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(payload)) {
+    if (CHAVES_LEGADAS[formId].includes(key)) continue;
+    const campo = campos.get(key);
+    if (campo?.tipo === "multipla" && typeof val === "string") {
+      out[key] = val ? [val] : [];
+    } else if (campo?.tipo === "matriz" && campo.multipla && val && typeof val === "object" && !Array.isArray(val)) {
+      const nova: Record<string, unknown> = {};
+      for (const [lk, lv] of Object.entries(val as Record<string, any>)) {
+        nova[lk] = lv && typeof lv === "object" && typeof lv.r === "string" ? { ...lv, r: lv.r ? [lv.r] : [] } : lv;
+      }
+      out[key] = nova;
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
 /**
  * Valida o payload de um formulário A–F. Aceita só chaves conhecidas, valores dentro das opções e
  * textos curtos. Não exige preenchimento (em branco é permitido) e nunca preenche padrão "não".
@@ -899,13 +1154,13 @@ export function camposDoForm(form: ReFormDef): ReCampo[] {
 export function validarPayloadReForm(formId: ReFormId, payload: unknown): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return "Payload inválido";
   const form = RE_FORMS[formId];
-  const p = payload as Record<string, unknown>;
+  const p = normalizarPayloadReForm(formId, payload as Record<string, unknown>);
   const campos = new Map<string, ReCampo>();
   for (const c of camposDoForm(form)) campos.set(c.key, c);
 
   for (const [key, val] of Object.entries(p)) {
-    // Textos complementares: "<campo>__texto" e "<campo>__outros"
-    const base = key.replace(/__(texto|outros)$/, "");
+    // Textos complementares: "<campo>__texto", "<campo>__outros" e "<campo>__obs"
+    const base = key.replace(/__(texto|outros|obs)$/, "");
     const campo = campos.get(base);
     if (!campo) return `Campo desconhecido: ${key}`;
     if (key !== base) {
@@ -927,6 +1182,14 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
           return `Campo "${campo.label}": opção inválida.`;
         }
         break;
+      case "professor": {
+        if (typeof val !== "object" || Array.isArray(val)) return `Campo "${campo.label}" inválido.`;
+        const v = val as Record<string, unknown>;
+        for (const k of Object.keys(v)) if (!["id", "nome"].includes(k)) return `Campo "${campo.label}": chave desconhecida (${k}).`;
+        if (v.id !== undefined && v.id !== null && (typeof v.id !== "string" || v.id.length > 64)) return `Campo "${campo.label}": professor inválido.`;
+        if (!textoValido(v.nome) || (typeof v.nome === "string" && v.nome.length > 200)) return `Campo "${campo.label}": nome inválido.`;
+        break;
+      }
       case "matriz": {
         if (typeof val !== "object" || Array.isArray(val)) return `Campo "${campo.label}" inválido.`;
         for (const [lk, lv] of Object.entries(val as Record<string, unknown>)) {
@@ -936,8 +1199,12 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
           for (const ck of Object.keys(cel)) {
             if (!["r", "obs", "n"].includes(ck)) return `Campo "${campo.label}": chave desconhecida (${ck}).`;
           }
-          if (cel.r !== undefined && cel.r !== null && (typeof cel.r !== "string" || !campo.opcoes.some((op) => op.value === cel.r))) {
-            return `Campo "${campo.label}": opção inválida.`;
+          if (cel.r !== undefined && cel.r !== null) {
+            const rs = Array.isArray(cel.r) ? cel.r : [cel.r];
+            if (!campo.multipla && Array.isArray(cel.r)) return `Campo "${campo.label}": só uma opção por linha.`;
+            if (rs.some((x) => typeof x !== "string" || !campo.opcoes.some((op) => op.value === x))) {
+              return `Campo "${campo.label}": opção inválida.`;
+            }
           }
           if (!textoValido(cel.obs)) return `Campo "${campo.label}": observação longa demais.`;
           if (cel.n !== undefined && cel.n !== null) {
@@ -950,7 +1217,7 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
     }
   }
 
-  // Data de aplicação do IPPL-R: se informada, formato válido e não futura (verificada na API com hojeBrasilia).
+  // Data de aplicação do IPPL-R: se informada, formato válido (a data pode ser futura apenas se a equipe agendou; a API só confere o formato).
   if (formId === "f") {
     const d = p["data_aplicacao"];
     if (d !== undefined && d !== null && d !== "") {
@@ -958,28 +1225,4 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
     }
   }
   return null;
-}
-
-/** Quantos campos/linhas já têm resposta (para a barra de progresso; em branco continua em branco). */
-export function progressoReForm(formId: ReFormId, payload: unknown): { respondidos: number; total: number } {
-  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
-  let respondidos = 0;
-  let total = 0;
-  for (const c of camposDoForm(RE_FORMS[formId])) {
-    if (c.tipo === "matriz") {
-      const v = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
-      for (const l of c.linhas) {
-        total += 1;
-        const cel = v[l.key];
-        if (cel && (cel.r || (typeof cel.n === "number") || (typeof cel.obs === "string" && cel.obs.trim()))) respondidos += 1;
-      }
-      continue;
-    }
-    total += 1;
-    const v = p[c.key];
-    if (c.tipo === "multipla") {
-      if ((Array.isArray(v) && v.length > 0) || (typeof p[`${c.key}__outros`] === "string" && p[`${c.key}__outros`].trim())) respondidos += 1;
-    } else if (typeof v === "string" && v.trim()) respondidos += 1;
-  }
-  return { respondidos, total };
 }

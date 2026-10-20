@@ -355,6 +355,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
                     <span>•</span>
                     <span><strong>Idade:</strong> {idade ? `${idade} anos` : "—"}</span>
+                    {c.grade && (<><span>•</span><span><strong>Série:</strong> {c.grade}</span></>)}
                   </div>
                   <div className="text-[10px] text-neutral-500 truncate">
                     <strong>Escola:</strong> {c.schoolName || slug} · <strong>Profissional:</strong> {c.assignedToName || "Responsável Escolar"}
@@ -382,6 +383,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   studentCode={activeCase.studentCode}
                   studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
                   schoolName={activeCase.schoolName || slug}
+                  grade={activeCase.grade}
                   ageText={activeCase.birthYear ? `${new Date().getFullYear() - activeCase.birthYear} anos` : "7–9 anos (Piloto)"}
                   professionalName={activeCase.assignedToName || me?.name || "Médico(a) Avaliador(a)"}
                   professionalRole={me?.role || "md1"}
@@ -426,6 +428,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             studentCode={activeCase.studentCode}
                             birthYear={activeCase.birthYear}
                             birthMonth={activeCase.birthMonth}
+                            grade={activeCase.grade}
                             schoolName={activeCase.schoolName}
                           />
                         )}
@@ -499,6 +502,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         studentCode={activeCase.studentCode}
                         birthYear={activeCase.birthYear}
                         birthMonth={activeCase.birthMonth}
+                        grade={activeCase.grade}
                         schoolName={activeCase.schoolName}
                       />
                     )}

@@ -174,6 +174,8 @@ export const CAPABILITIES = [
 
   // ── Gestão e rede ───────────────────────────────────────────────────────
   { key: "management.view", group: "gestao", label: "Sumário do RE e lista de encaminhados", description: "Visão da gestão, sem conteúdo clínico.", defaultRoles: MANAGEMENT_VIEW_ROLES },
+  { key: "management.observability.view", group: "gestao", label: "Observabilidade do fluxo do RE", description: "Tempo mediano de preenchimento por parte, tempo ganho, uso do passo opcional e andamento da triagem TEA, tudo agregado (grupos pequenos ocultos).", defaultRoles: MANAGEMENT_VIEW_ROLES },
+  { key: "management.baselines.edit", group: "gestao", label: "Informar tempo de referência (papel)", description: "Quanto tempo cada parte leva no processo em papel; base do cálculo de tempo ganho.", defaultRoles: ["admin_platform", "municipal_manager"] },
   { key: "pilot.indicators.view", group: "gestao", label: "Indicadores do piloto (grupo)", description: "Os 5 indicadores de avaliação do piloto por escola e na rede. Grupos pequenos ficam ocultos (\"<5\").", defaultRoles: ["admin_platform", "municipal_manager", "school_manager", "ppi", "board", "researcher", "md1"] },
   { key: "pilot.indicators.case.view", group: "gestao", label: "Indicadores do piloto (aluno)", description: "Acompanhar o percurso de um aluno pelo código nos indicadores do piloto.", defaultRoles: ["md1", "ppi"], sensitive: true },
   { key: "pilot.symptoms.record", group: "gestao", label: "Registrar medida de sintomas (inicial e reavaliação)", description: "Gravar a medida do indicador 5. A escola registra a da escola; o núcleo, a do núcleo.", defaultRoles: [...RE_ROLES, ...MD_ROLES, ...SPECIALIST_CLINICAL_ROLES], sensitive: true },

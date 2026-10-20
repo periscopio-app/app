@@ -10,7 +10,6 @@ import {
 } from "@/lib/api";
 
 import { RoleBanner } from "@/components/ui/RoleBanner";
-import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
@@ -23,6 +22,7 @@ import {
   ChevronRight,
   AlertCircle,
   Upload,
+  ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -64,12 +64,6 @@ function foraDaFaixaDoPiloto(birthYear: number, birthMonth: number): boolean {
 }
 const MSG_FAIXA_PILOTO = "Fora da faixa do piloto: o cadastro aceita alunos de 6 anos a 9 anos e 11 meses.";
 
-function idadeTexto(birthYear?: number | null, birthMonth?: number | null): string {
-  if (!birthYear) return "—";
-  const { anos, meses } = calcularIdadePorNascimento(birthYear, birthMonth ?? 1);
-  return `${anos} anos${meses ? ` e ${meses}m` : ""}`;
-}
-
 const MESES_NOMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 export default function REDashboardPage({
@@ -90,6 +84,12 @@ export default function REDashboardPage({
   // Student registration
   const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 7);
   const [birthMonth, setBirthMonth] = useState(1); // 1–12
+  const [grade, setGrade] = useState("");
+  // "Cadastrar Aluno" abre ao passar o mouse e recolhe ao tirar (toque: o título abre e fecha)
+  const [cadHover, setCadHover] = useState(false);
+  const [cadFixo, setCadFixo] = useState(false);
+  const [cadFoco, setCadFoco] = useState(false);
+  const [vaultSinal, setVaultSinal] = useState(0);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
   const [studentMsgOk, setStudentMsgOk] = useState(true);
@@ -210,6 +210,7 @@ export default function REDashboardPage({
         schoolId,
         birthYear: Number(birthYear),
         birthMonth: Number(birthMonth),
+        grade: grade.trim() || undefined,
       });
       setStudents((prev) => [...prev, data.student]);
       setStudentMsgOk(true);
@@ -226,8 +227,10 @@ export default function REDashboardPage({
     setStudentMsg(null);
     const lines = bulkText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const rows = lines.map((l) => {
-      const [y, m] = l.split(/[;,\t ]+/);
-      return { birthYear: Number(y), birthMonth: Number(m) };
+      const partes = /[;\t]/.test(l) ? l.split(/[;\t]+/).map((x) => x.trim()) : l.split(/[,\s]+/);
+      const [y, m, ...resto] = partes;
+      const serie = resto.join(" ").trim();
+      return { birthYear: Number(y), birthMonth: Number(m), ...(serie ? { grade: serie } : {}) };
     });
     if (rows.length === 0) {
       setStudentMsgOk(false);
@@ -298,7 +301,7 @@ export default function REDashboardPage({
       <div>
         <h1 className="text-2xl font-bold text-black">Avaliação do RE — formulários A a I</h1>
         <p className="text-sm text-neutral-800 mt-0.5">
-          Preencha na ordem: A, B, C, D, E, F, G (opcional), H e I. Cada formulário concluído libera o próximo. Piloto: alunos de 6 anos a 9 anos e 11 meses.
+          Um formulário único, de A a I, na mesma página: preencha na ordem que preferir e o sistema avisa o que ficou em branco antes de enviar ao médico. Piloto: alunos de 6 anos a 9 anos e 11 meses.
         </p>
       </div>
 
@@ -308,11 +311,32 @@ export default function REDashboardPage({
         <div className="space-y-4">
 
           {/* Register student */}
-          <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-            <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
-              <Plus className="h-4 w-4 text-black" />
-              Cadastrar Aluno (LGPD)
-            </h2>
+          <div
+            className="rounded-2xl bg-white border border-linha p-4 shadow-suave"
+            onMouseEnter={() => setCadHover(true)}
+            onMouseLeave={() => { setCadHover(false); setCadFixo(false); }}
+            onFocusCapture={() => setCadFoco(true)}
+            onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCadFoco(false); }}
+            data-testid="cadastro-aluno"
+          >
+            <button
+              type="button"
+              onClick={() => setCadFixo((v) => !v)}
+              aria-expanded={cadHover || cadFixo || cadFoco}
+              aria-controls="cadastro-aluno-corpo"
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <h2 className="text-sm font-bold text-black flex items-center gap-2">
+                <Plus className="h-4 w-4 text-black" />
+                Cadastrar Aluno (LGPD)
+              </h2>
+              <ChevronDown className={`h-4 w-4 text-neutral-700 transition-transform ${cadHover || cadFixo || cadFoco ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+            <div
+              id="cadastro-aluno-corpo"
+              className={`grid transition-all duration-200 ease-out ${cadHover || cadFixo || cadFoco ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            >
+              <div className="overflow-hidden">
             {studentMsg && (
               <p role="status" className={`text-xs rounded-lg px-3 py-2 mb-3 text-black border ${studentMsgOk ? "bg-[#EAF6F0] border-[#CFE8DB]" : "bg-[#FDECEA] border-erro"}`}>
                 {studentMsg}
@@ -344,6 +368,21 @@ export default function REDashboardPage({
                     ))}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label htmlFor="cad-serie" className="block text-xs font-semibold text-black mb-1">Série / ano escolar</label>
+                <input
+                  id="cad-serie"
+                  list="cad-series"
+                  maxLength={40}
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  placeholder="Ex.: 3º ano"
+                  className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40"
+                />
+                <datalist id="cad-series">
+                  {["1º ano", "2º ano", "3º ano", "4º ano", "5º ano"].map((x) => <option key={x} value={x} />)}
+                </datalist>
               </div>
               <button
                 type="submit"
@@ -385,7 +424,7 @@ export default function REDashboardPage({
               </div>
 
               <p className="text-xs text-neutral-800">
-                Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2018;5). Só ano e mês de nascimento.
+                Uma linha por aluno: <strong>ano;mês</strong> (ex.: 2018;5) e, se quiser, <strong>;série</strong> (ex.: 2018;5;3º ano). Nenhum nome é aceito.
               </p>
               <textarea
                 value={bulkText}
@@ -403,6 +442,8 @@ export default function REDashboardPage({
                 {bulkBusy ? "Importando..." : "Importar lista"}
               </button>
             </details>
+                        </div>
+            </div>
           </div>
 
           {/* Student list */}
@@ -423,6 +464,7 @@ export default function REDashboardPage({
                     <span className="font-semibold text-black">{st.studentCode}</span>
                     <span className="ml-2 text-xs text-neutral-800">
                       nasc. {st.birthYear}{st.birthMonth ? `/${String(st.birthMonth).padStart(2,"0")}` : ""}
+                      {st.grade ? ` · ${st.grade}` : ""}
                     </span>
                   </div>
                   <button
@@ -467,12 +509,14 @@ export default function REDashboardPage({
                       </span>
                     </div>
                     <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
-                      <span><strong>Nome:</strong> Aluno ({(c.studentCode ?? "").slice(-4)})</span>
+                      <span><strong>Série:</strong> {c.grade || "—"}</span>
+                      <span>•</span>
+                      <span><strong>Nasc.:</strong> {c.birthYear ? `${c.birthMonth ? `${String(c.birthMonth).padStart(2, "0")}/` : ""}${c.birthYear}` : "—"}</span>
                       <span>•</span>
                       <span><strong>Idade:</strong> {idadeCalculada ? `${idadeCalculada.anos}a` : "—"}</span>
                     </div>
                     <div className="text-[10px] text-neutral-500 truncate">
-                      <strong>Escola:</strong> {c.schoolName || schoolName || slug} · <strong>Profissional:</strong> {c.assignedToName || me?.name || "RE"}
+                      <strong>Escola:</strong> {c.schoolName || schoolName || slug}
                     </div>
                   </button>
                 );
@@ -496,30 +540,19 @@ export default function REDashboardPage({
           ) : (
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
 
-              {/* Prontuário Oficial - 5 Colunas Padronizadas */}
-              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50 space-y-4">
-                <ProntuarioHeaderCard
-                  studentCode={activeCase.studentCode}
-                  studentName={`Aluno (${(activeCase.studentCode ?? "").slice(-6)})`}
-                  schoolName={activeCase.schoolName || schoolName || slug}
-                  ageText={
-                    idadeTexto(activeCase.birthYear, activeCase.birthMonth)
-                  }
-                  professionalName={me?.name || "Responsável Escolar"}
-                  professionalRole={me?.role || "ppi"}
-                  journeyState={activeCase.journeyState}
-                />
-
-                {/* Proteção de Dados, Consentimento e Anexos Clínicos (LGPD) */}
-                <div className="grid grid-cols-1 gap-4 pt-1">
+              {/* Proteção de dados e consentimento (LGPD): caixas do mesmo tamanho, lado a lado em telas largas */}
+              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  {/* Documentos clínicos são do núcleo: não aparecem para o RE (a API também recusa). */}
-                  {(caps.has("attachments.read") || caps.has("attachments.write")) && <CaseAttachmentsCard caseId={activeCase.id} />}
+                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} abrirSinal={vaultSinal} />
                 </div>
+                {/* Documentos clínicos são do núcleo: não aparecem para o RE (a API também recusa). */}
+                {(caps.has("attachments.read") || caps.has("attachments.write")) && (
+                  <div className="mt-4"><CaseAttachmentsCard caseId={activeCase.id} /></div>
+                )}
               </div>
 
-              {/* Jornada do RE: formulários A → I, um de cada vez, na ordem do capítulo do RE */}
+              {/* Avaliação do RE: formulário único A → I */}
               <div className="p-4 sm:p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-neutral-800">
@@ -535,11 +568,17 @@ export default function REDashboardPage({
                 <ReJourneyPanel
                   key={activeCase.id}
                   caseId={activeCase.id}
-                  studentCode={activeCase.studentCode ?? ""}
-                  birthYear={activeCase.birthYear}
-                  birthMonth={activeCase.birthMonth}
-                  schoolName={activeCase.schoolName || schoolName || slug}
                   professionalName={me?.name}
+                  professionalRole={me?.role}
+                  onVerNome={() => {
+                    setVaultSinal((n) => n + 1);
+                    document.getElementById("cofre-identidade")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  onStudentChanged={(a) => {
+                    setStudents((prev) => prev.map((st) => (st.id === a.studentId ? { ...st, birthYear: a.birthYear, birthMonth: a.birthMonth, grade: a.grade } : st)));
+                    setCases((prev) => prev.map((c) => (c.studentId === a.studentId ? { ...c, birthYear: a.birthYear, birthMonth: a.birthMonth, grade: a.grade } : c)));
+                    setActiveCase((prev) => (prev && prev.studentId === a.studentId ? { ...prev, birthYear: a.birthYear, birthMonth: a.birthMonth, grade: a.grade } : prev));
+                  }}
                   onSent={() => {
                     setCases((prev) => prev.map((c) => (c.id === activeCase.id ? { ...c, journeyState: "revisao_medica" } : c)));
                     setActiveCase((prev) => (prev ? { ...prev, journeyState: "revisao_medica" } : prev));

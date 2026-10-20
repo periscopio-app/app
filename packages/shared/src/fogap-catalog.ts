@@ -51,7 +51,7 @@ export interface FogapHistoricoInsuficiente {
   periodo_observado: string | null;
 }
 
-/** Datas dos encaminhamentos do Formulário I (AAAA-MM-DD, nunca futuras). */
+/** Datas dos encaminhamentos do Formulário I (AAAA-MM-DD). Datas futuras são aceitas: o encaminhamento pode ser agendado. */
 export interface FogapEncaminhados {
   nucleo: string | null;
   cras: string | null;
@@ -333,7 +333,6 @@ export function validarPayloadFogap(payload: unknown, now = new Date()): string 
       if (typeof data !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(data) || Number.isNaN(Date.parse(data))) {
         return "Data do encaminhamento inválida.";
       }
-      if (data > hojeBrasilia(now)) return "A data do encaminhamento não pode ser futura.";
     }
   }
 
@@ -348,7 +347,6 @@ export function validarPayloadFogap(payload: unknown, now = new Date()): string 
     }
     const enc2 = q["encaminhado"];
     if (enc2 && typeof enc2 === "object") {
-      const hoje = hojeBrasilia(now);
       for (const [k, v] of Object.entries(enc2 as Record<string, unknown>)) {
         if (k === "outro_nome") {
           if (v !== undefined && v !== null && (typeof v !== "string" || v.length > 120)) return "Nome do outro encaminhamento inválido.";
@@ -356,7 +354,6 @@ export function validarPayloadFogap(payload: unknown, now = new Date()): string 
         }
         if (v === null || v === undefined || v === "") continue;
         if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) return `Data de encaminhamento (${k}) inválida.`;
-        if (v > hoje) return "A data do encaminhamento não pode ser futura.";
       }
     }
   }

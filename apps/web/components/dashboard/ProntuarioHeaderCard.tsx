@@ -1,4 +1,4 @@
-import { FileText, School, User, Calendar, ShieldCheck } from "lucide-react";
+import { FileText, School, User, Calendar, ShieldCheck, GraduationCap, Lock, Pencil } from "lucide-react";
 import { Badge, type EstadoCaso } from "@/components/ui/Badge";
 import { ROLE_LABELS } from "@/components/ui/RoleBanner";
 
@@ -11,6 +11,14 @@ export interface ProntuarioHeaderCardProps {
   professionalRole?: string;
   journeyState?: string;
   className?: string;
+  /** Série/ano escolar do aluno (dado do cadastro). */
+  grade?: string | null;
+  /** Nascimento em texto curto (ex.: "mar/2019"). */
+  birthText?: string;
+  /** Quando informado, a coluna do nome mostra "protegido" e um botão que leva ao Cofre (acesso auditado). */
+  onVerNome?: () => void;
+  /** Quando informado, mostra o botão para editar os dados do aluno. */
+  onEditar?: () => void;
 }
 
 const JOURNEY_ESTADOS: Record<string, EstadoCaso> = {
@@ -40,6 +48,10 @@ export function ProntuarioHeaderCard({
   professionalRole = "ppi",
   journeyState = "rascunho",
   className = "",
+  grade,
+  birthText,
+  onVerNome,
+  onEditar,
 }: ProntuarioHeaderCardProps) {
   const roleLabel = ROLE_LABELS[professionalRole] ?? professionalRole;
   const estado = JOURNEY_ESTADOS[journeyState] ?? "rascunho";
@@ -66,7 +78,7 @@ export function ProntuarioHeaderCard({
       </div>
 
       {/* Grid com as 5 colunas padronizadas */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 text-xs">
+      <div className={`grid grid-cols-2 gap-3.5 text-xs ${onVerNome ? "sm:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-5"}`}>
         {/* Coluna 1: Nº Prontuário */}
         <div className="space-y-1">
           <span className="flex items-center gap-1 font-semibold text-neutral-500">
@@ -82,9 +94,20 @@ export function ProntuarioHeaderCard({
             <User className="h-3.5 w-3.5 text-neutral-400" />
             Nome
           </span>
-          <p className="font-semibold text-black text-sm truncate" title={studentName ?? `Aluno (${studentCode})`}>
-            {studentName || `Aluno (${studentCode.slice(-6)})`}
-          </p>
+          {onVerNome ? (
+            <>
+              <p className="flex items-center gap-1 font-semibold text-black text-sm">
+                <Lock className="h-3.5 w-3.5 text-neutral-500" aria-hidden /> Protegido
+              </p>
+              <button type="button" onClick={onVerNome} className="text-[11px] font-bold text-roxo underline underline-offset-2 hover:text-roxo-800" data-testid="ver-nome-aluno">
+                Ver nome (Cofre, auditado)
+              </button>
+            </>
+          ) : (
+            <p className="font-semibold text-black text-sm truncate" title={studentName ?? `Aluno (${studentCode})`}>
+              {studentName || `Aluno (${studentCode.slice(-6)})`}
+            </p>
+          )}
         </div>
 
         {/* Coluna 3: Escola */}
@@ -98,6 +121,18 @@ export function ProntuarioHeaderCard({
           </p>
         </div>
 
+        {onVerNome && (
+          <div className="space-y-1">
+            <span className="flex items-center gap-1 font-semibold text-neutral-500">
+              <GraduationCap className="h-3.5 w-3.5 text-neutral-400" />
+              Série
+            </span>
+            <p className="font-medium text-black truncate" title={grade ?? undefined}>
+              {grade?.trim() ? grade : <span className="italic text-neutral-600">não informada</span>}
+            </p>
+          </div>
+        )}
+
         {/* Coluna 4: Idade */}
         <div className="space-y-1">
           <span className="flex items-center gap-1 font-semibold text-neutral-500">
@@ -107,6 +142,7 @@ export function ProntuarioHeaderCard({
           <p className="font-medium text-black">
             {ageText || "7–9 anos"}
           </p>
+          {birthText && <span className="block text-[10px] text-neutral-500">nasc. {birthText}</span>}
         </div>
 
         {/* Coluna 5: Profissional */}
@@ -121,6 +157,13 @@ export function ProntuarioHeaderCard({
           <span className="block text-[10px] text-neutral-500 truncate">{roleLabel}</span>
         </div>
       </div>
+      {onEditar && (
+        <div className="mt-3 flex justify-end border-t border-linha/80 pt-3">
+          <button type="button" onClick={onEditar} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-50" data-testid="editar-aluno">
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar dados do aluno
+          </button>
+        </div>
+      )}
     </div>
   );
 }

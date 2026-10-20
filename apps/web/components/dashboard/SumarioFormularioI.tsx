@@ -22,6 +22,8 @@ interface Props {
   birthYear?: number | null;
   birthMonth?: number | null;
   schoolName?: string | null;
+  /** Série do cadastro do aluno (vence a do registro antigo). */
+  grade?: string | null;
   payload: unknown;
   professionalName?: string | null;
   /** "rascunho": prévia viva para o RE; "enviado": o que o médico recebe. */
@@ -44,7 +46,7 @@ const vazio = <span className="italic text-neutral-600">não informado</span>;
  * O mesmo componente aparece para o RE (ao abrir o aluno, atualizando enquanto preenche)
  * e para o médico (após o encaminhamento), para que os dois vejam exatamente a mesma coisa.
  */
-export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolName, payload, professionalName, modo = "rascunho" }: Props) {
+export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolName, grade, payload, professionalName, modo = "rascunho" }: Props) {
   const p = (payload && typeof payload === "object" ? payload : {}) as Partial<FogapPayload>;
   const s = sumarioComPadroes(p.secao_sumario as any);
   const enc = (p.secao_encaminhamento ?? { observacoes: "", data: null }) as { observacoes?: string; data?: string | null };
@@ -70,7 +72,7 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
       <dl>
         <Linha rotulo="Aluno">{studentCode ? <span className="font-mono font-bold">{studentCode}</span> : vazio} <span className="text-neutral-700">(só o código; sem nome)</span></Linha>
         <Linha rotulo="Nascimento / Série">
-          {nasc || vazio}{idade && <span className="text-neutral-700"> · {idade}</span>} · Série: {s.serie?.trim() ? s.serie : vazio}
+          {nasc || vazio}{idade && <span className="text-neutral-700"> · {idade}</span>} · Série: {grade?.trim() || s.serie?.trim() || vazio}
         </Linha>
         <Linha rotulo="Escola">{schoolName || vazio}</Linha>
         <Linha rotulo="Queixa do professor">{s.queixa_professor?.trim() ? <span className="whitespace-pre-wrap">{s.queixa_professor}</span> : vazio}</Linha>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ShieldCheck, CheckCircle2, AlertTriangle, FileText, UserCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
+import { consentAcceptSchema, cpfFieldError, formatCpf } from "@periscopio/shared";
 
 interface ConsentAcceptance {
   id: string;
@@ -35,6 +36,9 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
   const [signerDocument, setSignerDocument] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [cpfTouched, setCpfTouched] = useState(false);
+  const cpfErro = cpfFieldError(signerDocument);
+  const cpfCompleto = signerDocument.replace(/\D/g, "").length === 11;
 
   const fetchConsent = useCallback(async () => {
     setLoading(true);
@@ -69,6 +73,14 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
     e.preventDefault();
     if (!term) return;
     setErrorMsg(null);
+    setCpfTouched(true);
+
+    // Mesma regra da API (zod): nome completo, parentesco e CPF com dígitos verificadores corretos.
+    const parsed = consentAcceptSchema.safeParse({ signerName, signerRole, signerDocument });
+    if (!parsed.success) {
+      setErrorMsg(parsed.error.issues[0]?.message ?? "Confira os dados do responsável.");
+      return;
+    }
     setSaving(true);
 
     try {
@@ -76,13 +88,14 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
         termId: term.id,
         caseId,
         studentId,
-        signerName,
-        signerRole,
-        signerDocument,
+        signerName: parsed.data.signerName,
+        signerRole: parsed.data.signerRole,
+        signerDocument: parsed.data.signerDocument,
       });
       setModalOpen(false);
       setSignerName("");
       setSignerDocument("");
+      setCpfTouched(false);
       fetchConsent();
     } catch (err: any) {
       setErrorMsg(err?.message || "Erro ao registrar consentimento.");
@@ -94,7 +107,7 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
   if (loading) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="p-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-200">
@@ -194,16 +207,36 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-black mb-1">
+                <label htmlFor="consent-cpf" className="block text-xs font-bold text-black mb-1">
                   CPF do Responsável (opcional)
                 </label>
                 <input
+                  id="consent-cpf"
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={14}
                   value={signerDocument}
-                  onChange={(e) => setSignerDocument(e.target.value)}
+                  onChange={(e) => setSignerDocument(formatCpf(e.target.value))}
+                  onBlur={() => setCpfTouched(true)}
+                  aria-invalid={cpfTouched && !!cpfErro}
+                  aria-describedby="consent-cpf-msg"
                   placeholder="000.000.000-00"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-black"
+                  className={`w-full px-3 py-2 text-sm rounded-xl border bg-white text-black ${
+                    cpfTouched && cpfErro ? "border-rose-500" : cpfCompleto && !cpfErro ? "border-emerald-500" : "border-slate-300"
+                  }`}
                 />
+                <p
+                  id="consent-cpf-msg"
+                  role={cpfTouched && cpfErro ? "alert" : undefined}
+                  className={`mt-1 text-[11px] ${cpfTouched && cpfErro ? "text-rose-700" : cpfCompleto && !cpfErro ? "text-emerald-700" : "text-slate-500"}`}
+                >
+                  {cpfTouched && cpfErro
+                    ? cpfErro
+                    : cpfCompleto && !cpfErro
+                      ? "CPF válido."
+                      : "Digite só os números; a máscara é automática."}
+                </p>
               </div>
             </div>
 

@@ -4,13 +4,24 @@ import {
   RE_FORMS,
   RE_PASSOS,
   camposDoForm,
+  lacunasDoForm,
   metaVazia,
+  normalizarPayloadReForm,
   progressoReForm,
   situacaoDaJornada,
   validarPayloadReForm,
-  type RePassoId,
+  type JornadaEntradas,
 } from "@periscopio/shared";
 import { idadeAPartirDoNascimento } from "../routes/re-journey.routes";
+import { montarPayloadFogap } from "./re-journey.service";
+
+const entrada = (patch: Partial<JornadaEntradas> = {}): JornadaEntradas => ({
+  meta: metaVazia(),
+  payloads: {},
+  ata: { existe: false, enviada: false },
+  serieDoAluno: "3º ano",
+  ...patch,
+});
 
 describe("jornada do RE — catálogo A–F", () => {
   test("a ordem dos passos é exatamente A B C D E F G H I", () => {
@@ -25,83 +36,164 @@ describe("jornada do RE — catálogo A–F", () => {
     }
   });
 
-  test("nenhum formulário pede nome do aluno, nome de adulto ou telefone", () => {
+  test("nenhum formulário pede nome do aluno nem telefone; o professor vem do cadastro da escola", () => {
     for (const f of Object.values(RE_FORMS)) {
       for (const c of camposDoForm(f)) {
-        assert.doesNotMatch(c.key, /^(aluno|nome|professor|responsavel|contato|telefone)$/, `${f.letra}: ${c.key}`);
+        assert.doesNotMatch(c.key, /^(aluno|nome|responsavel|contato|telefone)$/, `${f.letra}: ${c.key}`);
+        if (c.key === "professor") assert.equal(c.tipo, "professor");
+      }
+    }
+    assert.equal(camposDoForm(RE_FORMS.b).find((c) => c.key === "professor")?.tipo, "professor");
+  });
+
+  test("Formulários A, D e F não repetem a identificação (série e sexo ficam só no A)", () => {
+    const chaves = (id: "a" | "b" | "c" | "d" | "e" | "f") => camposDoForm(RE_FORMS[id]).map((c) => c.key);
+    assert.ok(chaves("a").includes("sexo"));
+    assert.ok(!chaves("a").includes("serie"));
+    for (const id of ["d", "f"] as const) {
+      assert.ok(!chaves(id).includes("sexo"), `${id} não repete sexo`);
+      assert.ok(!chaves(id).includes("serie"), `${id} não repete série`);
+    }
+    // B só pede o professor no cabeçalho
+    assert.deepEqual(RE_FORMS.b.secoes[0].campos.map((c) => c.key), ["professor"]);
+  });
+
+  test("regra das opções: 3 ou mais viram múltipla com observação, exceto as exclusões documentadas", () => {
+    const exclusoes = new Set(["sexo", "alunos_turma", "risco_primeira", "risco_segunda", "provas"]);
+    for (const f of Object.values(RE_FORMS)) {
+      for (const c of camposDoForm(f)) {
+        if (c.tipo === "unica" && c.opcoes.length >= 3) {
+          assert.ok(exclusoes.has(c.key), `${f.letra}.${c.key} deveria ser múltipla`);
+        }
+        if (c.tipo === "multipla" && c.opcoes.length >= 3 && !c.outros) {
+          assert.equal(c.comObs, true, `${f.letra}.${c.key} deveria ter observação`);
+        }
+        if (c.tipo === "matriz" && c.opcoes.length >= 3 && !exclusoes.has(c.key)) {
+          assert.equal(c.multipla, true, `${f.letra}.${c.key} deveria aceitar várias respostas por linha`);
+          assert.equal(c.comObs, true);
+        }
       }
     }
   });
 
   test("valida opções, textos e rejeita chaves desconhecidas; em branco é aceito", () => {
     assert.equal(validarPayloadReForm("a", {}), null);
-    assert.equal(validarPayloadReForm("a", { gosta_escola: "sim" }), null);
-    assert.match(validarPayloadReForm("a", { gosta_escola: "talvez" })!, /opção inválida/);
+    assert.equal(validarPayloadReForm("a", { gosta_escola: ["sim"] }), null);
+    assert.match(validarPayloadReForm("a", { gosta_escola: ["talvez"] })!, /opção inválida/);
     assert.match(validarPayloadReForm("a", { nome: "x" })!, /desconhecido/);
+    assert.equal(validarPayloadReForm("a", { gosta_escola__obs: "só às vezes" }), null);
+    assert.match(validarPayloadReForm("a", { gosta_escola__obs: "x".repeat(2001) })!, /longo demais/);
     assert.match(validarPayloadReForm("b", { materiais: ["livro", "foguete"] })!, /opção inválida/);
     assert.equal(validarPayloadReForm("b", { materiais: ["livro"], materiais__outros: "mapas" }), null);
     assert.match(validarPayloadReForm("c", { sono: "x".repeat(2001) })!, /longo demais/);
-    assert.match(validarPayloadReForm("d", { sala_aula: { timidez: { r: "quase" } } })!, /opção inválida/);
-    assert.match(validarPayloadReForm("d", { sala_aula: { inexistente: { r: "sim" } } })!, /linha desconhecida/);
-    assert.equal(validarPayloadReForm("f", { provas: { conhecimento_alfabeto: { n: 18, r: "sem_risco" } } }), null);
+    assert.match(validarPayloadReForm("d", { sala_aula: { timidez: { r: ["quase"] } } })!, /opção inválida/);
+    assert.match(validarPayloadReForm("d", { sala_aula: { inexistente: { r: ["sim"] } } })!, /linha desconhecida/);
     assert.match(validarPayloadReForm("f", { provas: { conhecimento_alfabeto: { n: -1 } } })!, /inválido/);
     assert.match(validarPayloadReForm("a", { desenvolvimento_global: { postura: { n: 3 } } })!, /número não previsto/);
     assert.match(validarPayloadReForm("f", { data_aplicacao: "ontem" })!, /inválida/);
+    assert.match(validarPayloadReForm("f", { provas: { conhecimento_alfabeto: { r: ["sem_risco", "alto_risco"] } } })!, /só uma opção/);
+  });
+
+  test("professor do Formulário B aceita {id, nome} e recusa chaves estranhas", () => {
+    assert.equal(validarPayloadReForm("b", { professor: { id: "abc", nome: "Profa. Teste" } }), null);
+    assert.equal(validarPayloadReForm("b", { professor: { nome: "Profa. Teste" } }), null);
+    assert.match(validarPayloadReForm("b", { professor: { id: "x", cpf: "1" } })!, /desconhecida/);
+    assert.match(validarPayloadReForm("b", { professor: "texto" })!, /inválido/);
+  });
+
+  test("rascunhos antigos são aceitos: chaves de identificação saem e resposta única vira lista", () => {
+    const antigo = normalizarPayloadReForm("d", { serie: "3º", sexo: "f" });
+    assert.deepEqual(antigo, {});
+    const unica = normalizarPayloadReForm("a", { gosta_escola: "sim" });
+    assert.deepEqual(unica.gosta_escola, ["sim"]);
+    assert.equal(validarPayloadReForm("a", { gosta_escola: "sim", serie: "3º" }), null);
+    const matriz = normalizarPayloadReForm("d", { sala_aula: { timidez: { r: "sim" } } });
+    assert.deepEqual((matriz.sala_aula as any).timidez.r, ["sim"]);
   });
 
   test("progresso conta só o que foi respondido (sem preencher padrão)", () => {
     const vazio = progressoReForm("e", {});
     assert.equal(vazio.respondidos, 0);
     assert.ok(vazio.total > 0);
-    assert.equal(progressoReForm("e", { figura_corpo: "adequada", tracado: ["ansiedade"] }).respondidos, 2);
+    assert.equal(progressoReForm("e", { figura_corpo: ["adequada"], tracado: ["ansiedade"] }).respondidos, 2);
+  });
+
+  test("lacunas listam o que está em branco com rótulo legível; observações finais não contam", () => {
+    const todas = lacunasDoForm("e", {});
+    assert.ok(todas.length > 0);
+    assert.ok(todas.every((l) => l.rotulo.startsWith("Formulário E ›")));
+    assert.ok(!todas.some((l) => l.campo === "observacoes"));
+    const menos = lacunasDoForm("e", { figura_corpo: ["adequada"] });
+    assert.equal(menos.length, todas.length - 1);
   });
 });
 
-describe("jornada do RE — motor de sequência", () => {
-  const ate = (...ids: RePassoId[]) => Object.fromEntries(ids.map((i) => [i, "2026-10-19T12:00:00Z"]));
-
-  test("começa só com A disponível", () => {
-    const s = situacaoDaJornada({ meta: metaVazia() });
-    assert.equal(s.atual, "a");
-    assert.equal(s.podeEnviar, false);
-    assert.deepEqual(s.passos.map((p) => p.estado), ["disponivel", ...Array(8).fill("bloqueado")]);
+describe("jornada do RE — formulário único (sem bloqueio entre blocos)", () => {
+  test("tudo em branco: nenhum passo bloqueado, todas as lacunas aparecem", () => {
+    const s = situacaoDaJornada(entrada());
+    assert.equal(s.passos.length, 9);
+    assert.ok(s.passos.every((p) => p.estado === "vazio"));
+    assert.ok(s.lacunas.length > 50);
+    assert.ok(s.lacunas.some((l) => l.passo === "g"), "G pede decisão: preencher ou 'Não vou aplicar'");
+    assert.ok(s.lacunas.some((l) => l.passo === "h"));
   });
 
-  test("concluir um libera o próximo, na ordem", () => {
-    const s = situacaoDaJornada({ meta: { ...metaVazia(), concluidos: ate("a", "b") } });
-    assert.equal(s.atual, "c");
-    assert.equal(s.passos[2].estado, "disponivel");
-    assert.equal(s.passos[3].estado, "bloqueado");
+  test("qualquer ordem: preencher o Formulário E sozinho não depende de A a D", () => {
+    const s = situacaoDaJornada(entrada({ payloads: { e: { figura_corpo: ["adequada"] } } }));
+    assert.equal(s.passos.find((p) => p.id === "e")?.estado, "parcial");
+    assert.equal(s.passos.find((p) => p.id === "a")?.estado, "vazio");
   });
 
-  test("um passo concluído depois de um não resolvido continua travado (dado inconsistente)", () => {
-    const s = situacaoDaJornada({ meta: { ...metaVazia(), concluidos: ate("a", "c") } });
-    assert.equal(s.passos[2].estado, "bloqueado");
-    assert.equal(s.atual, "b");
+  test("G pulado conta como decisão e sai da lista; H aguardando também", () => {
+    const meta = { ...metaVazia(), g_pulado: true, h_aguardando: true };
+    const s = situacaoDaJornada(entrada({ meta }));
+    assert.equal(s.passos.find((p) => p.id === "g")?.estado, "pulado");
+    assert.equal(s.passos.find((p) => p.id === "h")?.estado, "aguardando_responsavel");
+    assert.ok(!s.lacunas.some((l) => l.passo === "g" || l.passo === "h"));
   });
 
-  test("G pulado e H aguardando o responsável deixam seguir até o Sumário", () => {
-    const meta = { ...metaVazia(), concluidos: ate("a", "b", "c", "d", "e", "f"), g_pulado: true, h_aguardando: true };
-    const s = situacaoDaJornada({ meta });
-    assert.equal(s.atual, "i");
-    assert.equal(s.podeEnviar, false);
-    const fim = situacaoDaJornada({ meta: { ...meta, concluidos: ate("a", "b", "c", "d", "e", "f", "i") } });
-    assert.equal(fim.podeEnviar, true);
-    assert.equal(fim.passos[6].estado, "pulado");
-    assert.equal(fim.passos[7].estado, "aguardando_responsavel");
+  test("ATA enviada conclui o H", () => {
+    const s = situacaoDaJornada(entrada({ ata: { existe: true, enviada: true } }));
+    assert.equal(s.passos.find((p) => p.id === "h")?.estado, "completo");
   });
 
-  test("ATA enviada conclui o H sozinha", () => {
-    const meta = { ...metaVazia(), concluidos: ate("a", "b", "c", "d", "e", "f"), g_pulado: true };
-    const s = situacaoDaJornada({ meta, ataEnviada: true });
-    assert.equal(s.passos[7].estado, "concluido");
-    assert.equal(s.atual, "i");
+  test("SNAP-IV parcial lista os itens sem resposta", () => {
+    const s = situacaoDaJornada(entrada({ snap4: { respostas: { "SNAP4-01": "nem_um_pouco" } } }));
+    const g = s.lacunas.find((l) => l.passo === "g");
+    assert.ok(g && /itens/.test(g.rotulo));
   });
 
-  test("sem pular o G ele continua pendente e bloqueia H e I", () => {
-    const s = situacaoDaJornada({ meta: { ...metaVazia(), concluidos: ate("a", "b", "c", "d", "e", "f") } });
-    assert.equal(s.atual, "g");
-    assert.equal(s.passos[7].estado, "bloqueado");
+  test("Sumário I: a série vem do cadastro do aluno", () => {
+    const comSerie = situacaoDaJornada(entrada({ serieDoAluno: "3º ano" }));
+    assert.ok(!comSerie.lacunas.some((l) => l.campo === "serie"));
+    const semSerie = situacaoDaJornada(entrada({ serieDoAluno: null }));
+    assert.ok(semSerie.lacunas.some((l) => l.campo === "serie"));
+  });
+});
+
+describe("Formulário I — dados do aluno carregados automaticamente", () => {
+  test("idade, grupo e série vêm do cadastro", () => {
+    const p = montarPayloadFogap({ student: { birthYear: 2019, birthMonth: 3, grade: "3º ano" } });
+    assert.equal(p.secao_sumario.serie, "3º ano");
+    assert.equal(p.idade_anos !== null, true);
+  });
+
+  test("a série digitada pelo cliente é ignorada: vale o cadastro", () => {
+    const p = montarPayloadFogap({
+      student: { birthYear: 2019, birthMonth: 3, grade: "2º ano" },
+      secaoSumario: { serie: "9º ano", queixa_professor: "Observa-se que..." },
+    });
+    assert.equal(p.secao_sumario.serie, "2º ano");
+    assert.equal(p.secao_sumario.queixa_professor, "Observa-se que...");
+  });
+
+  test("encaminhamento com data futura é aceito (agendamento)", () => {
+    const p = montarPayloadFogap({
+      student: { birthYear: 2019, birthMonth: 3, grade: null },
+      secaoEncaminhamento: { observacoes: "", data: "2099-01-01" },
+    });
+    assert.equal(p.secao_encaminhamento.data, "2099-01-01");
+    assert.equal(p.secao_sumario.serie, "");
   });
 });
 

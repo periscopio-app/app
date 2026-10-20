@@ -100,6 +100,8 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
   const [summary, setSummary] = useState<SummaryOut | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const loadedFor = useRef<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     // só mostra "carregando" na primeira vez de cada caso; depois recarrega sem desmontar o formulário
@@ -138,7 +140,31 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, current?.screening?.status, current?.screening?.submittedAt]);
 
-  useEffect(() => setMsg(null), [active]);
+  useEffect(() => {
+    setMsg(null);
+    setDirty(false);
+    setSavedAt(null);
+  }, [active]);
+
+  // salva sozinho 20 s depois da última alteração (rascunho), para ninguém perder o que já marcou
+  useEffect(() => {
+    if (!dirty || busy || !active) return;
+    const c = data?.instruments.find((i) => i.code === active);
+    if (!c?.canFill || c.screening?.status === "enviado" || data?.journeyState === "encerrado") return;
+    const t = setTimeout(() => void save(true), 20000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, answers, respondent, appliedOn, busy, active, data]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const aviso = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", aviso);
+    return () => window.removeEventListener("beforeunload", aviso);
+  }, [dirty]);
 
   if (loading) return <div className="rounded-2xl border border-linha bg-white p-4 text-xs text-neutral-800">Carregando triagem TEA…</div>;
   if (denied || !catalog || !data || data.instruments.length === 0) return null;
@@ -146,10 +172,10 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
   const locked = !current?.canFill || current?.screening?.status === "enviado" || data.journeyState === "encerrado";
   const submitted = current?.screening?.status === "enviado";
 
-  async function save(): Promise<boolean> {
+  async function save(silent = false): Promise<boolean> {
     if (!active) return false;
     setBusy(true);
-    setMsg(null);
+    if (!silent) setMsg(null);
     try {
       await api.put(`/api/cases/${caseId}/tea/${active}`, {
         answers,
@@ -157,10 +183,12 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
         appliedOn: appliedOn || undefined,
       });
       await load();
-      setMsg({ kind: "ok", text: "Rascunho salvo." });
+      setDirty(false);
+      setSavedAt(new Date());
+      if (!silent) setMsg({ kind: "ok", text: "Rascunho salvo." });
       return true;
     } catch (e) {
-      setMsg({ kind: "erro", text: errText(e) });
+      if (!silent) setMsg({ kind: "erro", text: errText(e) });
       return false;
     } finally {
       setBusy(false);
@@ -196,9 +224,13 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
     }
   }
 
-  const setItem = (n: number, v: unknown) => setAnswers((a: any) => ({ ...a, items: { ...a.items, [String(n)]: v } }));
+  const editAnswers: typeof setAnswers = (u) => {
+    setDirty(true);
+    setAnswers(u);
+  };
+  const setItem = (n: number, v: unknown) => editAnswers((a: any) => ({ ...a, items: { ...a.items, [String(n)]: v } }));
   const clearItem = (n: number) =>
-    setAnswers((a: any) => {
+    editAnswers((a: any) => {
       const items = { ...a.items };
       delete items[String(n)];
       return { ...a, items };
@@ -214,20 +246,21 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
           {c.groups.map((g) => {
             const marked: number[] = answers.marcados?.[String(g.n)] ?? [];
             return (
-              <fieldset key={g.n} className="rounded-xl border border-linha p-3">
+              <fieldset key={g.n} id={`ata-g-${g.n}`} className={`scroll-mt-28 rounded-xl border p-3 ${marked.length ? "border-roxo/50 bg-roxo-50/40" : "border-linha"}`}>
                 <legend className="px-1 text-xs font-bold text-black">
                   {g.n}. {g.name}
+                  {marked.length > 0 && <span className="ml-2 rounded-full bg-roxo-100 px-2 py-0.5 text-[10px] font-semibold">{marked.length} marcado(s)</span>}
                 </legend>
                 {g.help && <p className="mb-2 text-[11px] text-neutral-800">{g.help}</p>}
                 <div className="space-y-1">
                   {g.options.map((o, i) => (
-                    <label key={i} className="flex items-start gap-2 text-sm text-black">
+                    <label key={i} className="flex min-h-9 cursor-pointer items-start gap-2 rounded-lg px-1 py-1.5 text-sm text-black hover:bg-fundo">
                       <input
                         type="checkbox"
                         disabled={dis}
                         checked={marked.includes(i)}
                         onChange={(e) =>
-                          setAnswers((a: any) => {
+                          editAnswers((a: any) => {
                             const cur: number[] = a.marcados?.[String(g.n)] ?? [];
                             const next = e.target.checked ? [...cur, i].sort((x, y) => x - y) : cur.filter((x) => x !== i);
                             const marcados = { ...a.marcados };
@@ -253,7 +286,7 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
                 { v: false, l: "Não" },
               ].map((o) => (
                 <label key={o.l} className="flex items-center gap-1.5">
-                  <input type="radio" name="ata-onset" disabled={dis} checked={answers.antes36meses === o.v} onChange={() => setAnswers((a: any) => ({ ...a, antes36meses: o.v }))} />
+                  <input type="radio" name="ata-onset" disabled={dis} checked={answers.antes36meses === o.v} onChange={() => editAnswers((a: any) => ({ ...a, antes36meses: o.v }))} />
                   {o.l}
                 </label>
               ))}
@@ -353,6 +386,20 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
 
   const score = current?.screening?.score;
 
+  // andamento em linguagem simples (só conta; não interpreta)
+  const progresso = (() => {
+    if (!active || !answers || !catalog) return null;
+    if (active === "ata") {
+      const total = catalog.content.ata.groups.length;
+      const feitos = Object.keys(answers.marcados ?? {}).length;
+      return { feitos, total, rotulo: "grupos com algo marcado" };
+    }
+    if (active === "abc") return null;
+    const lista = active === "asq" ? catalog.content.asq.items : active === "mchat" ? catalog.content.mchat.items : catalog.content.srs2.items;
+    const feitos = Object.keys(answers.items ?? {}).length;
+    return { feitos, total: lista.length, rotulo: "perguntas respondidas" };
+  })();
+
   return (
     <section className="rounded-2xl border border-linha bg-white p-4 shadow-suave space-y-4" aria-label="Triagem TEA">
       <header className="flex items-start justify-between gap-3">
@@ -418,12 +465,57 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
           {!current?.canFill && !submitted && <p className="text-[11px] text-neutral-800">Você pode consultar este formulário, mas não preenchê-lo.</p>}
           {!current?.screening && !current?.canFill && <p className="text-xs text-neutral-800">Ainda não foi preenchido.</p>}
 
+          {current?.canFill && !submitted && (
+            <details className="rounded-xl border border-linha bg-fundo px-3 py-2 text-xs text-black" open={!current?.screening}>
+              <summary className="cursor-pointer font-semibold">Como preencher (passo a passo)</summary>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <li>{meta.audience}</li>
+                <li>Marque só o que foi relatado. Se não souber, deixe em branco: o sistema não troca “em branco” por “não”.</li>
+                <li>O rascunho é salvo sozinho a cada 20 segundos. Você pode sair e voltar depois.</li>
+                <li>Quando terminar, use “Enviar e travar”. O sistema avisa se faltar algo obrigatório.</li>
+              </ol>
+            </details>
+          )}
+
+          {progresso && !submitted && (
+            <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-linha bg-white/95 px-3 py-2 backdrop-blur">
+              <div className="flex items-center justify-between text-xs font-semibold text-black">
+                <span>
+                  {progresso.feitos} de {progresso.total} {progresso.rotulo}
+                </span>
+                <span className="font-normal text-neutral-700">
+                  {busy ? "Salvando…" : dirty ? "Alterações ainda não salvas" : savedAt ? `Salvo às ${savedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-linha" role="progressbar" aria-valuemin={0} aria-valuemax={progresso.total} aria-valuenow={progresso.feitos} aria-label="Andamento do preenchimento">
+                <div className="h-full bg-roxo transition-all" style={{ width: `${Math.round((progresso.feitos / Math.max(1, progresso.total)) * 100)}%` }} />
+              </div>
+              {active === "ata" && (
+                <nav aria-label="Ir para o grupo" className="mt-2 flex flex-wrap gap-1">
+                  {catalog.content.ata.groups.map((g) => {
+                    const marcado = (answers?.marcados?.[String(g.n)] ?? []).length > 0;
+                    return (
+                      <a
+                        key={g.n}
+                        href={`#ata-g-${g.n}`}
+                        className={`flex h-6 min-w-6 items-center justify-center rounded-md border px-1 text-[11px] font-semibold ${marcado ? "border-roxo bg-roxo-100 text-black" : "border-linha text-neutral-800 hover:bg-fundo"}`}
+                        aria-label={`Grupo ${g.n}${marcado ? ", com marcação" : ", sem marcação"}`}
+                      >
+                        {g.n}
+                      </a>
+                    );
+                  })}
+                </nav>
+              )}
+            </div>
+          )}
+
           {(current?.canFill || current?.screening) && (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-xs font-semibold text-black">
                   Quem respondeu
-                  <select disabled={locked || busy} value={respondent} onChange={(e) => setRespondent(e.target.value)} className="mt-1 block w-full rounded-xl border border-linha px-3 py-2 text-sm font-normal text-black disabled:bg-fundo">
+                  <select disabled={locked || busy} value={respondent} onChange={(e) => { setDirty(true); setRespondent(e.target.value); }} className="mt-1 block w-full rounded-xl border border-linha px-3 py-2 text-sm font-normal text-black disabled:bg-fundo">
                     <option value="">Selecione…</option>
                     {catalog.respondents.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -434,11 +526,11 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
                 </label>
                 <label className="text-xs font-semibold text-black">
                   Data da aplicação
-                  <input type="date" max={today()} disabled={locked || busy} value={appliedOn} onChange={(e) => setAppliedOn(e.target.value)} className="mt-1 block w-full rounded-xl border border-linha px-3 py-2 text-sm font-normal text-black disabled:bg-fundo" />
+                  <input type="date" max={today()} disabled={locked || busy} value={appliedOn} onChange={(e) => { setDirty(true); setAppliedOn(e.target.value); }} className="mt-1 block w-full rounded-xl border border-linha px-3 py-2 text-sm font-normal text-black disabled:bg-fundo" />
                 </label>
               </div>
 
-              <div className="max-h-[55vh] overflow-y-auto pr-1">{renderForm()}</div>
+              <div>{renderForm()}</div>
             </>
           )}
 
@@ -487,7 +579,7 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
           )}
 
           {!locked && (
-            <div className="flex justify-end gap-3 border-t border-linha pt-3">
+            <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 border-t border-linha bg-white/95 py-3 backdrop-blur">
               <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-black hover:bg-fundo disabled:opacity-60">
                 Salvar rascunho
               </button>

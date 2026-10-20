@@ -153,7 +153,7 @@ const clip = (s: string, n = 600) => (s.length > n ? s.slice(0, n - 1) + "…" :
 
 // ─── trava da saída do modelo ──────────────────────────────────────────────
 
-const BANNED = [
+export const BANNED = [
   /diagn[oó]stic/i,
   /laudo/i,
   /\b(é|e|tem|possui|apresenta)\s+(autis|autista|tea\b|tdah)/i,
