@@ -23,7 +23,9 @@ import { BarChart3, MapPinned,
   SlidersHorizontal,
   Activity,
   HelpCircle,
+  UserRound,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { ProfessionalConsentModal } from "@/components/dashboard/ProfessionalConsentModal";
 import { SupportWidget } from "@/components/dashboard/SupportWidget";
@@ -42,6 +44,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
   const { me, has, hasAny, ready } = useCapabilities();
   const userRole = me?.role ?? null;
+  // Nome e foto editados em "Meu painel" aparecem aqui na hora, sem recarregar a página.
+  const [perfilEditado, setPerfilEditado] = useState<{ name?: string; avatarUrl?: string | null } | null>(null);
+  useEffect(() => {
+    const aoAtualizar = (e: Event) => setPerfilEditado((e as CustomEvent<{ name?: string; avatarUrl?: string | null }>).detail ?? null);
+    window.addEventListener("perfil-atualizado", aoAtualizar);
+    return () => window.removeEventListener("perfil-atualizado", aoAtualizar);
+  }, []);
+  const nomeExibido = perfilEditado?.name ?? me?.name ?? session?.user?.name ?? "Profissional Periscópio";
+  const fotoExibida = perfilEditado ? perfilEditado.avatarUrl ?? null : me?.avatarUrl ?? null;
 
   // Infer slug from URL if user is in /[slug]/...
   useEffect(() => {
@@ -157,7 +168,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const needed = requiredForRoute(pathname);
   const isBlocked = ready && !!me && !isSuper && !!needed && !hasAny(needed);
 
+  // "Meu painel" existe para todo perfil, inclusive o professor, que não tem outra tela nesta versão.
+  const minhaConta = ready && me
+    ? [{ group: "Minha conta", items: [{ label: "Meu painel", href: `/${currentSlug}/dashboard/meu-painel`, icon: UserRound, badge: undefined as string | undefined, exact: false }] }]
+    : [];
+
   const navItems = [
+    ...minhaConta,
     ...(visibleClinical.length > 0 ? [{ group: "Fluxo Clínico", items: visibleClinical }] : []),
     ...(visibleAdmin.length > 0 ? [{ group: "Administração", items: visibleAdmin }] : []),
   ];
@@ -318,12 +335,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className={`p-4 border-t border-[#E1E9ED] bg-[#FAFCFE] ${collapsed ? "md:p-2" : ""}`}>
             <div className={`flex items-center justify-between ${collapsed ? "md:flex-col md:gap-2" : ""}`}>
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-full bg-roxo-100 border border-roxo text-black font-bold flex items-center justify-center shrink-0 text-sm shadow-sm">
-                  {session?.user?.name ? session.user.name[0].toUpperCase() : "P"}
-                </div>
+                <Link href={`/${currentSlug}/dashboard/meu-painel`} aria-label="Abrir Meu painel" title="Meu painel" className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-roxo focus-visible:ring-offset-2">
+                  <Avatar nome={nomeExibido} url={fotoExibida} tamanho="sm" />
+                </Link>
                 <div className={`overflow-hidden ${collapsed ? "md:hidden" : ""}`}>
                   <div className="text-xs font-bold text-black truncate">
-                    {session?.user?.name || "Profissional Periscópio"}
+                    {nomeExibido}
                   </div>
                   <div className="text-[11px] text-neutral-800 truncate">
                     {session?.user?.email || "Conectado via Neon Auth"}

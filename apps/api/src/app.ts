@@ -33,6 +33,7 @@ import { attachmentsRoutes } from "./routes/attachments.routes";
 import { pilotIndicatorsRoutes } from "./routes/pilot-indicators.routes";
 import { newsletterRoutes } from "./routes/newsletter.routes";
 import { supportRoutes } from "./routes/support.routes";
+import { profileRoutes } from "./routes/profile.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -151,6 +152,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(pilotIndicatorsRoutes);
   app.register(newsletterRoutes);
   app.register(supportRoutes);
+  app.register(profileRoutes);
 
   return app;
 }

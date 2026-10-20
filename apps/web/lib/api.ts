@@ -77,6 +77,8 @@ export interface Me {
   role: string;
   tenantId: string;
   schoolId: string | null;
+  /** Link público da foto de perfil (null = sem foto). */
+  avatarUrl?: string | null;
 }
 
 export interface CaseItem {

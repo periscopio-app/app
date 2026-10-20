@@ -18,6 +18,7 @@ function migrationSql(): string[] {
     "0017_privileges_and_tea.sql",
     "0019_pilot_symptom_measurements.sql",
     "0021_re_fluxo_continuo_observabilidade.sql",
+    "0022_meu_painel_perfil_foto.sql",
   ];
   const allSql: string[] = [];
 
