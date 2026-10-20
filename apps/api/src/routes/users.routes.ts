@@ -8,6 +8,7 @@ import { requireActor, requireCapability } from "../security/actor";
 import { effectiveCapabilities } from "../services/privilege.service";
 import { isRole, type Role } from "../security/roles";
 import { recordAudit } from "../services/audit.service";
+import { urlDoAvatar } from "../services/avatar.service";
 
 export const SYSTEM_ROLES_CATALOG = [
   {
@@ -113,7 +114,7 @@ export async function usersRoutes(app: FastifyInstance) {
     if (!actor) return;
 
     const [user] = await db
-      .select({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId, schoolId: users.schoolId })
+      .select({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId, schoolId: users.schoolId, avatarKey: users.avatarKey })
       .from(users)
       .where(eq(users.id, actor.id))
       .limit(1);
@@ -121,7 +122,9 @@ export async function usersRoutes(app: FastifyInstance) {
     if (!user) { reply.status(404); return { error: "Usuário não encontrado" }; }
     // `capabilities` = o que esta pessoa pode ver/fazer HOJE (padrão + caixinhas do Admin Master).
     const capabilities = await effectiveCapabilities(actor);
-    return { user, capabilities };
+    // A chave interna da foto não sai da API: a tela recebe só o link público.
+    const { avatarKey, ...publico } = user;
+    return { user: { ...publico, avatarUrl: await urlDoAvatar(avatarKey) }, capabilities };
   });
 
   /**

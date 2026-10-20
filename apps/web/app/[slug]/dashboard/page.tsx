@@ -12,6 +12,7 @@ const ROLE_DESTINATIONS: Record<string, string> = {
   municipal_manager: "gestao",
   researcher: "bi",
   board: "agenda",
+  teacher: "meu-painel", // o professor não tem tela de trabalho nesta versão: começa pelo próprio painel
   admin_platform: "/admin/users",
 };
 
@@ -37,12 +38,13 @@ export default function DashboardIndexPage({ params }: { params: Promise<{ slug:
       .then(({ user, capabilities }) => {
         const caps = new Set(capabilities ?? []);
         const byRole = ROLE_DESTINATIONS[user.role];
-        const roleDestOk = byRole && (caps.size === 0 || DESTINATIONS_BY_CAPABILITY.some(([c, d]) => d === byRole && caps.has(c)) || byRole === "/admin/users");
+        const roleDestOk = byRole && (caps.size === 0 || DESTINATIONS_BY_CAPABILITY.some(([c, d]) => d === byRole && caps.has(c)) || byRole === "/admin/users" || byRole === "meu-painel");
         const dest = roleDestOk ? byRole : DESTINATIONS_BY_CAPABILITY.find(([c]) => caps.has(c))?.[1];
         if (dest) {
           router.replace(dest.startsWith("/") ? dest : `/${slug}/dashboard/${dest}`);
         } else {
-          router.replace(`/${slug}/login`);
+          // Quem está logado mas não tem tela de trabalho (ex.: professor) cai no próprio painel, não no login.
+          router.replace(`/${slug}/dashboard/meu-painel`);
         }
       })
       .catch(() => {
