@@ -665,7 +665,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
         onClose={() => setConfirmSend(false)}
         onConfirm={() => enviarAoMedico(false)}
         title="Enviar a avaliação ao médico?"
-        description="O caso será sumarizado e ficará na fila do Médico. Os formulários A a I ficam bloqueados para edição até uma devolução."
+        description="O caso será sumarizado e ficará na fila do Médico. O médico lê apenas o sumário (Formulário I); as entrevistas A a H ficam com você. Os formulários A a I ficam bloqueados para edição até uma devolução."
         confirmText="Confirmar e enviar"
         cancelText="Continuar editando"
         tone="send"

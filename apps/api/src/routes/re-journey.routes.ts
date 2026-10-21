@@ -20,6 +20,7 @@ import {
   type ReFormId,
 } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
+import { can } from "../services/privilege.service";
 import { sugerirObservacoes } from "../services/re-observacoes.service";
 import { caseVisibleTo } from "./cases.routes";
 import {
@@ -60,6 +61,25 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
 
     const j = await carregarJornada(visible.caseItem.tenantId, caseId);
+
+    // Quem só LÊ (médico) recebe apenas o Formulário I (Sumário/FOGAP). Os formulários A a H são o bloco de notas do RE.
+    const dono = await can(actor, "fogap.fill");
+    if (!dono) {
+      const i = j.linhas.i;
+      return {
+        caseState: visible.caseItem.journeyState,
+        somenteSumario: true,
+        forms: { i: i ? { status: i.status, payload: i.payload, updatedAt: i.updatedAt } : null },
+        student: {
+          id: visible.student.id,
+          studentCode: visible.student.studentCode,
+          birthYear: visible.student.birthYear,
+          birthMonth: visible.student.birthMonth,
+          grade: visible.student.grade ?? null,
+        },
+      };
+    }
+
     const forms: Record<string, { status: string; payload: unknown; updatedAt: Date } | null> = {};
     for (const p of RE_PASSOS) {
       const r = j.linhas[p.id];

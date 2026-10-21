@@ -12,6 +12,7 @@ import {
   normalizarPayloadDef,
   validarPayloadDef,
   ESPECIALIDADE_FORMS,
+  ehFormularioDeSumario,
   type EspecialidadeId,
   type FormDef,
 } from "@periscopio/shared";
@@ -239,8 +240,9 @@ export async function specialtyFormsRoutes(app: FastifyInstance) {
   });
 
   /**
-   * Leitura do médico: formulários das seções JÁ CONCLUÍDAS pelos especialistas (devolutiva). Seção em andamento
-   * não aparece, nem o rascunho. Só o médico responsável (mesma capacidade do prontuário consolidado).
+   * Leitura do médico: SÓ o sumário de cada especialidade (ver ESPECIALIDADE_SUMARIOS), e só de seção JÁ CONCLUÍDA.
+   * Os demais formulários são o "bloco de notas" do especialista: nunca saem daqui. Seção em andamento não aparece,
+   * nem o rascunho. Só o médico responsável (mesma capacidade do prontuário consolidado).
    */
   app.get("/api/cases/:caseId/specialty-forms", async (request, reply) => {
     const actor = await requireCapability(request, reply, "prontuario.consolidado.read");
@@ -258,22 +260,21 @@ export async function specialtyFormsRoutes(app: FastifyInstance) {
       .from(caseSpecialtyForms)
       .where(and(eq(caseSpecialtyForms.caseId, caseId), eq(caseSpecialtyForms.tenantId, actor.tenantId)));
 
-    const out = secoes
-      .map((s) => {
-        const esp = s.specialty;
-        const catalogo = isEspecialidadeId(esp) ? ESPECIALIDADE_FORMS[esp as EspecialidadeId] : [];
-        const formularios = catalogo
-          .map((f) => {
-            const x = rows.find((row) => row.sectionId === s.id && row.formId === f.id);
-            if (!x) return null;
-            const payload = normalizarPayloadDef(f, x.payload as Record<string, unknown>);
-            if (Object.keys(payload).length === 0) return null;
-            return { id: f.id, status: x.status, payload, completedAt: x.completedAt };
-          })
-          .filter((x): x is NonNullable<typeof x> => x !== null);
-        return { sectionId: s.id, specialty: esp, completedAt: s.completedAt, forms: formularios };
-      })
-      .filter((s) => s.forms.length > 0);
+    const out = secoes.map((s) => {
+      const esp = s.specialty;
+      const catalogo = isEspecialidadeId(esp) ? ESPECIALIDADE_FORMS[esp as EspecialidadeId] : [];
+      const sumarios = catalogo.filter((f) => ehFormularioDeSumario(esp, f.id));
+      const formularios = sumarios
+        .map((f) => {
+          const x = rows.find((row) => row.sectionId === s.id && row.formId === f.id);
+          if (!x) return null;
+          const payload = normalizarPayloadDef(f, x.payload as Record<string, unknown>);
+          if (Object.keys(payload).length === 0) return null;
+          return { id: f.id, status: x.status, payload, completedAt: x.completedAt };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null);
+      return { sectionId: s.id, specialty: esp, completedAt: s.completedAt, sumarioPreenchido: formularios.length > 0, forms: formularios };
+    });
 
     await recordAudit(
       { tenantId: actor.tenantId, userId: actor.id, userEmail: actor.email, action: "specialty_forms.read", entityType: "case", entityId: caseId, payload: { studentCode: visible.student.studentCode } },

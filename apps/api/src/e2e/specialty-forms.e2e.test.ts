@@ -168,7 +168,12 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
     assert.ok(!JSON.stringify(r.body).includes("Achado sintético"), "nem rascunho nem formulário concluído de seção aberta");
   });
 
-  test("seção concluída: formulários viram somente leitura e o médico passa a ler", async () => {
+  test("seção concluída: formulários viram somente leitura e o médico lê SÓ o sumário, não o bloco de notas", async () => {
+    const SUMARIO = "Síntese sintética do fonoaudiólogo para o médico.";
+    // preenche o sumário (fono_sintese) além do plano terapêutico, que é só do profissional
+    const sint = await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_sintese`, "fono", { payload: { conclusao: SUMARIO } });
+    assert.equal(sint.status, 200, JSON.stringify(sint.body));
+
     const fim = await call("PATCH", `/api/cases/sections/${secaoFono}`, "fono", { summary: { texto: "final" }, markAsCompleted: true });
     assert.equal(fim.status, 200, JSON.stringify(fim.body));
 
@@ -181,10 +186,35 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
     const md = await call("GET", `/api/cases/${caso}/specialty-forms`, "md");
     assert.equal(md.status, 200);
     assert.equal(md.body.sections.length, 1);
-    assert.equal(md.body.sections[0].specialty, "fonoaudiologia");
-    assert.equal(md.body.sections[0].forms[0].payload.principais_achados, TEXTO);
+    const sec = md.body.sections[0];
+    assert.equal(sec.specialty, "fonoaudiologia");
+    assert.equal(sec.sumarioPreenchido, true);
+    assert.deepEqual(sec.forms.map((f: any) => f.id), ["fono_sintese"], "só o sumário chega ao médico");
+    assert.equal(sec.forms[0].payload.conclusao, SUMARIO);
+    assert.ok(!JSON.stringify(md.body).includes("Achado sintético"), "o plano terapêutico e as anamneses ficam com o profissional");
     // a seção da psicomotricidade, ainda aberta, continua invisível
     assert.ok(!md.body.sections.some((s: any) => s.specialty === "psicomotricidade"));
+  });
+
+  test("seção concluída sem o formulário de sumário: o médico vê a seção, avisada como sem sumário", async () => {
+    const { caseSpecialtyForms } = shared;
+    const { and, eq } = await import("drizzle-orm");
+    await dbx.delete(caseSpecialtyForms).where(and(eq(caseSpecialtyForms.sectionId, secaoFono), eq(caseSpecialtyForms.formId, "fono_sintese")));
+    const md = await call("GET", `/api/cases/${caso}/specialty-forms`, "md");
+    assert.equal(md.body.sections[0].sumarioPreenchido, false);
+    assert.deepEqual(md.body.sections[0].forms, []);
+  });
+
+  test("consolidado: parecer de seção em andamento não sai do profissional; o de seção concluída sim", async () => {
+    const rascunho = await call("PATCH", `/api/cases/sections/${secaoPsm}`, "psm", { notes: "Parecer em andamento da psicomotricidade (rascunho). ".repeat(4) });
+    assert.equal(rascunho.status, 200, JSON.stringify(rascunho.body));
+    const cons = await call("GET", `/api/cases/${caso}/consolidated`, "md");
+    assert.equal(cons.status, 200, JSON.stringify(cons.body));
+    const psm = cons.body.sections.find((x: any) => x.specialty === "psicomotricidade");
+    assert.ok(psm, "o médico vê que a seção existe e em que estado está");
+    assert.equal(psm.notes, null, "rascunho não sai");
+    assert.ok(!JSON.stringify(cons.body).includes("Parecer em andamento"));
+    assert.ok(!("reJourney" in cons.body));
   });
 
   test("só o médico do município lê a devolutiva; especialista, RE e médico de outro município não", async () => {

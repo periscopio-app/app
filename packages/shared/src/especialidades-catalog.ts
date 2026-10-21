@@ -2768,12 +2768,30 @@ export const ESPECIALIDADE_FORMS: Record<EspecialidadeId, FormDef[]> = {
   servico_social: [AS_CADASTRO_QUEIXA, AS_GENOGRAMA, AS_ESCOLARIDADE_SAUDE, AS_ECONOMICA_MORADIA, AS_CONDUTA, AS_SEGUNDA, AS_DOMICILIO, AS_CBCL_ASQ, AS_SUMARIO, AS_ENCAMINHAMENTO],
 };
 
-/** Formulário de cada especialidade que o médico lê como "sumário executivo" quando concluído. */
-export const ESPECIALIDADE_SUMARIO_FORM: Partial<Record<EspecialidadeId, string>> = {
-  psicomotricidade: "psm_sumario",
-  servico_social: "as_sumario",
-  neuropsicologia: "anp_sumario",
+/**
+ * Formulário(s) de cada especialidade que SAEM do bloco de notas do profissional e chegam ao médico (sumário executivo),
+ * só depois de a seção ser concluída. Todos os demais formulários ficam apenas com o profissional que os preencheu.
+ *
+ * Confirmados pelo título do capítulo: psm_sumario, as_sumario, anp_sumario.
+ * Inferidos (CONFIRMAR COM A DRA.): fono_sintese (síntese da avaliação completa), ppc_conclusao (conclusão da avaliação)
+ * e, na psicologia, os dois sumários de programa (TAC e grupo operativo), porque o capítulo não traz um sumário único.
+ */
+export const ESPECIALIDADE_SUMARIOS: Record<EspecialidadeId, string[]> = {
+  fonoaudiologia: ["fono_sintese"],
+  psicopedagogia: ["ppc_conclusao"],
+  psicologia: ["psi_tac_sumario", "psi_grupo_sumario"],
+  neuropsicologia: ["anp_sumario"],
+  psicomotricidade: ["psm_sumario"],
+  servico_social: ["as_sumario"],
 };
+
+export function idsDeSumarioDaEspecialidade(especialidade: string): string[] {
+  return isEspecialidadeId(especialidade) ? ESPECIALIDADE_SUMARIOS[especialidade] : [];
+}
+
+export function ehFormularioDeSumario(especialidade: string, formId: string): boolean {
+  return idsDeSumarioDaEspecialidade(especialidade).includes(formId);
+}
 
 export function formsDaEspecialidade(especialidade: EspecialidadeId): FormDef[] {
   return ESPECIALIDADE_FORMS[especialidade];

@@ -19,7 +19,6 @@ import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { ProntuarioHorizontalTabs, type ProntuarioTabKey } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { MedicoFormsPanel } from "@/components/medico/MedicoFormsPanel";
 import { EspecialidadesDevolutiva } from "@/components/medico/EspecialidadesDevolutiva";
-import { ReJourneyLeitura } from "@/components/re/ReJourneyLeitura";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
@@ -485,7 +484,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           <div>
                             <h3 className="text-sm font-bold text-black">O que você pode fazer com este caso</h3>
                             <p className="text-xs text-neutral-800">
-                              Abaixo estão o FOGAP e os formulários A a I preenchidos pelo RE. Depois de ler, escolha o próximo passo.
+                              Abaixo está o sumário do RE (FOGAP / Formulário I). Depois de ler, escolha o próximo passo.
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -554,7 +553,6 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             schoolName={activeCase.schoolName}
                           />
                         )}
-                        <ReJourneyLeitura caseId={activeCase.id} />
                       </div>
                     }
                     childrenActions={
@@ -567,7 +565,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           </div>
                           <nav className="flex flex-wrap gap-1">
                             {[
-                              { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
+                              { id: "re" as ActiveView, label: "Sumário do RE", icon: FileSearch, action: loadReAssessment },
                               { id: "delegate" as ActiveView, label: "Encaminhar", icon: Users, action: () => irParaAcao("delegate") },
                               { id: "return" as ActiveView, label: "Devolver", icon: RotateCcw, action: () => { setView("return"); setActionMsg(null); } },
                               { id: "consolidated" as ActiveView, label: "Consolidado", icon: ClipboardList, action: loadConsolidated },
@@ -608,7 +606,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   <div className="space-y-4">
                     <h3 className="font-semibold text-black flex items-center gap-2">
                       <FileSearch className="h-4 w-4 text-black" />
-                      Avaliação da RE (formulários A a I)
+                      Sumário do RE (Formulário I / FOGAP)
                     </h3>
                     {reLoading ? (
                       <p className="text-sm text-neutral-800">Carregando avaliação...</p>
@@ -628,7 +626,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         schoolName={activeCase.schoolName}
                       />
                     )}
-                    <ReJourneyLeitura caseId={activeCase.id} />
+                    <p className="text-[11px] text-neutral-700">Você lê o sumário do RE (Formulário I). As entrevistas e observações A a H ficam com o RE, que as leva para a discussão do caso.</p>
                   </div>
                 )}
 
@@ -651,7 +649,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       </p>
                     )}
                     <p className="text-xs text-neutral-800">
-                      Escolha, para cada especialidade que o caso precisar, o profissional do núcleo. Quem você escolher vê só a própria seção e o sumário do caso.
+                      Escolha, para cada especialidade que o caso precisar, o profissional do núcleo. Quem você escolher preenche só o próprio formulário e recebe apenas o seu sumário executivo (o Sumário médico, depois de concluído). As anotações de cada profissional ficam com ele, e ele as traz para a discussão.
                     </p>
                     <label className="block text-xs font-semibold text-black">
                       Precisa de avaliação neuropsicológica? (decisão do médico; sem ordem automática)

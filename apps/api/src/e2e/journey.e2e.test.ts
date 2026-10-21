@@ -375,11 +375,12 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal((await call("PUT", `${base}/forms/a`, "re", { payload: {} })).status, 409);
     assert.equal((await call("PATCH", `/api/students/${sid}`, "re", { grade: "5º ano" })).status, 409);
 
-    // Médico lê A–G e os dados do aluno no consolidado e devolve; o RE volta a poder editar e reenviar
+    // Médico lê o sumário do RE e os dados do aluno no consolidado (A–G ficam com o RE) e devolve; o RE volta a poder editar e reenviar
     const cons = await call("GET", `/api/cases/${cid}/consolidated`, "md");
     assert.equal(cons.status, 200, JSON.stringify(cons.body));
-    assert.deepEqual(cons.body.reJourney.forms.a.payload.gosta_escola, ["as_vezes"]);
-    assert.equal(cons.body.reJourney.forms.g, null, "G foi pulado: nada salvo");
+    assert.ok(!("reJourney" in cons.body), "formulários A a G do RE não vão ao médico");
+    assert.ok(!JSON.stringify(cons.body).includes("as_vezes"), "nenhuma resposta do Formulário A no consolidado");
+    assert.ok(cons.body.reAssessment, "o sumário (FOGAP) continua disponível");
     assert.equal(cons.body.student.grade, "4º ano");
     assert.equal(cons.body.student.schoolName, "Escola A1");
     assert.equal(cons.body.student.birthMonth, 3);

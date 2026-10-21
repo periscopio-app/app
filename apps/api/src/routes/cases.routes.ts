@@ -59,6 +59,14 @@ type AnyDb = NodePgDatabase<typeof schema>;
 const NETWORK_LEVEL_ROLES = ["md1", "specialist", "municipal_manager", "board", "researcher"];
 
 
+/**
+ * Quem lê o prontuário recebe o sumário de cada seção SÓ depois de concluída. Seção em andamento aparece apenas com o
+ * estado (rascunho nunca sai do bloco de notas do profissional).
+ */
+function apenasConcluidasComConteudo<T extends { status: string; summary: unknown; notes: unknown }>(sections: T[]): T[] {
+  return sections.map((s) => (s.status === "concluido" ? s : { ...s, summary: null, notes: null }));
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 async function schoolVisibleTo(actor: Actor, schoolId: string) {
@@ -1329,20 +1337,6 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
     const [escolaConsolidado] = await db.select({ name: schools.name }).from(schools).where(eq(schools.id, visible.student.schoolId)).limit(1);
 
-    // Formulários A a G da jornada do RE (somente leitura para o médico)
-    const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
-    const reJourney = {
-      situacao: jornada.situacao,
-      meta: jornada.meta,
-      ata: jornada.ata,
-      forms: Object.fromEntries(
-        (["a", "b", "c", "d", "e", "f", "g"] as const).map((id) => {
-          const r = jornada.linhas[id];
-          return [id, r ? { status: r.status, payload: r.payload, updatedAt: r.updatedAt } : null];
-        })
-      ),
-    };
-
     const sections = await db
       .select({
         id: caseSummaries.id,
@@ -1378,8 +1372,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         schoolName: escolaConsolidado?.name ?? null,
       },
       reAssessment: assessment ?? null,
-      reJourney,
-      sections,
+      sections: apenasConcluidasComConteudo(sections),
     };
   });
 
@@ -1493,6 +1486,6 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       .leftJoin(users, eq(caseSummaries.assignedProfessionalId, users.id))
       .where(and(eq(caseSummaries.caseId, visible.caseItem.id), eq(caseSummaries.tenantId, actor.tenantId)));
 
-    return { case: visible.caseItem, student: visible.student, sections };
+    return { case: visible.caseItem, student: visible.student, sections: apenasConcluidasComConteudo(sections) };
   });
 }
