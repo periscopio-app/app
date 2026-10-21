@@ -14,6 +14,7 @@ import {
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { sumarioComPadroes } from "@periscopio/shared";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { ProntuarioHorizontalTabs, type ProntuarioTabKey } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { MedicoFormsPanel } from "@/components/medico/MedicoFormsPanel";
@@ -94,6 +95,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   // RE assessment view
   const [reAssessment, setReAssessment] = useState<ReAssessment | null>(null);
   const [reLoading, setReLoading] = useState(false);
+  // Lista de casos recolhível: com um caso aberto, o prontuário pode usar a largura toda.
+  const [filaRecolhida, setFilaRecolhida] = useState(false);
 
   // Delegation form
   const [delegations, setDelegations] = useState<Record<string, string>>({});
@@ -358,12 +361,35 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
         </p>
       </div>
 
+      {filaRecolhida && (
+        <button
+          type="button"
+          onClick={() => setFilaRecolhida(false)}
+          data-testid="mostrar-fila"
+          className="mb-3 inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3 py-2 text-xs font-bold text-black hover:bg-roxo-50"
+        >
+          <ClipboardList className="h-4 w-4" aria-hidden /> Mostrar fila de casos ({cases.length})
+        </button>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: case queue */}
-        <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-          <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-black" />
-            Fila de casos ({cases.length})
+        <div className={`rounded-2xl bg-white border border-linha p-4 shadow-suave ${filaRecolhida ? "hidden" : ""}`}>
+          <h2 className="text-sm font-bold text-black mb-3 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-black" />
+              Fila de casos ({cases.length})
+            </span>
+            {activeCase && (
+              <button
+                type="button"
+                onClick={() => setFilaRecolhida(true)}
+                data-testid="recolher-fila"
+                className="hidden lg:inline-flex rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-roxo-50"
+                title="Esconde a lista e abre o prontuário na largura toda"
+              >
+                Recolher lista
+              </button>
+            )}
           </h2>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
             {cases.length === 0 && (
@@ -410,7 +436,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
         </div>
 
         {/* Right: action panel */}
-        <div className="lg:col-span-2">
+        <div className={filaRecolhida ? "lg:col-span-3" : "lg:col-span-2"}>
           {!activeCase ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
               <ClipboardList className="h-10 w-10 text-neutral-800/40 mb-3" />
@@ -432,6 +458,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   professionalName={activeCase.assignedToName || me?.name || "Médico(a) Avaliador(a)"}
                   professionalRole={me?.role || "md1"}
                   journeyState={activeCase.journeyState}
+                  queixaEscola={
+                    reLoading && !reAssessment
+                      ? undefined
+                      : sumarioComPadroes(((reAssessment?.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).queixa_professor ?? ""
+                  }
                 />
 
                 {/* Navegação Horizontal do Prontuário Clínico */}
