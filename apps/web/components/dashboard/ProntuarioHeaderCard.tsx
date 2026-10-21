@@ -1,4 +1,7 @@
-import { FileText, School, User, Calendar, ShieldCheck, GraduationCap, Lock, Pencil } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { FileText, School, User, Calendar, ShieldCheck, GraduationCap, Lock, Pencil, MessageSquareText } from "lucide-react";
 import { Badge, type EstadoCaso } from "@/components/ui/Badge";
 import { ROLE_LABELS } from "@/components/ui/RoleBanner";
 
@@ -21,6 +24,40 @@ export interface ProntuarioHeaderCardProps {
   onVerNome?: () => void;
   /** Quando informado, mostra o botão para editar os dados do aluno. */
   onEditar?: () => void;
+  /**
+   * Queixa da escola (texto do RE no Formulário I). `undefined` = não mostrar a linha (perfil sem acesso ou ainda carregando);
+   * texto vazio = mostra "Não registrada pelo RE".
+   */
+  queixaEscola?: string | null;
+}
+
+const QUEIXA_LIMITE = 220;
+
+function QueixaDaEscola({ texto }: { texto: string }) {
+  const [aberta, setAberta] = useState(false);
+  const limpo = texto.trim();
+  const longa = limpo.length > QUEIXA_LIMITE;
+  return (
+    <div className="mt-3.5 rounded-xl border border-roxo-200/70 bg-roxo-50/60 px-3.5 py-3" data-testid="queixa-da-escola">
+      <span className="flex items-center gap-1.5 text-xs font-bold text-roxo-900">
+        <MessageSquareText className="h-3.5 w-3.5" aria-hidden /> Queixa da escola
+      </span>
+      {limpo ? (
+        <>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-black">
+            {longa && !aberta ? `${limpo.slice(0, QUEIXA_LIMITE).trimEnd()}…` : limpo}
+          </p>
+          {longa && (
+            <button type="button" onClick={() => setAberta((v) => !v)} className="mt-1 text-[11px] font-bold text-roxo underline underline-offset-2 hover:text-roxo-800">
+              {aberta ? "Mostrar menos" : "Ler a queixa completa"}
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="mt-1 text-sm italic text-neutral-700">Não registrada pelo RE.</p>
+      )}
+    </div>
+  );
 }
 
 const JOURNEY_ESTADOS: Record<string, EstadoCaso> = {
@@ -55,6 +92,7 @@ export function ProntuarioHeaderCard({
   birthText,
   onVerNome,
   onEditar,
+  queixaEscola,
 }: ProntuarioHeaderCardProps) {
   const roleLabel = ROLE_LABELS[professionalRole] ?? professionalRole;
   const estado = JOURNEY_ESTADOS[journeyState] ?? "rascunho";
@@ -164,6 +202,7 @@ export function ProntuarioHeaderCard({
           <span className="block text-[10px] text-neutral-500 truncate">{roleLabel}</span>
         </div>
       </div>
+      {queixaEscola !== undefined && <QueixaDaEscola texto={queixaEscola ?? ""} />}
       {onEditar && (
         <div className="mt-3 flex justify-end border-t border-linha/80 pt-3">
           <button type="button" onClick={onEditar} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-50" data-testid="editar-aluno">
