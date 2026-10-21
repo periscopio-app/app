@@ -18,6 +18,7 @@ import { sumarioComPadroes } from "@periscopio/shared";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { ProntuarioHorizontalTabs, type ProntuarioTabKey } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { MedicoFormsPanel } from "@/components/medico/MedicoFormsPanel";
+import { EspecialidadesDevolutiva } from "@/components/medico/EspecialidadesDevolutiva";
 import { ReJourneyLeitura } from "@/components/re/ReJourneyLeitura";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
@@ -766,6 +767,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         ))}
                       </div>
                     )}
+                    <EspecialidadesDevolutiva caseId={activeCase.id} />
                   </div>
                 )}
 

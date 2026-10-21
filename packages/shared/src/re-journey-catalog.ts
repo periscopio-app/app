@@ -127,8 +127,12 @@ export interface ReSecao {
   campos: ReCampo[];
 }
 
-export interface ReFormDef {
-  id: ReFormId;
+/**
+ * Definição genérica de formulário (campos como dados). O RE usa A–F; médico e especialistas usam o mesmo motor
+ * (`especialidades-catalog.ts`, `medico-forms-catalog.ts`): mesma tela, mesma validação, nenhum campo clínico novo.
+ */
+export interface FormDef {
+  id: string;
   /** Código do instrumento em `re_assessments.form_code`. */
   code: string;
   letra: string;
@@ -140,6 +144,10 @@ export interface ReFormDef {
   secoes: ReSecao[];
   /** Itens do PDF que NÃO foram transcritos e o motivo. Para a equipe clínica/LGPD validar. */
   pendenciasDeValidacao: string[];
+}
+
+export interface ReFormDef extends FormDef {
+  id: ReFormId;
 }
 
 const t = (key: string, label: string, ajuda?: string): CampoTexto => ({ key, label, ajuda, tipo: "texto" });
@@ -155,6 +163,9 @@ const m = (key: string, label: string, opcoes: ReOpcao[], outros?: string, ajuda
 });
 const o = (value: string, label: string, pedeTexto?: string): ReOpcao => ({ value, label, pedeTexto });
 const linhas = (...itens: [string, string][]) => itens.map(([key, label]) => ({ key, label }));
+
+/** Construtores de campos para os catálogos das especialidades (mesmo motor, sem repetir código). */
+export const FORM_BUILDERS = { t, tl, u, m, o, linhas } as const;
 
 const OBS_FINAL: ReSecao = {
   id: "observacoes",
@@ -802,7 +813,7 @@ function regraDoCampo(c: ReCampo): ReCampo {
   }
 }
 
-function aplicarRegrasDeOpcoes(form: ReFormDef): ReFormDef {
+export function aplicarRegrasDeOpcoes<F extends FormDef>(form: F): F {
   return { ...form, secoes: form.secoes.map((sec) => ({ ...sec, campos: sec.campos.map(regraDoCampo) })) };
 }
 
@@ -993,8 +1004,7 @@ export function lacunasDoForm(formId: ReFormId, payload: unknown): Lacuna[] {
 }
 
 /** Quantos campos/linhas já têm resposta (para a barra de progresso; em branco continua em branco). */
-export function progressoReForm(formId: ReFormId, payload: unknown): { respondidos: number; total: number } {
-  const form = RE_FORMS[formId];
+export function progressoDef(form: FormDef, payload: unknown): { respondidos: number; total: number } {
   const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
   let total = 0;
   let respondidos = 0;
@@ -1012,6 +1022,10 @@ export function progressoReForm(formId: ReFormId, payload: unknown): { respondid
     }
   }
   return { respondidos, total };
+}
+
+export function progressoReForm(formId: ReFormId, payload: unknown): { respondidos: number; total: number } {
+  return progressoDef(RE_FORMS[formId], payload);
 }
 
 function lacunasSnap4(snap4: unknown): { respondidos: number; total: number; faltam: number[] } {
@@ -1122,7 +1136,7 @@ function textoValido(v: unknown): boolean {
   return v === null || v === undefined || (typeof v === "string" && v.length <= VALOR_LIVRE_MAX);
 }
 
-export function camposDoForm(form: ReFormDef): ReCampo[] {
+export function camposDoForm(form: FormDef): ReCampo[] {
   return form.secoes.flatMap((s) => s.campos);
 }
 
@@ -1137,11 +1151,11 @@ const CHAVES_LEGADAS: Record<ReFormId, string[]> = {
 };
 
 /** Aceita rascunhos antigos: remove chaves legadas e passa respostas únicas para lista onde o campo agora é múltiplo. */
-export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string, unknown>): Record<string, unknown> {
-  const campos = new Map(camposDoForm(RE_FORMS[formId]).map((c) => [c.key, c] as const));
+export function normalizarPayloadDef(form: FormDef, payload: Record<string, unknown>, chavesLegadas: string[] = []): Record<string, unknown> {
+  const campos = new Map(camposDoForm(form).map((c) => [c.key, c] as const));
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(payload)) {
-    if (CHAVES_LEGADAS[formId].includes(key)) continue;
+    if (chavesLegadas.includes(key)) continue;
     const campo = campos.get(key);
     if (campo?.tipo === "genograma") {
       out[key] = normalizarGenogramaTexto(val);
@@ -1164,10 +1178,9 @@ export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string
  * Valida o payload de um formulário A–F. Aceita só chaves conhecidas, valores dentro das opções e
  * textos curtos. Não exige preenchimento (em branco é permitido) e nunca preenche padrão "não".
  */
-export function validarPayloadReForm(formId: ReFormId, payload: unknown): string | null {
+export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas: string[] = []): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return "Payload inválido";
-  const form = RE_FORMS[formId];
-  const p = normalizarPayloadReForm(formId, payload as Record<string, unknown>);
+  const p = normalizarPayloadDef(form, payload as Record<string, unknown>, chavesLegadas);
   const campos = new Map<string, ReCampo>();
   for (const c of camposDoForm(form)) campos.set(c.key, c);
 
@@ -1186,6 +1199,10 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
       case "texto":
       case "texto_longo":
         if (!textoValido(val)) return `Campo "${campo.label}" inválido ou longo demais (máximo ${VALOR_LIVRE_MAX} caracteres).`;
+        // Campos de data (chave "data_*" ou "*_data_*"): em branco ou AAAA-MM-DD.
+        if (/(^|_)data_/.test(campo.key) && typeof val === "string" && val !== "") {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(val) || Number.isNaN(Date.parse(val))) return `Campo "${campo.label}": data inválida (use AAAA-MM-DD).`;
+        }
         break;
       case "unica":
         if (typeof val !== "string" || !campo.opcoes.some((op) => op.value === val)) return `Campo "${campo.label}": opção inválida.`;
@@ -1233,7 +1250,23 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
     }
   }
 
-  // Data de aplicação do IPPL-R: se informada, formato válido (a data pode ser futura apenas se a equipe agendou; a API só confere o formato).
+    return null;
+}
+
+export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string, unknown>): Record<string, unknown> {
+  return normalizarPayloadDef(RE_FORMS[formId], payload, CHAVES_LEGADAS[formId]);
+}
+
+/**
+ * Valida o payload de um formulário A–F. Aceita só chaves conhecidas, valores dentro das opções e
+ * textos curtos. Não exige preenchimento (em branco é permitido) e nunca preenche padrão "não".
+ */
+export function validarPayloadReForm(formId: ReFormId, payload: unknown): string | null {
+  const erro = validarPayloadDef(RE_FORMS[formId], payload, CHAVES_LEGADAS[formId]);
+  if (erro) return erro;
+  const p = normalizarPayloadReForm(formId, payload as Record<string, unknown>);
+
+// Data de aplicação do IPPL-R: se informada, formato válido (a data pode ser futura apenas se a equipe agendou; a API só confere o formato).
   if (formId === "f") {
     const d = p["data_aplicacao"];
     if (d !== undefined && d !== null && d !== "") {

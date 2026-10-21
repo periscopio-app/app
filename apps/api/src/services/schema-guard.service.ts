@@ -20,6 +20,7 @@ function migrationSql(): string[] {
     "0021_re_fluxo_continuo_observabilidade.sql",
     "0022_meu_painel_perfil_foto.sql",
     "0023_formularios_do_medico.sql",
+    "0024_formularios_das_especialidades.sql",
   ];
   const allSql: string[] = [];
 

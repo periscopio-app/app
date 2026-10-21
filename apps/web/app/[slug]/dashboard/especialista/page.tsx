@@ -9,6 +9,7 @@ import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHoriz
 import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-react";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
+import { EspecialidadeFormsPanel } from "@/components/especialista/EspecialidadeFormsPanel";
 
 const SPECIALTY_NAMES: Record<string, string> = {
   servico_social: "Assistente Social (AS)",
@@ -309,6 +310,8 @@ export default function EspecialistaDashboardPage({
                             {saveMsg}
                           </div>
                         )}
+
+                        <EspecialidadeFormsPanel key={`${activeSection.id}:${activeSection.status}`} sectionId={activeSection.id} specialty={activeSection.specialty} />
 
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
