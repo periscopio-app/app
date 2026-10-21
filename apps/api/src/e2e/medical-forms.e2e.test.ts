@@ -118,6 +118,20 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.ok(r.body.forms.every((f: any) => f.status === "nao_iniciado" && f.payload.registro === ""));
   });
 
+  test("genograma: o desenho por parentesco é guardado normalizado e conclui a seção sem texto", async () => {
+    const estrutura = JSON.stringify({ aluno: "female", membros: [{ id: "a", parentesco: "mae" }, { id: "b", parentesco: "pai" }, { id: "c", parentesco: "tio_paterno" }, { id: "d", parentesco: "marciano" }] });
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/genograma`, "md", { payload: { estrutura } });
+    assert.equal(salvo.status, 200);
+    const guardado = JSON.parse(salvo.body.form.payload.estrutura);
+    assert.deepEqual(guardado.membros.map((m: any) => m.parentesco), ["mae", "pai"], "desconhecido e sem ligação ficam de fora");
+    assert.equal(guardado.aluno, "female");
+    assert.equal(salvo.body.form.payload.registro, "");
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/genograma/complete`, "md")).status, 200);
+    // lixo no lugar do desenho vira campo em branco, e em branco não conclui
+    const lixo = await call("PUT", `/api/cases/${caso}/medical-forms/seguimento`, "md", { payload: { registro: "", estrutura: "lixo" } });
+    assert.deepEqual(lixo.body.form.payload, { registro: "" });
+  });
+
   test("rascunho, conclusão, trava e reabertura com motivo (guarda a versão anterior)", async () => {
     const ruim = await call("PUT", `/api/cases/${caso}/medical-forms/nao_existe`, "md", { payload: { registro: "x" } });
     assert.equal(ruim.status, 404);
@@ -131,7 +145,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     await call("PUT", `/api/cases/${caso}/medical-forms/seguimento`, "md", { payload: { registro: "   " } });
     assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/seguimento/complete`, "md")).status, 400);
     // sem rascunho salvo não conclui
-    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/genograma/complete`, "md")).status, 409);
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/exame_psiquiatrico_fisico/complete`, "md")).status, 409);
 
     const concl = await call("POST", `/api/cases/${caso}/medical-forms/hipotese_conduta/complete`, "md");
     assert.equal(concl.status, 200);

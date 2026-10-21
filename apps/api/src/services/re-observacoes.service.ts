@@ -1,4 +1,4 @@
-import { RE_FORMS, RE_TEXTO_MAX, camposDoForm, type ReCampo, type ReFormId, type ReOpcao } from "@periscopio/shared";
+import { RE_FORMS, RE_TEXTO_MAX, camposDoForm, type ReCampo, type ReFormId, type ReOpcao, lerGenograma, resumoDoGenograma } from "@periscopio/shared";
 import { BANNED } from "./tea-summary.service";
 
 /**
@@ -65,6 +65,10 @@ function respostaDe(campo: ReCampo, p: Record<string, any>): ItemContexto[] | nu
       if (!r.length) return null;
       const obs = txt(p[`${campo.key}__obs`]);
       return [{ pergunta: campo.label, resposta: [r.join("; "), obs && `Obs.: ${clip(obs, 200)}`].filter(Boolean).join(" ") }];
+    }
+    case "genograma": {
+      const g = lerGenograma(p[campo.key]);
+      return g ? [{ pergunta: campo.label, resposta: clip(resumoDoGenograma(g), 300) }] : null;
     }
     case "matriz": {
       const dados = (p[campo.key] ?? {}) as Record<string, any>;

@@ -14,6 +14,8 @@
  *    conduta, prescrição ou alta: tudo é digitado pelo médico responsável.
  */
 
+import { GENOGRAMA_JSON_MAX, normalizarGenogramaTexto } from "./genograma";
+
 export const MD_FORMS_VERSION = "md-0.1-rascunho" as const;
 export const MD_TEXTO_MAX = 4000;
 
@@ -33,6 +35,8 @@ export interface MdCampo {
   rotulo: string;
   ajuda?: string;
   max: number;
+  /** "texto" (padrão) ou "genograma": editor por parentesco que guarda o desenho como JSON curto (ver `genograma.ts`). */
+  tipo?: "texto" | "genograma";
 }
 
 export interface MdForm {
@@ -68,8 +72,17 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
   genograma: {
     id: "genograma",
     titulo: "Genograma",
-    descricao: "Descrição da composição e das relações familiares. O desenho gráfico ainda não está digitalizado.",
-    campos: registro("Descreva em texto. Evite nomes: use o parentesco (mãe, avó, irmão mais velho)."),
+    descricao: "Composição familiar desenhada por parentesco, mais a descrição em texto do que o desenho ainda não mostra.",
+    campos: [
+      {
+        id: "estrutura",
+        rotulo: "Desenho do genograma",
+        ajuda: "Escolha o parentesco para adicionar cada figura. Não use nomes.",
+        max: GENOGRAMA_JSON_MAX,
+        tipo: "genograma",
+      },
+      ...registro("Complete em texto o que o desenho não mostra (ex.: meio-irmãos, padrasto ou madrasta, antecedentes). Evite nomes: use o parentesco."),
+    ],
     aviso: AVISO_PENDENTE,
   },
   hipotese_conduta: {
@@ -120,7 +133,8 @@ export function normalizarPayloadMedico(id: MdFormId, bruto: unknown): Record<st
   const saida: Record<string, string> = {};
   for (const c of form.campos) {
     const v = origem[c.id];
-    saida[c.id] = typeof v === "string" ? v.slice(0, c.max) : "";
+    if (c.tipo === "genograma") saida[c.id] = normalizarGenogramaTexto(v);
+    else saida[c.id] = typeof v === "string" ? v.slice(0, c.max) : "";
   }
   return saida;
 }

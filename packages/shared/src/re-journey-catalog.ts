@@ -19,6 +19,7 @@
  */
 
 import { SNAP4_ITENS } from "./snap4-catalog";
+import { GENOGRAMA_JSON_MAX, lerGenograma, normalizarGenogramaTexto } from "./genograma";
 
 export const RE_JORNADA_FORM_CODE = "re_jornada" as const;
 export const RE_JORNADA_VERSION = "1.0.0-rascunho" as const;
@@ -112,7 +113,12 @@ export interface CampoMatriz extends CampoBase {
   comNumero?: string;
 }
 
-export type ReCampo = CampoTexto | CampoTextoLongo | CampoUnica | CampoMultipla | CampoMatriz | CampoProfessor;
+/** Genograma desenhado por parentesco (ver `genograma.ts`). Payload: texto JSON curto; em branco = sem desenho. */
+export interface CampoGenograma extends CampoBase {
+  tipo: "genograma";
+}
+
+export type ReCampo = CampoTexto | CampoTextoLongo | CampoUnica | CampoMultipla | CampoMatriz | CampoProfessor | CampoGenograma;
 
 export interface ReSecao {
   id: string;
@@ -505,7 +511,7 @@ const FORM_C: ReFormDef = {
   dica: "Pergunte ao responsável e registre as respostas. Não escreva nome nem telefone da família.",
   pendenciasDeValidacao: [
     "Campos \"Responsável\" (nome) e \"Contato\" omitidos (identificadores diretos). Se a equipe precisar deles, guardar no Cofre de Identidade, não no formulário.",
-    "Genograma: o PDF pede para completar uma figura ao final. Transcrito como descrição em texto; a figura gráfica NAO IMPLEMENTAR ATE VALIDACAO (modelo do genograma e quem preenche).",
+    "Genograma: o PDF pede para completar uma figura ao final. Há um editor por parentesco (biblioteca @famtree) e a descrição em texto; o modelo do genograma (parentescos, símbolos, quem preenche) NAO IMPLEMENTAR ATE VALIDACAO além do que já está.",
     "\"Programas vinculados pela PMT\": sigla PMT mantida como no PDF (confirmar significado com a equipe).",
   ],
   secoes: [
@@ -589,7 +595,10 @@ const FORM_C: ReFormDef = {
       id: "genograma",
       titulo: "Genograma",
       descricao: "Complete com as informações sobre antecedentes familiares que o responsável forneceu.",
-      campos: [tl("genograma_texto", "Antecedentes familiares informados (descrição em texto)", "Sem nomes. Ex.: \"avô materno com ...\".")],
+      campos: [
+        { key: "genograma_estrutura", label: "Desenho do genograma", ajuda: "Escolha o parentesco para adicionar cada figura. Não use nomes.", tipo: "genograma", opcional: true },
+        tl("genograma_texto", "Antecedentes familiares informados (descrição em texto)", "Sem nomes. Ex.: \"avô materno com ...\"."),
+      ],
     },
     OBS_FINAL,
   ],
@@ -952,6 +961,8 @@ function campoRespondido(c: ReCampo, p: Record<string, any>): boolean {
       return (Array.isArray(v) && v.length > 0) || !vazioTexto(p[`${c.key}__outros`]);
     case "professor":
       return Boolean(v && typeof v === "object" && (v.id || !vazioTexto(v.nome)));
+    case "genograma":
+      return lerGenograma(v) !== null;
     case "matriz":
       return false; // tratado por linha
   }
@@ -1132,7 +1143,9 @@ export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string
   for (const [key, val] of Object.entries(payload)) {
     if (CHAVES_LEGADAS[formId].includes(key)) continue;
     const campo = campos.get(key);
-    if (campo?.tipo === "multipla" && typeof val === "string") {
+    if (campo?.tipo === "genograma") {
+      out[key] = normalizarGenogramaTexto(val);
+    } else if (campo?.tipo === "multipla" && typeof val === "string") {
       out[key] = val ? [val] : [];
     } else if (campo?.tipo === "matriz" && campo.multipla && val && typeof val === "object" && !Array.isArray(val)) {
       const nova: Record<string, unknown> = {};
@@ -1181,6 +1194,9 @@ export function validarPayloadReForm(formId: ReFormId, payload: unknown): string
         if (!Array.isArray(val) || val.some((x) => typeof x !== "string" || !campo.opcoes.some((op) => op.value === x))) {
           return `Campo "${campo.label}": opção inválida.`;
         }
+        break;
+      case "genograma":
+        if (typeof val !== "string" || val.length > GENOGRAMA_JSON_MAX) return `Campo "${campo.label}" inválido ou longo demais.`;
         break;
       case "professor": {
         if (typeof val !== "object" || Array.isArray(val)) return `Campo "${campo.label}" inválido.`;

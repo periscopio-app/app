@@ -8,3 +8,4 @@ export * from "./tea-catalog";
 export * from "./tea-scoring";
 export * from "./re-journey-catalog";
 export * from "./medico-forms-catalog";
+export * from "./genograma";
