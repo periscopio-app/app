@@ -93,6 +93,8 @@ export interface CaseItem {
   schoolName?: string | null;
   assignedToName?: string | null;
   assignedToRole?: string | null;
+  /** Nome curto ("João S.") só quando o servidor libera para a equipe do caso; senão não vem. */
+  studentLabel?: string | null;
 }
 
 

@@ -85,6 +85,7 @@ export default function REDashboardPage({
   const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 7);
   const [birthMonth, setBirthMonth] = useState(1); // 1–12
   const [grade, setGrade] = useState("");
+  const [nomeCrianca, setNomeCrianca] = useState("");
   // "Cadastrar Aluno" abre ao passar o mouse e recolhe ao tirar (toque: o título abre e fecha)
   const [cadHover, setCadHover] = useState(false);
   const [cadFixo, setCadFixo] = useState(false);
@@ -211,7 +212,9 @@ export default function REDashboardPage({
         birthYear: Number(birthYear),
         birthMonth: Number(birthMonth),
         grade: grade.trim() || undefined,
+        fullName: nomeCrianca.trim() || undefined,
       });
+      setNomeCrianca("");
       setStudents((prev) => [...prev, data.student]);
       setStudentMsgOk(true);
       setStudentMsg(`Aluno cadastrado. Código LGPD: ${data.student.studentCode}`);
@@ -343,6 +346,21 @@ export default function REDashboardPage({
               </p>
             )}
             <form onSubmit={handleRegisterStudent} noValidate className="space-y-3">
+              <div>
+                <label htmlFor="nome-crianca" className="block text-xs font-semibold text-black mb-1">Nome da criança</label>
+                <input
+                  id="nome-crianca"
+                  type="text"
+                  value={nomeCrianca}
+                  onChange={(e) => setNomeCrianca(e.target.value)}
+                  maxLength={160}
+                  autoComplete="off"
+                  placeholder="Opcional"
+                  className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40"
+                  data-testid="cadastro-nome-crianca"
+                />
+                <p className="mt-1 text-[11px] text-neutral-700">Fica guardado cifrado. O sistema continua usando só o código; o nome aparece na tela do caso para a equipe que atende, quando a rede liberar.</p>
+              </div>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-black mb-1">Ano de nasc.</label>

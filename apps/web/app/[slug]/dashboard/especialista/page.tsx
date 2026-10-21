@@ -8,6 +8,7 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-react";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
+import { useNomeDoAluno } from "@/lib/nome-aluno";
 
 const SPECIALTY_NAMES: Record<string, string> = {
   servico_social: "Assistente Social (AS)",
@@ -103,6 +104,7 @@ export default function EspecialistaDashboardPage({
   const [error, setError] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<AssignedSection | null>(null);
+  const nomeAluno = useNomeDoAluno(activeSection?.caseId);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -285,6 +287,7 @@ export default function EspecialistaDashboardPage({
                 <ProntuarioHeaderCard
                   studentCode={activeSection.studentCode}
                   studentName={`Aluno (${activeSection.studentCode.slice(-6)})`}
+                  nomeCompleto={nomeAluno.fullName}
                   schoolName={slug}
                   ageText={activeSection.birthYear ? `${new Date().getFullYear() - activeSection.birthYear} anos` : "7–9 anos (Piloto)"}
                   professionalName={activeSection.professionalName || me?.name || "Especialista do Núcleo"}
