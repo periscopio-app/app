@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ClipboardList, Eye, Lock, Pencil, RotateCcw, Save } from "lucide-react";
-import { ESPECIALIDADE_FORMS, isEspecialidadeId, progressoDef, type FormDef } from "@periscopio/shared";
+import { ESPECIALIDADE_FORMS, ehFormularioDeSumario, isEspecialidadeId, progressoDef, type FormDef } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { ReFormRenderer } from "@/components/re/ReFormRenderer";
 import { ResumoVisual } from "@/components/formularios/ResumoVisual";
@@ -33,6 +33,8 @@ const COR: Record<Status, string> = {
 };
 
 /**
+ * Bloco de notas do profissional sobre o aluno: os formulários da especialidade delegada a ele. Só ele os vê. O médico
+ * recebe apenas o(s) formulário(s) de sumário, depois da conclusão da seção; o resto o profissional leva para a discussão.
  * Formulários da especialidade delegada ao profissional. Cada formulário sai do capítulo da especialidade
  * (catálogo `esp-0.1-rascunho`, pendente de validação clínica). O sistema não preenche, não soma e não classifica.
  * Instrumentos licenciados guardam só o resultado digitado.
@@ -74,6 +76,8 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
   if (!d) return <p className="text-sm text-neutral-800">Carregando formulários…</p>;
 
   const linhas = new Map(d.forms.map((f) => [f.id, f]));
+  const sumarios = catalogo.filter((f) => ehFormularioDeSumario(specialty, f.id));
+  const sumarioPronto = sumarios.length === 0 || sumarios.some((f) => linhas.get(f.id)?.status === "concluido");
   const concluidos = d.forms.filter((f) => f.status === "concluido").length;
   const atual = catalogo.find((f) => f.id === aberto) ?? null;
   const linha = atual ? linhas.get(atual.id) : undefined;
@@ -134,16 +138,23 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
     <section aria-label="Formulários da especialidade" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-bold text-black">
-          <ClipboardList className="h-4 w-4 text-roxo" aria-hidden /> Formulários da especialidade
+          <ClipboardList className="h-4 w-4 text-roxo" aria-hidden /> Seu bloco de notas do aluno
         </h3>
         <span className="text-xs text-neutral-800">{concluidos} de {catalogo.length} concluídos</span>
       </div>
 
       <p className="rounded-xl border border-ceu-300 bg-ceu-50 px-3 py-2 text-xs text-black">
-        Formulários do capítulo da especialidade ({d.version}), em validação clínica. O sistema <strong>não preenche, não soma, não classifica e não conclui</strong>:
-        você marca, e o médico lê só depois que você concluir a seção. Use o código do aluno; não escreva nome, telefone ou endereço.
-        Instrumentos de teste licenciados guardam apenas o resultado que você digitar.
+        Estas são as suas anotações sobre o aluno, como o papel que você leva para a reunião do board: <strong>só você as vê</strong>. O médico recebe apenas o
+        {sumarios.length > 1 ? " sumário (um dos formulários marcados)" : " formulário marcado como sumário"}, quando você concluir a seção.
+        O sistema <strong>não preenche, não soma, não classifica e não conclui</strong>: você marca. Use o código do aluno; não escreva nome, telefone ou endereço.
+        Instrumentos de teste licenciados guardam apenas o resultado que você digitar. Capítulo da especialidade ({d.version}), em validação clínica.
       </p>
+
+      {d.editavel && !sumarioPronto && (
+        <p role="status" className="rounded-xl border border-ouro-300 bg-ouro-50 px-3 py-2 text-xs text-black">
+          Falta concluir o sumário: {sumarios.map((f) => f.titulo).join(" ou ")}. Sem ele concluído, o médico recebe só o parecer da seção.
+        </p>
+      )}
 
       {!d.editavel && (
         <p className="flex items-center gap-2 rounded-xl border border-linha bg-fundo px-3 py-2 text-xs text-black">
@@ -176,6 +187,9 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
                   <span className="text-xs font-semibold text-black">{f.letra} · {f.titulo}</span>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${COR[st]}`}>{ROTULO[st]}</span>
                 </span>
+                {ehFormularioDeSumario(specialty, f.id) && (
+                  <span className="w-fit rounded-full border border-roxo/40 bg-roxo-50 px-2 py-0.5 text-[10px] font-bold text-black">Sumário: este vai ao médico</span>
+                )}
                 <span className="text-[11px] text-neutral-800">{prog.respondidos} de {prog.total} campos respondidos</span>
               </button>
             </li>

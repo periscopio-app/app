@@ -90,7 +90,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     await (db as any).$client.end();
   });
 
-  test("o médico lê a avaliação do RE: FOGAP e a jornada A a I", async () => {
+  test("o médico lê o sumário do RE (FOGAP e Formulário I), sem os formulários A a H", async () => {
     const fogap = await call("GET", `/api/cases/${caso}/re-assessment`, "md");
     assert.equal(fogap.status, 200);
     assert.ok(fogap.body.assessment, "FOGAP deve vir preenchido");
@@ -98,8 +98,9 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
 
     const j = await call("GET", `/api/cases/${caso}/re-journey`, "md");
     assert.equal(j.status, 200);
-    assert.ok(j.body.forms.a, "Formulário A deve vir");
     assert.ok(j.body.forms.i, "Formulário I (FOGAP/sumário) deve vir");
+    assert.deepEqual(Object.keys(j.body.forms), ["i"], "A a H são o bloco de notas do RE: o médico lê só o sumário");
+    assert.equal(j.body.somenteSumario, true);
     assert.equal(j.body.caseState, "revisao_medica");
   });
 

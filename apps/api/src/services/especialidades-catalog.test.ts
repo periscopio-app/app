@@ -4,6 +4,9 @@ import {
   ESPECIALIDADES_COM_FORMS,
   ESPECIALIDADE_FORMS,
   ESP_FORM_ID_MAX,
+  ESPECIALIDADE_SUMARIOS,
+  ehFormularioDeSumario,
+  idsDeSumarioDaEspecialidade,
   camposDoForm,
   formDaEspecialidade,
   isEspecialidadeId,
@@ -180,5 +183,24 @@ describe("resumo visual sem peso", () => {
     const r = resumoVisualDef(f, { limiar_auditivo: { od: { r: "normal", n: 15 } } });
     const campo = r.secoes.flatMap((s) => s.campos).find((c) => c.key === "limiar_auditivo")!;
     assert.equal(campo.grupos![0].linhas[0].numero, "15");
+  });
+});
+
+describe("sumário de cada especialidade (o que sai do bloco de notas)", () => {
+  test("toda especialidade tem ao menos um sumário e ele existe no catálogo dela", () => {
+    for (const e of ESPECIALIDADES_COM_FORMS) {
+      const ids = ESPECIALIDADE_SUMARIOS[e];
+      assert.ok(ids.length > 0, e);
+      for (const id of ids) assert.ok(formDaEspecialidade(e, id), `${e}.${id}`);
+    }
+  });
+
+  test("só o sumário sai; anamnese, instrumentos e plano terapêutico ficam com o profissional", () => {
+    assert.equal(ehFormularioDeSumario("psicomotricidade", "psm_sumario"), true);
+    assert.equal(ehFormularioDeSumario("psicomotricidade", "psm_plano_terapeutico"), false);
+    assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_anamnese"), false);
+    assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_srs2"), false);
+    assert.equal(ehFormularioDeSumario("servico_social", "as_cbcl_asq"), false);
+    assert.deepEqual(idsDeSumarioDaEspecialidade("medico"), []);
   });
 });
