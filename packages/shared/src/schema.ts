@@ -309,6 +309,31 @@ export const reAssessments = pgTable("re_assessments", {
 });
 
 /**
+ * Formulários do médico (anamnese, exame, hipótese e conduta, encaminhamentos, seguimento, sumário).
+ * Uma linha por (caso, formulário). `concluido` trava a edição; reabrir exige motivo e guarda a versão anterior em `history`.
+ * Estrutura provisória (md-0.1): texto livre curto até a validação clínica das perguntas.
+ */
+export const caseMedicalForms = pgTable(
+  "case_medical_forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    caseId: uuid("case_id").notNull().references(() => cases.id),
+    formId: varchar("form_id", { length: 40 }).notNull(),
+    formVersion: varchar("form_version", { length: 30 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("rascunho"), // rascunho | concluido
+    payload: jsonb("payload").notNull().default({}),
+    history: jsonb("history").notNull().default([]),
+    authorId: uuid("author_id").notNull().references(() => users.id),
+    completedBy: uuid("completed_by").references(() => users.id),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ caseForm: uniqueIndex("case_medical_forms_case_form_uq").on(t.caseId, t.formId) })
+);
+
+/**
  * Seções do Prontuário Multidisciplinar delegadas por especialidade.
  * Cada especialista acessa e sumariza apenas a sua especialidade.
  */

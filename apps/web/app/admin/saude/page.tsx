@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
 
 // ─── tipos (espelham GET /api/admin/observability) ──────────────────────────
 
@@ -202,6 +203,8 @@ export default function AdminSaudePage() {
                 ))}
               </ul>
             </section>
+
+            <StorageCheckCard />
 
             {/* rotas */}
             <section>

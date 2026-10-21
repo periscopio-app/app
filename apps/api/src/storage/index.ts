@@ -56,6 +56,11 @@ export async function uploadObject(
   return createSignedUrl(key, SIGNED_URL_EXPIRY);
 }
 
+export async function removeObject(key: string) {
+  const { error } = await supabase.storage.from(BUCKET).remove([key]);
+  if (error) throw new Error(`Falha ao remover arquivo do Supabase Storage: ${error.message}`);
+}
+
 export async function getObject(key: string) {
   const { data, error } = await supabase.storage.from(BUCKET).download(key);
   if (error) {

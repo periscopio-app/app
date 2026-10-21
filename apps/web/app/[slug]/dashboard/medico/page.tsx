@@ -15,7 +15,8 @@ import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
-import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
+import { ProntuarioHorizontalTabs, type ProntuarioTabKey } from "@/components/dashboard/ProntuarioHorizontalTabs";
+import { MedicoFormsPanel } from "@/components/medico/MedicoFormsPanel";
 import { ReJourneyLeitura } from "@/components/re/ReJourneyLeitura";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
@@ -84,6 +85,9 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   const [activeCase, setActiveCase] = useState<CaseItem | null>(null);
   const nomeAluno = useNomeDoAluno(activeCase?.id);
   const [view, setView] = useState<ActiveView>("queue");
+  const [aba, setAba] = useState<ProntuarioTabKey>("overview");
+  // Especialidades já designadas neste caso (para acrescentar outras sem repetir).
+  const [designadas, setDesignadas] = useState<CaseSection[]>([]);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   // RE assessment view
@@ -140,16 +144,50 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
     boot();
   }, [slug, router]);
 
+  async function carregarFogap(caseId: string) {
+    setReLoading(true);
+    try {
+      const data = await api.get<{ assessment: ReAssessment | null }>(`/api/cases/${caseId}/re-assessment`);
+      setReAssessment(data.assessment);
+    } catch (err: unknown) {
+      setActionMsg(err instanceof Error ? err.message : "Erro ao carregar a avaliação do RE.");
+    } finally {
+      setReLoading(false);
+    }
+  }
+
+  async function carregarDesignadas(caseId: string) {
+    try {
+      const data = await api.get<{ sections: CaseSection[] }>(`/api/cases/${caseId}/consolidated`);
+      setDesignadas(data.sections ?? []);
+    } catch {
+      setDesignadas([]);
+    }
+  }
+
   async function openCase(c: CaseItem) {
     setActiveCase(c);
     setView("queue");
+    setAba("overview");
     setActionMsg(null);
     setReAssessment(null);
     setSections([]);
+    setDesignadas([]);
     setEvents([]);
     setDelegations({});
     setCloseReason("");
     setReturnReason("");
+    // O médico recebe o FOGAP e os formulários do RE abertos, sem precisar clicar em nada.
+    void carregarFogap(c.id);
+    if (c.journeyState === "delegado" || c.journeyState === "retornado" || c.journeyState === "encerrado") void carregarDesignadas(c.id);
+  }
+
+  /** Atalho dos botões "Encaminhar a especialistas" / "Devolver ao RE": abre a aba de ações já na ação certa. */
+  function irParaAcao(v: ActiveView) {
+    setAba("clinical_actions");
+    setView(v);
+    setActionMsg(null);
+    if (v === "delegate" && activeCase) void carregarDesignadas(activeCase.id);
   }
 
   async function loadReAssessment() {
@@ -212,7 +250,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
     try {
       await api.post(`/api/cases/${activeCase.id}/delegate`, {
         delegations: delegationList,
-        reason: "Delegação médica após revisão da avaliação da RE",
+        reason: activeCase.journeyState === "delegado" ? "Acréscimo de especialista pelo médico" : "Delegação médica após revisão da avaliação da RE",
         needsNeuropsych: needsNeuropsych === "" ? undefined : needsNeuropsych === "1",
       });
       const updated = cases.map((c) =>
@@ -221,6 +259,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       setCases(updated);
       setActiveCase((prev) => (prev ? { ...prev, journeyState: "delegado" } : prev));
       setActionMsg(`Caso delegado com sucesso para ${delegationList.length} especialidade(s).`);
+      setDelegations({});
+      void carregarDesignadas(activeCase.id);
     } catch (err: unknown) {
       setActionMsg(err instanceof Error ? err.message : "Erro ao delegar.");
     } finally {
@@ -400,19 +440,66 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     studentId={activeCase.studentId}
                     studentCode={activeCase.studentCode}
                     isDoctorOrMaster={true}
+                    activeTab={aba}
+                    onTabChange={(t) => {
+                      setAba(t);
+                      if (t === "clinical_actions" && view === "queue") irParaAcao("delegate");
+                    }}
+                    childrenMedical={<MedicoFormsPanel caseId={activeCase.id} />}
                     childrenOverview={
                       <div className="space-y-4">
+                        {/* Próximos passos do médico: o que fazer com este caso, sempre à vista */}
+                        <section aria-label="Próximos passos do médico" className="rounded-2xl border border-roxo/30 bg-roxo-50 p-4 space-y-3">
+                          <div>
+                            <h3 className="text-sm font-bold text-black">O que você pode fazer com este caso</h3>
+                            <p className="text-xs text-neutral-800">
+                              Abaixo estão o FOGAP e os formulários A a I preenchidos pelo RE. Depois de ler, escolha o próximo passo.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => irParaAcao("delegate")}
+                              disabled={activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado"}
+                              className="inline-flex items-center gap-2 rounded-xl border border-roxo bg-roxo-100 px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-50"
+                            >
+                              <Users className="h-4 w-4" aria-hidden />
+                              {activeCase.journeyState === "delegado" ? "Acrescentar especialista" : "Encaminhar a especialistas"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAba("medical")}
+                              className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-fundo"
+                            >
+                              <ClipboardList className="h-4 w-4" aria-hidden /> Registrar avaliação médica
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => irParaAcao("return")}
+                              disabled={activeCase.journeyState !== "revisao_medica"}
+                              className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-fundo disabled:opacity-50"
+                            >
+                              <RotateCcw className="h-4 w-4" aria-hidden /> Devolver ao RE
+                            </button>
+                          </div>
+                          {activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado" && (
+                            <p className="text-[11px] text-neutral-800">
+                              Encaminhar e devolver só ficam disponíveis com o caso em revisão médica (este caso está: {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}).
+                            </p>
+                          )}
+                        </section>
+
                         <div className="flex items-center justify-between border-b border-linha pb-3">
                           <h3 className="font-semibold text-black flex items-center gap-2">
                             <FileSearch className="h-4 w-4 text-black" />
-                            Avaliação da RE & Ficha FOGAP
+                            FOGAP e Formulário I (Sumário) do RE
                           </h3>
                           <button
                             type="button"
-                            onClick={loadReAssessment}
+                            onClick={() => activeCase && void carregarFogap(activeCase.id)}
                             className="text-xs text-roxo font-bold hover:underline"
                           >
-                            Atualizar FOGAP
+                            Atualizar
                           </button>
                         </div>
                         {reLoading ? (
@@ -443,13 +530,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         {/* Case action tabs header */}
                         <div className="flex items-center justify-between px-2 py-2 border-b border-linha">
                           <div>
-                            <h3 className="text-sm font-bold text-black">Ações Médicas e Multiprofissionais</h3>
-                            <p className="text-[11px] text-neutral-500">Revisão diagnóstica, delegação ao núcleo e encerramento clínico</p>
+                            <h3 className="text-sm font-bold text-black">Encaminhar, devolver e encerrar</h3>
+                            <p className="text-[11px] text-neutral-500">Encaminhamento ao núcleo, devolução ao RE, consolidado e encerramento (decisões do médico)</p>
                           </div>
                           <nav className="flex flex-wrap gap-1">
                             {[
                               { id: "re" as ActiveView, label: "Avaliação RE", icon: FileSearch, action: loadReAssessment },
-                              { id: "delegate" as ActiveView, label: "Delegar", icon: Users, action: () => { setView("delegate"); setActionMsg(null); } },
+                              { id: "delegate" as ActiveView, label: "Encaminhar", icon: Users, action: () => irParaAcao("delegate") },
                               { id: "return" as ActiveView, label: "Devolver", icon: RotateCcw, action: () => { setView("return"); setActionMsg(null); } },
                               { id: "consolidated" as ActiveView, label: "Consolidado", icon: ClipboardList, action: loadConsolidated },
                               { id: "close" as ActiveView, label: "Encerrar", icon: CheckCircle, action: () => { setView("close"); setActionMsg(null); } },
@@ -513,19 +600,27 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   </div>
                 )}
 
-                {/* Delegation form */}
+                {/* Encaminhar a especialistas (delegação) */}
                 {view === "delegate" && (
                   <form onSubmit={handleDelegate} className="space-y-4">
                     <h3 className="font-semibold text-black flex items-center gap-2">
                       <Users className="h-4 w-4 text-black" />
-                      Delegar especialistas
+                      Encaminhar a especialistas
                     </h3>
-                    {activeCase.journeyState !== "revisao_medica" && (
+                    {activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado" && (
                       <div className="flex items-center gap-2 rounded-xl border border-ceu-300 bg-ceu-50 px-4 py-3 text-sm text-black">
                         <AlertCircle className="h-4 w-4 shrink-0" />
-                        Delegação disponível apenas quando o caso está em revisão médica.
+                        O encaminhamento fica disponível quando o caso está em revisão médica (ou já delegado, para acrescentar outro especialista).
                       </div>
                     )}
+                    {activeCase.journeyState === "delegado" && (
+                      <p className="rounded-xl border border-linha bg-fundo px-4 py-3 text-xs text-black">
+                        Este caso já tem especialistas designados. Você pode <strong>acrescentar</strong> outras especialidades; as já designadas aparecem marcadas.
+                      </p>
+                    )}
+                    <p className="text-xs text-neutral-800">
+                      Escolha, para cada especialidade que o caso precisar, o profissional do núcleo. Quem você escolher vê só a própria seção e o sumário do caso.
+                    </p>
                     <label className="block text-xs font-semibold text-black">
                       Precisa de avaliação neuropsicológica? (decisão do médico; sem ordem automática)
                       <select
@@ -539,47 +634,56 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       </select>
                     </label>
                     <div className="space-y-3">
-                      {SPECIALTIES.map((spec) => (
-                        <div key={spec.id} className="grid grid-cols-5 items-center gap-3">
-                          <span className="col-span-2 text-sm font-semibold text-black">
-                            {spec.label}
-                          </span>
-                          <select
-                            className="col-span-3 rounded-xl border border-linha px-3 py-2 text-sm text-black bg-white outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
-                            value={delegations[spec.id] ?? ""}
-                            onChange={(e) =>
-                              setDelegations((prev) => ({ ...prev, [spec.id]: e.target.value }))
-                            }
-                            disabled={activeCase.journeyState !== "revisao_medica"}
-                          >
-                            <option value="">Não delegar</option>
-                            {professionals
-                              .filter(
-                                (p) =>
-                                  p.role === "specialist" ||
-                                  p.specialty === spec.id ||
-                                  p.role === spec.id
-                              )
-                              .sort((a, b) => Number(b.specialty === spec.id) - Number(a.specialty === spec.id))
-                              .map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                  {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
-                                  {p.classCode ? ` · ${p.classCode}` : ""}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      ))}
+                      {SPECIALTIES.map((spec) => {
+                        const jaDesignada = designadas.find((d) => d.specialty === spec.id);
+                        const opcoes = professionals
+                          .filter((p) => p.role === "specialist" || p.specialty === spec.id || p.role === spec.id)
+                          .sort((a, b) => Number(b.specialty === spec.id) - Number(a.specialty === spec.id));
+                        const podeEscolher = (activeCase.journeyState === "revisao_medica" || activeCase.journeyState === "delegado") && !jaDesignada;
+                        return (
+                          <div key={spec.id} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-2 sm:gap-3">
+                            <span className="sm:col-span-2 text-sm font-semibold text-black">{spec.label}</span>
+                            {jaDesignada ? (
+                              <span className="sm:col-span-3 rounded-xl border border-sucesso/40 bg-sucesso/10 px-3 py-2 text-sm text-black">
+                                Já designada{jaDesignada.professionalName ? ` · ${jaDesignada.professionalName}` : ""} ({jaDesignada.status})
+                              </span>
+                            ) : (
+                              <div className="sm:col-span-3 space-y-1">
+                                <select
+                                  aria-label={`Profissional para ${spec.label}`}
+                                  className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black bg-white outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                                  value={delegations[spec.id] ?? ""}
+                                  onChange={(e) => setDelegations((prev) => ({ ...prev, [spec.id]: e.target.value }))}
+                                  disabled={!podeEscolher}
+                                >
+                                  <option value="">Não encaminhar</option>
+                                  {opcoes.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.name}
+                                      {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
+                                      {p.classCode ? ` · ${p.classCode}` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                {opcoes.length === 0 && (
+                                  <p className="text-[11px] text-neutral-800">
+                                    Nenhum especialista cadastrado neste município. Peça ao Administrador para convidar o profissional (Usuários e perfis).
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="flex justify-end pt-2">
                       <button
                         type="submit"
-                        disabled={delegating || activeCase.journeyState !== "revisao_medica"}
+                        disabled={delegating || (activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado")}
                         className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
                       >
                         <ChevronRight className="h-4 w-4" />
-                        {delegating ? "Delegando..." : "Confirmar delegação"}
+                        {delegating ? "Encaminhando..." : activeCase.journeyState === "delegado" ? "Acrescentar especialistas" : "Confirmar encaminhamento"}
                       </button>
                     </div>
                   </form>
