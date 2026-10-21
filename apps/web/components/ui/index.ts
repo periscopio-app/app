@@ -1,4 +1,5 @@
 export { Alert } from "./Alert";
+export { Avatar } from "./Avatar";
 export { Badge, type EstadoCaso } from "./Badge";
 export { Button, type ButtonVariant } from "./Button";
 export { Card } from "./Card";

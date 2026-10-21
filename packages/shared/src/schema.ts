@@ -70,6 +70,10 @@ export const users = pgTable("users", {
   // admin_platform | municipal_manager | school_manager | teacher | ppi | md1 | board | researcher | specialist
   // Só vira true quando o profissional confirma o e-mail do convite enviado pela escola.
   accessEnabled: boolean("access_enabled").default(false).notNull(),
+  // Painel pessoal: foto no bucket público de avatares (chave opaca, sem PII) e apresentação curta.
+  avatarKey: text("avatar_key"),
+  avatarUpdatedAt: timestamp("avatar_updated_at", { withTimezone: true }),
+  bio: varchar("bio", { length: 280 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
