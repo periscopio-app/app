@@ -24,6 +24,8 @@ import { BarChart3, MapPinned,
   Activity,
   HelpCircle,
   UserRound,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
@@ -41,6 +43,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Menu retrátil no desktop: libera largura para os formulários. Lembrado neste navegador.
   const [collapsed, setCollapsed] = useState(false);
+  // Tela cheia: esconde o menu por inteiro (desktop) e deixa o conteúdo ocupar toda a largura.
+  const [oculto, setOculto] = useState(false);
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
   const { me, has, hasAny, ready } = useCapabilities();
   const userRole = me?.role ?? null;
@@ -70,6 +74,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     try {
       if (window.localStorage.getItem("periscopio.menu.recolhido") === "1") setCollapsed(true);
+      if (window.localStorage.getItem("periscopio.menu.oculto") === "1") setOculto(true);
     } catch {
       /* sem armazenamento: segue expandido */
     }
@@ -80,6 +85,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       const next = !v;
       try {
         window.localStorage.setItem("periscopio.menu.recolhido", next ? "1" : "0");
+      } catch {
+        /* ignorado */
+      }
+      return next;
+    });
+  };
+
+  const toggleOculto = () => {
+    setOculto((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem("periscopio.menu.oculto", next ? "1" : "0");
       } catch {
         /* ignorado */
       }
@@ -223,6 +240,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           w-72 max-w-[85vw] md:max-w-none ${collapsed ? "md:w-[68px]" : "md:w-72"} bg-white border-r border-[#E1E9ED]
           flex flex-col justify-between shadow-2xl md:shadow-sm
           transform transition-all duration-300 ease-in-out md:overflow-hidden
+          ${oculto ? "md:hidden" : ""}
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
@@ -364,17 +382,33 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Utility Header (Desktop) */}
         <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/90 backdrop-blur-md border-b border-[#E1E9ED] sticky top-0 z-30 shadow-sm">
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            data-testid="menu-retratil"
-            className="mr-3 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] text-black hover:bg-[#E1E9ED] transition"
-            aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-            aria-expanded={!collapsed}
-            title={collapsed ? "Expandir menu" : "Recolher menu (mais espaço na tela)"}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          <div className="mr-3 flex items-center gap-2">
+            {!oculto && (
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                data-testid="menu-retratil"
+                className="p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] text-black hover:bg-[#E1E9ED] transition"
+                aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral para ícones"}
+                aria-expanded={!collapsed}
+                title={collapsed ? "Expandir menu" : "Recolher menu (só ícones)"}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleOculto}
+              data-testid="menu-tela-cheia"
+              className="inline-flex items-center gap-1.5 p-2.5 rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] text-black text-xs font-semibold hover:bg-[#E1E9ED] transition"
+              aria-label={oculto ? "Mostrar o menu lateral" : "Tela cheia: esconder o menu lateral"}
+              aria-pressed={oculto}
+              title={oculto ? "Mostrar o menu" : "Tela cheia (esconde o menu e usa toda a largura)"}
+            >
+              {oculto ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              <span className="hidden lg:inline">{oculto ? "Mostrar menu" : "Tela cheia"}</span>
+            </button>
+          </div>
           <div className="flex items-center gap-3 w-96 bg-[#F6F9FB] border border-[#E1E9ED] rounded-xl px-3 py-2 text-xs text-black">
             <Search className="w-4 h-4 text-neutral-800" />
             <input
@@ -412,7 +446,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Page Content */}
-        <div className={`flex-1 p-4 md:p-8 mx-auto w-full ${collapsed ? "max-w-[1600px]" : "max-w-7xl"}`}>
+        <div className={`flex-1 p-4 md:p-8 mx-auto w-full ${oculto ? "max-w-none md:px-6" : collapsed ? "max-w-[1600px]" : "max-w-7xl"}`}>
           {isBlocked ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto text-center shadow-sm space-y-4 my-12 animate-fadeIn">
               <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto border border-amber-200">

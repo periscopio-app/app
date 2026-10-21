@@ -442,6 +442,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
         journeyState={j.caseState}
         onVerNome={onVerNome}
         onEditar={readOnly ? undefined : () => setEditandoAluno(true)}
+        queixaEscola={sum.queixa_professor ?? ""}
       />
 
       {returnReason !== null && !readOnly && (
