@@ -5,6 +5,8 @@ import { ROLE_LABELS } from "@/components/ui/RoleBanner";
 export interface ProntuarioHeaderCardProps {
   studentCode: string;
   studentName?: string;
+  /** Nome completo liberado pelo servidor para a equipe do caso. Quando vem, aparece direto, sem passar pelo cofre. */
+  nomeCompleto?: string | null;
   schoolName: string;
   ageText: string;
   professionalName?: string;
@@ -42,6 +44,7 @@ const JOURNEY_LABELS: Record<string, string> = {
 export function ProntuarioHeaderCard({
   studentCode,
   studentName,
+  nomeCompleto,
   schoolName,
   ageText,
   professionalName = "Responsável Escolar",
@@ -94,7 +97,11 @@ export function ProntuarioHeaderCard({
             <User className="h-3.5 w-3.5 text-neutral-400" />
             Nome
           </span>
-          {onVerNome ? (
+          {nomeCompleto ? (
+            <p className="font-semibold text-black text-sm break-words" title={nomeCompleto} data-testid="nome-aluno">
+              {nomeCompleto}
+            </p>
+          ) : onVerNome ? (
             <>
               <p className="flex items-center gap-1 font-semibold text-black text-sm">
                 <Lock className="h-3.5 w-3.5 text-neutral-500" aria-hidden /> Protegido

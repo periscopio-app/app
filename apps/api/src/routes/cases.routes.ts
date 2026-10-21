@@ -10,12 +10,16 @@ import {
   cases,
   reAssessments,
   schools,
+  studentIdentityVault,
   students,
   users,
   VALID_SPECIALTIES,
 } from "@periscopio/shared";
 import { requireActor, requireCapability, type Actor } from "../security/actor";
 import { canonicalRole } from "../security/capabilities";
+import { can } from "../services/privilege.service";
+import { encryptText } from "../services/identity-crypto.service";
+import { auditarLeituraDoNome, auditarLeituraNaFila, carregarNomes, podeVerNomes } from "../services/student-name.service";
 import { canAccessSchool } from "../security/tenancy";
 import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
@@ -137,8 +141,20 @@ export async function casesRoutes(app: FastifyInstance) {
     const actor = await requireCapability(request, reply, "student.register");
     if (!actor) return;
 
-    const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number; grade?: unknown };
+    const body = (request.body ?? {}) as { schoolId?: string; birthYear?: number; birthMonth?: number; grade?: unknown; fullName?: unknown };
     if (!body.schoolId) return reply.status(400).send({ error: "ID da escola é obrigatório" });
+
+    // Nome da criança (opcional): vai direto, cifrado, para o cofre de identidade. O aluno continua sendo identificado pelo código.
+    const nomeInformado = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    if (body.fullName !== undefined && body.fullName !== null && typeof body.fullName !== "string") {
+      return reply.status(400).send({ error: "Informe o nome da criança em texto." });
+    }
+    if (nomeInformado && (nomeInformado.length < 2 || nomeInformado.length > 160)) {
+      return reply.status(400).send({ error: "O nome da criança deve ter entre 2 e 160 letras." });
+    }
+    if (nomeInformado && !(await can(actor, "vault.register"))) {
+      return reply.status(403).send({ error: "Seu perfil não pode guardar o nome da criança.", capability: "vault.register" });
+    }
 
     const school = await schoolVisibleTo(actor, body.schoolId);
     if (!school) return reply.status(404).send({ error: "Escola não encontrada" });
@@ -152,6 +168,25 @@ export async function casesRoutes(app: FastifyInstance) {
     if (!grade.ok) return reply.status(400).send({ error: grade.error });
 
     const student = await insertStudent(school, birth.birthYear, birth.birthMonth, grade.grade);
+    if (nomeInformado) {
+      await db.insert(studentIdentityVault).values({
+        tenantId: student.tenantId,
+        studentId: student.id,
+        encryptedFullName: encryptText(nomeInformado),
+      });
+      await recordAudit(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.id,
+          userEmail: actor.email,
+          action: "student.vault_updated",
+          entityType: "student_identity_vault",
+          entityId: student.id,
+          payload: { studentCode: student.studentCode, via: "cadastro" },
+        },
+        request
+      );
+    }
     await recordAudit(
       {
         tenantId: actor.tenantId,
@@ -455,6 +490,8 @@ export async function casesRoutes(app: FastifyInstance) {
       .select({
         id: cases.id,
         studentId: cases.studentId,
+        tenantId: cases.tenantId,
+        schoolId: students.schoolId,
         journeyState: cases.journeyState,
         status: cases.status,
         createdAt: cases.createdAt,
@@ -474,7 +511,45 @@ export async function casesRoutes(app: FastifyInstance) {
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(cases.updatedAt));
 
-    return { cases: list };
+    // Nome curto ("João S.") só para a equipe do caso e só se a caixinha estiver ligada; senão, só o código.
+    const nomes = await carregarNomes(
+      actor,
+      list.map((c) => ({ studentId: c.studentId, tenantId: c.tenantId, schoolId: c.schoolId, caseId: c.id }))
+    );
+    if (nomes.size > 0) await auditarLeituraNaFila(actor, actor.tenantId, nomes.size, request);
+
+    return {
+      cases: list.map(({ tenantId: _t, schoolId: _s, ...c }) => ({ ...c, studentLabel: nomes.get(c.studentId)?.label ?? null })),
+    };
+  });
+
+  /**
+   * Nome do aluno para a tela do caso. `enabled: false` quando o perfil não tem a caixinha ligada ou não faz parte
+   * da equipe daquele caso: a tela cai no fluxo antigo (nome protegido + cofre com justificativa).
+   */
+  app.get("/api/cases/:caseId/student-identity", async (request, reply) => {
+    const actor = await requireActor(request, reply);
+    if (!actor) return;
+
+    const { caseId } = request.params as { caseId: string };
+    const visible = await caseVisibleTo(actor, caseId);
+    if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+
+    if (!(await podeVerNomes(actor))) return { enabled: false, fullName: null, label: null };
+
+    const nomes = await carregarNomes(actor, [
+      { studentId: visible.student.id, tenantId: visible.student.tenantId, schoolId: visible.student.schoolId, caseId },
+    ]);
+    const nome = nomes.get(visible.student.id);
+    if (!nome) return { enabled: false, fullName: null, label: null };
+
+    await auditarLeituraDoNome(
+      actor,
+      { tenantId: visible.student.tenantId, studentId: visible.student.id, studentCode: visible.student.studentCode, caseId },
+      request
+    );
+    reply.header("Cache-Control", "no-store");
+    return { enabled: true, fullName: nome.fullName, label: nome.label };
   });
 
 

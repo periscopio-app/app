@@ -14,6 +14,7 @@ import {
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { ReJourneyLeitura } from "@/components/re/ReJourneyLeitura";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
@@ -81,6 +82,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   const [error, setError] = useState<string | null>(null);
 
   const [activeCase, setActiveCase] = useState<CaseItem | null>(null);
+  const nomeAluno = useNomeDoAluno(activeCase?.id);
   const [view, setView] = useState<ActiveView>("queue");
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
@@ -352,7 +354,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     </span>
                   </div>
                   <div className="text-[11px] text-neutral-700 flex flex-wrap gap-x-2">
-                    <span><strong>Nome:</strong> Aluno ({c.studentCode.slice(-4)})</span>
+                    <span><strong>Nome:</strong> {c.studentLabel || `Aluno (${c.studentCode.slice(-4)})`}</span>
                     <span>•</span>
                     <span><strong>Idade:</strong> {idade ? `${idade} anos` : "—"}</span>
                     {c.grade && (<><span>•</span><span><strong>Série:</strong> {c.grade}</span></>)}
@@ -382,6 +384,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                 <ProntuarioHeaderCard
                   studentCode={activeCase.studentCode}
                   studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
+                  nomeCompleto={nomeAluno.fullName}
                   schoolName={activeCase.schoolName || slug}
                   grade={activeCase.grade}
                   ageText={activeCase.birthYear ? `${new Date().getFullYear() - activeCase.birthYear} anos` : "7–9 anos (Piloto)"}

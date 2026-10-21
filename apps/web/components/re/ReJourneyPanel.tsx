@@ -31,6 +31,7 @@ import { ConfirmDialog, Modal } from "@/components/ui";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
+import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { OpcoesUnica, ReFormLeitura, ReFormRenderer, type ProfessorOpcao } from "./ReFormRenderer";
 import { AlunoEdicaoModal } from "./AlunoEdicaoModal";
 
@@ -175,6 +176,7 @@ function useTempoAtivo(caseId: string, ativo: boolean) {
 
 export function ReJourneyPanel({ caseId, professionalName, professionalRole, onSent, onStudentChanged, onVerNome }: Props) {
   const base = `/api/cases/${caseId}`;
+  const nomeAluno = useNomeDoAluno(caseId);
   const [j, setJ] = useState<Jornada | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -430,6 +432,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     <div ref={topo} className="space-y-4 scroll-mt-4" data-testid="re-jornada">
       <ProntuarioHeaderCard
         studentCode={aluno.studentCode}
+        nomeCompleto={nomeAluno.fullName}
         schoolName={aluno.schoolName ?? ""}
         ageText={idade}
         birthText={nasc}
