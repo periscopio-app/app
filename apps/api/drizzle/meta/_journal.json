@@ -169,6 +169,13 @@
       "when": 1792456800000,
       "tag": "0023_formularios_do_medico",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792543200000,
+      "tag": "0024_formularios_das_especialidades",
+      "breakpoints": true
     }
   ]
 }

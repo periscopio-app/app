@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { RE_TEXTO_MAX, lerGenograma, type ReCampo, type ReFormDef, type ReOpcao } from "@periscopio/shared";
+import { RE_TEXTO_MAX, lerGenograma, type FormDef, type ReCampo, type ReOpcao } from "@periscopio/shared";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { GenogramaDesenho } from "@/components/genograma/GenogramaDesenho";
 
@@ -199,7 +199,7 @@ function CampoView({
   );
 
   if (campo.tipo === "texto") {
-    const ehData = campo.key === "data_aplicacao";
+    const ehData = /(^|_)data_/.test(campo.key);
     return wrap(
       <>
         <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-black">{campo.label}</label>
@@ -337,7 +337,7 @@ function CampoView({
             <li key={l.key} data-campo={`${formId}:${campo.key}|${l.key}`} className={`scroll-mt-28 space-y-2 px-3 py-3 ${faltaLinha ? "border-l-4 border-l-erro bg-erro/5" : ""}`}>
               <p className="text-sm text-black">{l.label}</p>
               <div className="flex flex-wrap items-center gap-2">
-                {campo.multipla ? (
+                {campo.opcoes.length === 0 ? null : campo.multipla ? (
                   <OpcoesMultipla nome={l.label} opcoes={campo.opcoes} valor={celulaComoLista(cel.r)} desabilitado={readOnly} onChange={(v) => setLinha(l.key, { r: v })} />
                 ) : (
                   <OpcoesUnica nome={l.label} opcoes={campo.opcoes} valor={typeof cel.r === "string" ? cel.r : null} desabilitado={readOnly} onChange={(v) => setLinha(l.key, { r: v })} />
@@ -347,9 +347,10 @@ function CampoView({
                     {campo.comNumero}
                     <input
                       type="number"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       min={0}
                       max={1000}
+                      step="any"
                       disabled={readOnly}
                       value={cel.n ?? ""}
                       onChange={(e) => setLinha(l.key, { n: e.target.value === "" ? null : Number(e.target.value) })}
@@ -391,7 +392,7 @@ export function ReFormRenderer({
   continuo = false,
   contexto = {},
 }: {
-  form: ReFormDef;
+  form: FormDef;
   value: Payload;
   onChange: (next: Payload) => void;
   readOnly?: boolean;
@@ -431,7 +432,7 @@ function rotulosDe(opcoes: ReOpcao[], r: unknown): string {
 }
 
 /** Leitura (médico / depois do envio): só o que foi respondido, em lista simples. */
-export function ReFormLeitura({ form, value }: { form: ReFormDef; value: Payload }) {
+export function ReFormLeitura({ form, value }: { form: FormDef; value: Payload }) {
   const vazio = <span className="italic text-neutral-600">não informado</span>;
   const obs = (chave: string) => (value[chave] ? <span className="mt-0.5 block text-neutral-800">Observação: {String(value[chave])}</span> : null);
   return (

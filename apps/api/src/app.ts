@@ -12,6 +12,7 @@ import { accessRoutes } from "./routes/access.routes";
 import { casesRoutes } from "./routes/cases.routes";
 import { reJourneyRoutes } from "./routes/re-journey.routes";
 import { medicalFormsRoutes } from "./routes/medical-forms.routes";
+import { specialtyFormsRoutes } from "./routes/specialty-forms.routes";
 import { leadsRoutes } from "./routes/leads.routes";
 import { usersRoutes } from "./routes/users.routes";
 import { privilegesRoutes } from "./routes/privileges.routes";
@@ -132,6 +133,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(casesRoutes);
   app.register(reJourneyRoutes);
   app.register(medicalFormsRoutes);
+  app.register(specialtyFormsRoutes);
   app.register(leadsRoutes);
   app.register(usersRoutes);
   app.register(privilegesRoutes);

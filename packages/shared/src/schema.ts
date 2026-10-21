@@ -354,6 +354,34 @@ export const caseSummaries = pgTable("case_summaries", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Formulários preenchidos pelo especialista dentro da sua seção delegada (fono, psicopedagogia, psicologia,
+ * neuropsicologia, psicomotricidade, serviço social). Catálogo em `especialidades-catalog.ts`.
+ * Rascunho só o autor enxerga; o médico lê quando a seção é concluída. `history` guarda a versão anterior
+ * quando o profissional reabre um formulário concluído.
+ */
+export const caseSpecialtyForms = pgTable(
+  "case_specialty_forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    caseId: uuid("case_id").notNull().references(() => cases.id),
+    sectionId: uuid("section_id").notNull().references(() => caseSummaries.id),
+    specialty: varchar("specialty", { length: 50 }).notNull(),
+    formId: varchar("form_id", { length: 40 }).notNull(),
+    formVersion: varchar("form_version", { length: 30 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("rascunho"), // rascunho | concluido
+    payload: jsonb("payload").notNull().default({}),
+    history: jsonb("history").notNull().default([]),
+    authorId: uuid("author_id").notNull().references(() => users.id),
+    completedBy: uuid("completed_by").references(() => users.id),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ sectionForm: uniqueIndex("case_specialty_forms_section_form_uq").on(t.sectionId, t.formId) })
+);
+
 
 /**
  * Central de notificações in-app.
