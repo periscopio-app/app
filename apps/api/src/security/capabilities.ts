@@ -152,7 +152,7 @@ export const CAPABILITIES = [
   { key: "case.close", group: "medico", label: "Encerrar caso (decisão final)", description: "Registrar encaminhamento, acompanhamento ou alta. Irreversível.", defaultRoles: ["md1"], sensitive: true },
 
   // ── Especialistas ───────────────────────────────────────────────────────
-  { key: "section.read", group: "especialista", label: "Ver as seções delegadas", description: "Abrir a própria seção e os sumários concluídos dos colegas.", defaultRoles: SPECIALIST_CLINICAL_ROLES, sensitive: true },
+  { key: "section.read", group: "especialista", label: "Ver as seções delegadas", description: "Abrir a própria seção e o sumário executivo do médico (quando concluído). Não vê o FOGAP nem as seções de colegas.", defaultRoles: SPECIALIST_CLINICAL_ROLES, sensitive: true },
   { key: "section.fill", group: "especialista", label: "Preencher e concluir a própria seção", description: "Salvar rascunho e concluir o parecer da especialidade.", defaultRoles: SPECIALIST_CLINICAL_ROLES, sensitive: true },
 
   // ── Triagem TEA ─────────────────────────────────────────────────────────

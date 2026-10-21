@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "../db/client";
 import {
   auditLogs,
+  caseMedicalForms,
   caseSummaries,
   caseTimeline,
   caseTransitions,
@@ -24,7 +25,7 @@ import { canAccessSchool } from "../security/tenancy";
 import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
 import { ageBracketOf, generateStudentCode, normalizeGrade, validateBirth, validatePilotAge } from "../services/student-code";
-import { filterPeerSections, medicalFinalSummary } from "../services/specialist-view.service";
+import { SUMARIO_MEDICO_FORM_ID, sumarioExecutivoMedico } from "../services/specialist-view.service";
 import {
   FOGAP_FORM_CODE,
   FOGAP_VERSION,
@@ -1117,27 +1118,27 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     return { assignedSections: sections };
   });
 
-  // Contexto do caso para o especialista: FOGAP + resumo final do médico e dos demais (ver specialist-view.service)
+  // Contexto do caso para o especialista: SOMENTE o sumário executivo do médico (ver specialist-view.service).
+  // Não devolve FOGAP, avaliação do RE, seções de colegas nem a decisão de encerramento.
   app.get("/api/cases/:caseId/specialist-view", async (request, reply) => {
     const actor = await requireCapability(request, reply, "section.read");
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
 
-    const sections = await db
-      .select({
-        id: caseSummaries.id,
-        specialty: caseSummaries.specialty,
-        status: caseSummaries.status,
-        summary: caseSummaries.summary,
-        completedAt: caseSummaries.completedAt,
-        assignedProfessionalId: caseSummaries.assignedProfessionalId,
-      })
-      .from(caseSummaries)
-      .where(and(eq(caseSummaries.caseId, caseId), eq(caseSummaries.tenantId, actor.tenantId)));
-
     // Só quem tem seção atribuída neste caso (mesmo tenant) enxerga o contexto
-    if (!sections.some((s) => s.assignedProfessionalId === actor.id)) {
+    const minhas = await db
+      .select({ id: caseSummaries.id })
+      .from(caseSummaries)
+      .where(
+        and(
+          eq(caseSummaries.caseId, caseId),
+          eq(caseSummaries.tenantId, actor.tenantId),
+          eq(caseSummaries.assignedProfessionalId, actor.id)
+        )
+      )
+      .limit(1);
+    if (minhas.length === 0) {
       return reply.status(403).send({ error: "Sem seção atribuída neste caso" });
     }
 
@@ -1154,17 +1155,20 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       .where(eq(students.id, caseItem.studentId))
       .limit(1);
 
-    const [assessment] = await db
-      .select({ payload: reAssessments.payload, status: reAssessments.status })
-      .from(reAssessments)
-      .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId), eq(reAssessments.formCode, FOGAP_FORM_CODE)))
-      .limit(1);
-
-    const [closed] = await db
-      .select({ payload: caseTimeline.payload, createdAt: caseTimeline.createdAt })
-      .from(caseTimeline)
-      .where(and(eq(caseTimeline.caseId, caseId), eq(caseTimeline.tenantId, actor.tenantId), eq(caseTimeline.event, "case:closed")))
-      .orderBy(desc(caseTimeline.createdAt))
+    const [sumarioMedico] = await db
+      .select({
+        status: caseMedicalForms.status,
+        payload: caseMedicalForms.payload,
+        completedAt: caseMedicalForms.completedAt,
+      })
+      .from(caseMedicalForms)
+      .where(
+        and(
+          eq(caseMedicalForms.caseId, caseId),
+          eq(caseMedicalForms.tenantId, actor.tenantId),
+          eq(caseMedicalForms.formId, SUMARIO_MEDICO_FORM_ID)
+        )
+      )
       .limit(1);
 
     await db.insert(auditLogs).values({
@@ -1178,9 +1182,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     return {
       student,
       journeyState: caseItem.journeyState,
-      fogap: assessment ? { status: assessment.status, payload: assessment.payload } : null,
-      peerSections: filterPeerSections(sections, actor.id),
-      medicalFinalSummary: closed ? { ...medicalFinalSummary(closed.payload), closedAt: closed.createdAt } : null,
+      sumarioExecutivoMedico: sumarioExecutivoMedico(sumarioMedico),
     };
   });
 

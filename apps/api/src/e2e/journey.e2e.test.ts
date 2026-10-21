@@ -444,12 +444,13 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(consolidatedTry.status, 403, "especialista não lê o consolidado");
   });
 
-  test("especialista lê o FOGAP e só vê pareceres concluídos dos outros", async () => {
+  test("especialista vê só o sumário executivo do médico (pendente) e nada do RE nem dos colegas", async () => {
     const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(v.status, 200, JSON.stringify(v.body));
-    assert.ok(v.body.fogap, "FOGAP enviado visível");
-    assert.equal(v.body.peerSections.length, 0, "parecer do colega ainda não concluído");
-    assert.equal(v.body.medicalFinalSummary, null, "caso ainda não encerrado");
+    assert.deepEqual(v.body.sumarioExecutivoMedico, { status: "pendente", registro: null, completedAt: null });
+    for (const chave of ["fogap", "peerSections", "medicalFinalSummary"]) {
+      assert.ok(!(chave in v.body), `a visão do especialista não devolve ${chave}`);
+    }
     assert.ok(!JSON.stringify(v.body).includes("professionalName"));
   });
 
@@ -467,10 +468,23 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(fin.status, 200, JSON.stringify(fin.body));
   });
 
-  test("após conclusão, especialista vê o parecer do colega; sem seção no caso → 403", async () => {
+  test("especialista só vê o sumário do médico depois de concluído; parecer do colega nunca; sem seção → 403", async () => {
+    // O médico escreve o sumário: em rascunho ele não sai do perfil dele
+    const rasc = await call("PUT", `/api/cases/${caseId}/medical-forms/sumario_medico`, "md", { payload: { registro: "sumário executivo sintético do médico" } });
+    assert.equal(rasc.status, 200, JSON.stringify(rasc.body));
+    const antes = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
+    assert.equal(antes.body.sumarioExecutivoMedico.status, "pendente");
+    assert.ok(!JSON.stringify(antes.body).includes("sintético do médico"), "rascunho do médico não vaza");
+
+    const concl = await call("POST", `/api/cases/${caseId}/medical-forms/sumario_medico/complete`, "md");
+    assert.equal(concl.status, 200, JSON.stringify(concl.body));
     const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(v.status, 200, JSON.stringify(v.body));
-    assert.deepEqual(v.body.peerSections.map((x: any) => x.specialty), ["fonoaudiologia"]);
+    assert.equal(v.body.sumarioExecutivoMedico.status, "concluido");
+    assert.equal(v.body.sumarioExecutivoMedico.registro, "sumário executivo sintético do médico");
+    assert.ok(!("peerSections" in v.body), "parecer do colega não aparece, nem concluído");
+    assert.ok(!("fogap" in v.body), "FOGAP não aparece");
+
     const re = await call("GET", `/api/cases/${caseId}/specialist-view`, "re");
     assert.equal(re.status, 403, "RE não usa esta rota");
   });

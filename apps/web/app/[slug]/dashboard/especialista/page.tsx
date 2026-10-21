@@ -33,59 +33,22 @@ interface AssignedSection extends CaseSection {
 }
 
 interface CaseContext {
-  fogap: { status: string; payload: Record<string, unknown> } | null;
-  peerSections: { specialty: string; summary: unknown; completedAt: string | null }[];
-  medicalFinalSummary: { decision?: string; followUp?: string; reason?: string; closedAt?: string } | null;
-}
-
-function textOf(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  const o = v as Record<string, unknown>;
-  return String(o.clinicalNotes ?? o.texto ?? JSON.stringify(v));
+  sumarioExecutivoMedico: { status: "concluido" | "pendente"; registro: string | null; completedAt: string | null };
 }
 
 function CaseContextPanel({ ctx }: { ctx: CaseContext }) {
-  const fogapEntries = Object.entries(ctx.fogap?.payload ?? {}).filter(
-    ([, v]) => v !== "" && v != null && typeof v !== "object"
-  );
+  const s = ctx.sumarioExecutivoMedico;
   return (
-    <div className="rounded-xl border border-linha bg-fundo p-4 space-y-3 text-xs text-black">
-      <h3 className="text-sm font-bold text-black">Contexto do caso (somente leitura)</h3>
-      <div>
-        <p className="font-semibold">FOGAP / avaliação do RE</p>
-        {fogapEntries.length === 0 ? (
-          <p className="text-neutral-800">Sem registro enviado.</p>
-        ) : (
-          <ul className="mt-1 space-y-0.5">
-            {fogapEntries.map(([k, v]) => (
-              <li key={k}><span className="text-neutral-800">{k}:</span> {String(v)}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div>
-        <p className="font-semibold">Pareceres concluídos de outras especialidades</p>
-        {ctx.peerSections.length === 0 ? (
-          <p className="text-neutral-800">Nenhum parecer concluído até o momento.</p>
-        ) : (
-          ctx.peerSections.map((p) => (
-            <p key={p.specialty} className="mt-1"><span className="font-medium">{p.specialty}:</span> {textOf(p.summary)}</p>
-          ))
-        )}
-      </div>
-      <div>
-        <p className="font-semibold">Resumo final do médico</p>
-        {ctx.medicalFinalSummary ? (
-          <p className="mt-1">
-            {ctx.medicalFinalSummary.decision}
-            {ctx.medicalFinalSummary.followUp ? ` (${ctx.medicalFinalSummary.followUp})` : ""}
-            {ctx.medicalFinalSummary.reason ? ` — ${ctx.medicalFinalSummary.reason}` : ""}
-          </p>
-        ) : (
-          <p className="text-neutral-800">Disponível após o encerramento do caso.</p>
-        )}
-      </div>
+    <div className="rounded-xl border border-linha bg-fundo p-4 space-y-2 text-xs text-black">
+      <h3 className="text-sm font-bold text-black">Sumário executivo do médico (somente leitura)</h3>
+      {s.status === "concluido" ? (
+        <p className="whitespace-pre-wrap">{s.registro?.trim() ? s.registro : "O médico concluiu o sumário sem texto."}</p>
+      ) : (
+        <p className="text-neutral-800">O médico ainda não concluiu o sumário executivo deste caso.</p>
+      )}
+      <p className="text-neutral-700">
+        Você vê apenas este sumário e a sua própria seção. O FOGAP, as seções dos colegas e a decisão final ficam com o médico.
+      </p>
     </div>
   );
 }

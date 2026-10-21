@@ -1,45 +1,34 @@
 /**
- * Visibilidade do especialista (Dra. Ana Cecília, 07/out/2026):
- * o especialista vê o FOGAP e o resumo final do médico e dos demais especialistas.
+ * Visibilidade do especialista (decisão do Bruno/produto, 21/out/2026; substitui a regra de 07/out
+ * "FOGAP + resumo final do médico e dos demais"):
+ * o especialista vê SOMENTE
+ *   - a própria seção delegada (rota de seções) e
+ *   - o sumário executivo do médico, quando o médico o concluir.
  *
- * Regras de minimização (LGPD):
- * - seções de outras especialidades só aparecem quando CONCLUÍDAS (rascunho de colega não vaza);
- * - serviço social é informação sensível: nunca aparece para outro especialista;
- * - aparece a especialidade, nunca o nome do profissional;
- * - a decisão final do médico só aparece depois do encerramento.
+ * Não vê: o FOGAP nem a avaliação do RE, as seções de colegas (concluídas ou não), os demais formulários
+ * do médico, a decisão de encerramento nem o nome de qualquer profissional.
+ *
+ * "Sumário executivo" = a própria seção/formulário concluído do profissional. Para o médico, é o
+ * formulário "Sumário médico" (sumario_medico). Rascunho nunca sai do perfil de quem escreve.
  */
-export const SPECIALTIES_HIDDEN_FROM_PEERS = ["servico_social"] as const;
+export const SUMARIO_MEDICO_FORM_ID = "sumario_medico" as const;
 
-export interface PeerSectionInput {
-  id: string;
-  specialty: string;
+export interface SumarioMedicoRow {
   status: string;
-  summary: unknown;
-  completedAt: Date | null;
-  assignedProfessionalId: string | null;
-}
-
-export interface PeerSectionView {
-  specialty: string;
-  summary: unknown;
+  payload: unknown;
   completedAt: Date | null;
 }
 
-export function filterPeerSections(sections: PeerSectionInput[], actorId: string): PeerSectionView[] {
-  return sections
-    .filter((s) => s.assignedProfessionalId !== actorId)
-    .filter((s) => s.status === "concluido")
-    .filter((s) => !(SPECIALTIES_HIDDEN_FROM_PEERS as readonly string[]).includes(s.specialty))
-    .map((s) => ({ specialty: s.specialty, summary: s.summary, completedAt: s.completedAt }));
+export interface SumarioExecutivoMedico {
+  /** "concluido" quando há texto liberado; "pendente" enquanto o médico não concluiu. */
+  status: "concluido" | "pendente";
+  registro: string | null;
+  completedAt: Date | null;
 }
 
-export function medicalFinalSummary(payload: unknown): { decision: string; followUp?: string; reason?: string } | null {
-  if (!payload || typeof payload !== "object") return null;
-  const p = payload as Record<string, unknown>;
-  if (typeof p.decision !== "string") return null;
-  return {
-    decision: p.decision,
-    followUp: typeof p.followUp === "string" ? p.followUp : undefined,
-    reason: typeof p.reason === "string" ? p.reason : undefined,
-  };
+export function sumarioExecutivoMedico(row: SumarioMedicoRow | undefined | null): SumarioExecutivoMedico {
+  if (!row || row.status !== "concluido") return { status: "pendente", registro: null, completedAt: null };
+  const p = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
+  const registro = typeof p.registro === "string" ? p.registro : "";
+  return { status: "concluido", registro, completedAt: row.completedAt };
 }
