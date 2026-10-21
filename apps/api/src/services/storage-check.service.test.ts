@@ -42,6 +42,42 @@ test("tudo certo: link público responde 200 com a mesma imagem e depois some", 
   assert.ok(!JSON.stringify(r).includes('"k"'), "nenhuma chave no resultado");
 });
 
+test("CDN ainda serve o link antigo depois de apagar: o teste confere a origem e passa", async () => {
+  let removido = false;
+  const r = await runStorageCheck({
+    env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k" },
+    putAvatar: async () => {},
+    removeAvatar: async () => { removido = true; },
+    avatarPublicUrl: () => "https://x.supabase.co/storage/v1/object/public/periscopio-avatars/diagnostico/a.png",
+    uploadObject: async () => "https://x.supabase.co/signed",
+    removeObject: async () => {},
+    fetch: async (url) => {
+      if (url.includes("/public/")) {
+        // sem parâmetro novo, a CDN devolve o arquivo em cache; com parâmetro novo, vai à origem
+        if (!url.includes("?")) return resp(200, PNG);
+        return removido ? resp(404, Buffer.from("{}"), "application/json") : resp(200, PNG);
+      }
+      return resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain");
+    },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.steps));
+  assert.equal(r.steps.find((s) => s.id === "avatar_cleanup")!.httpStatus, 404);
+});
+
+test("imagem apagada que ainda responde 200 na origem continua sendo acusada", async () => {
+  const r = await runStorageCheck({
+    env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k" },
+    putAvatar: async () => {},
+    removeAvatar: async () => {},
+    avatarPublicUrl: () => "https://x.supabase.co/storage/v1/object/public/periscopio-avatars/diagnostico/a.png",
+    uploadObject: async () => "https://x.supabase.co/signed",
+    removeObject: async () => {},
+    fetch: async (url) => (url.includes("/public/") ? resp(200, PNG) : resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain")),
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.steps.find((s) => s.id === "avatar_cleanup")!.detail, /continua acessível/);
+});
+
 test("bucket de fotos privado: o link responde 400/404 e o teste acusa", async () => {
   const r = await runStorageCheck({
     env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k" },

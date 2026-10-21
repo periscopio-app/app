@@ -116,9 +116,11 @@ export async function runStorageCheck(overrides: Partial<StorageDeps> = {}): Pro
 
     await step("avatar_cleanup", "Foto de perfil: apagar a imagem de teste", async () => {
       await d.removeAvatar(chave);
-      const r = await fetchComTimeout(d.fetch, url);
+      // A CDN do Supabase guarda o arquivo em cache por um tempo, então o link original pode seguir
+      // respondendo 200 depois da exclusão. Um parâmetro novo na URL força a CDN a perguntar à origem.
+      const r = await fetchComTimeout(d.fetch, `${url}?verificacao=${crypto.randomUUID()}`);
       if (r.status === 200) return { ok: false, httpStatus: r.status, detail: "A imagem de teste continua acessível depois de apagada." };
-      return { ok: true, httpStatus: r.status, detail: `Apagada (o link agora responde ${r.status}).` };
+      return { ok: true, httpStatus: r.status, detail: `Apagada (o link agora responde ${r.status}; o link antigo pode ficar em cache da CDN por algum tempo).` };
     });
   }
 
