@@ -142,6 +142,8 @@ export const CAPABILITIES = [
   { key: "scales.score", group: "avaliacao_re", label: "Usar calculadoras de pontuação", description: "SNAP-IV e ABC (indicador de apoio, não é diagnóstico).", defaultRoles: CLINICAL_ROLES },
 
   // ── Médico ──────────────────────────────────────────────────────────────
+  { key: "md.form.read", group: "medico", label: "Ler os formulários do médico", description: "Anamnese, exame, hipótese e conduta, encaminhamentos, seguimento e sumário médico.", defaultRoles: ["md1"], sensitive: true },
+  { key: "md.form.fill", group: "medico", label: "Preencher os formulários do médico", description: "Salvar rascunho, concluir e reabrir (com motivo) as seções do médico.", defaultRoles: ["md1"], sensitive: true },
   { key: "case.delegate", group: "medico", label: "Delegar seções a especialistas", description: "Escolher especialidades e profissionais do núcleo.", defaultRoles: ["md1"] },
   { key: "case.return", group: "medico", label: "Devolver caso ao RE", description: "Reabrir a avaliação da escola com motivo formal.", defaultRoles: ["md1"] },
   { key: "prontuario.consolidado.read", group: "medico", label: "Ver o prontuário consolidado", description: "Todas as seções concluídas dos especialistas.", defaultRoles: ["md1"], sensitive: true },

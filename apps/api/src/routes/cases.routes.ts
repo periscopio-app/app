@@ -940,14 +940,28 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
 
-    if (visible.caseItem.journeyState !== "revisao_medica") {
-      return reply.status(409).send({ error: "Delegação disponível apenas quando o caso está em revisão médica" });
+    // Primeira delegação: revisão médica → delegado. Depois disso o médico ainda pode acrescentar especialistas
+    // de especialidades que ainda não foram designadas (o caso continua "delegado", sem nova transição).
+    const estadoAtual = visible.caseItem.journeyState;
+    if (estadoAtual !== "revisao_medica" && estadoAtual !== "delegado") {
+      return reply.status(409).send({ error: "Delegação disponível quando o caso está em revisão médica ou já delegado" });
     }
 
     const parse = delegateSchema.safeParse(request.body);
     if (!parse.success) return reply.status(400).send({ error: "Dados inválidos", issues: parse.error.issues });
 
     const { delegations, reason, needsNeuropsych } = parse.data;
+
+    if (estadoAtual === "delegado") {
+      const jaDesignadas = await db
+        .select({ specialty: caseSummaries.specialty })
+        .from(caseSummaries)
+        .where(and(eq(caseSummaries.caseId, caseId), eq(caseSummaries.tenantId, actor.tenantId)));
+      const repetidas = delegations.map((d) => d.specialty).filter((sp) => jaDesignadas.some((j) => j.specialty === sp));
+      if (repetidas.length > 0) {
+        return reply.status(409).send({ error: `Especialidade já designada neste caso: ${[...new Set(repetidas)].join(", ")}` });
+      }
+    }
 
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
@@ -974,7 +988,17 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         });
       }
 
-      await applyTransitionInTx(txDb, caseId, "delegado", actor, reason);
+      if (estadoAtual === "revisao_medica") {
+        await applyTransitionInTx(txDb, caseId, "delegado", actor, reason);
+      } else {
+        await txDb.insert(caseTimeline).values({
+          tenantId: actor.tenantId,
+          caseId,
+          actorId: actor.id,
+          event: "case:delegation_added",
+          payload: { specialties: delegations.map((d) => d.specialty), reason, actorRole: actor.role },
+        });
+      }
 
       if (needsNeuropsych !== undefined) {
         await txDb.insert(caseTimeline).values({

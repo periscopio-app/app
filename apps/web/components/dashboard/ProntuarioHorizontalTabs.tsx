@@ -24,6 +24,7 @@ export type ProntuarioTabKey =
   | "vault"
   | "consent"
   | "board"
+  | "medical"
   | "clinical_actions";
 
 interface ProntuarioHorizontalTabsProps {
@@ -35,6 +36,11 @@ interface ProntuarioHorizontalTabsProps {
   userSpecialty?: string;
   childrenOverview?: React.ReactNode;
   childrenActions?: React.ReactNode;
+  /** Formulários do médico (aba "Avaliação médica"). */
+  childrenMedical?: React.ReactNode;
+  /** Aba controlada pela tela (ex.: o botão "Encaminhar a especialistas" abre a aba de ações). */
+  activeTab?: ProntuarioTabKey;
+  onTabChange?: (tab: ProntuarioTabKey) => void;
 }
 
 export function ProntuarioHorizontalTabs({
@@ -46,8 +52,16 @@ export function ProntuarioHorizontalTabs({
   userSpecialty,
   childrenOverview,
   childrenActions,
+  childrenMedical,
+  activeTab: activeTabControlada,
+  onTabChange,
 }: ProntuarioHorizontalTabsProps) {
-  const [activeTab, setActiveTab] = useState<ProntuarioTabKey>("overview");
+  const [abaInterna, setAbaInterna] = useState<ProntuarioTabKey>("overview");
+  const activeTab = activeTabControlada ?? abaInterna;
+  const setActiveTab = (t: ProntuarioTabKey) => {
+    setAbaInterna(t);
+    onTabChange?.(t);
+  };
 
   const tabs: Array<{
     id: ProntuarioTabKey;
@@ -61,6 +75,12 @@ export function ProntuarioHorizontalTabs({
       label: "Visão Geral & FOGAP",
       icon: FileText,
       visible: true,
+    },
+    {
+      id: "medical",
+      label: "Avaliação médica",
+      icon: Stethoscope,
+      visible: Boolean(childrenMedical),
     },
     {
       id: "tea",
@@ -97,7 +117,7 @@ export function ProntuarioHorizontalTabs({
     },
     {
       id: "clinical_actions",
-      label: isDoctorOrMaster ? "Ações Médicas & Delegação" : "Meu Parecer",
+      label: isDoctorOrMaster ? "Encaminhar a especialistas & Encerrar" : "Meu Parecer",
       icon: Stethoscope,
       visible: Boolean(childrenActions),
     },
@@ -152,6 +172,10 @@ export function ProntuarioHorizontalTabs({
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "medical" && childrenMedical && (
+          <div className="space-y-4">{childrenMedical}</div>
         )}
 
         {activeTab === "tea" && (

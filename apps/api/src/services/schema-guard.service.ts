@@ -19,6 +19,7 @@ function migrationSql(): string[] {
     "0019_pilot_symptom_measurements.sql",
     "0021_re_fluxo_continuo_observabilidade.sql",
     "0022_meu_painel_perfil_foto.sql",
+    "0023_formularios_do_medico.sql",
   ];
   const allSql: string[] = [];
 

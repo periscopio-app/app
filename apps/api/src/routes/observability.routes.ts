@@ -4,6 +4,8 @@ import { db } from "../db/client";
 import { requireCapability } from "../security/actor";
 import { snapshot, toPrometheus } from "../observability/metrics";
 import { timingSafeEqual } from "node:crypto";
+import { runStorageCheck } from "../services/storage-check.service";
+import { recordAudit } from "../services/audit.service";
 
 /** Só booleanos: nunca o valor de segredos. */
 function configChecks() {
@@ -18,6 +20,7 @@ function configChecks() {
     { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), optional: false, hint: "Origens permitidas para chamar a API." },
     { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },
     { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), optional: true, hint: "Armazenamento de anexos clínicos (Supabase Storage para laudos e exames)." },
+    { key: "SUPABASE_SERVICE_ROLE_KEY", ok: has("SUPABASE_SERVICE_ROLE_KEY"), optional: true, hint: "Chave de serviço do Supabase: necessária para gravar fotos de perfil e anexos clínicos." },
     { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), optional: true, hint: "Opcional: libera rota /metrics para coletor externo (Prometheus/Grafana)." },
   ];
 }
@@ -52,7 +55,7 @@ export async function observabilityRoutes(app: FastifyInstance) {
     if (m.http.total >= 20 && (m.http.p95Ms ?? 0) > 2500) {
       alerts.push({ level: "medio", text: `Lentidão: 95% das requisições levam até ${m.http.p95Ms} ms ou mais.` });
     }
-    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "BI_RAG_URL" && c.key !== "SUPABASE_URL");
+    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "BI_RAG_URL" && c.key !== "SUPABASE_URL" && c.key !== "SUPABASE_SERVICE_ROLE_KEY");
     if (missing.length) alerts.push({ level: "alto", text: `Configuração faltando: ${missing.map((c) => c.key).join(", ")}.` });
 
     return {
@@ -69,6 +72,25 @@ export async function observabilityRoutes(app: FastifyInstance) {
       ...m,
       note: "Números desta instância desde o último reinício. Com mais de uma instância, cada uma mostra os seus.",
     };
+  });
+
+  // Autoteste do armazenamento: sobe imagem sintética, abre o link público, confere o 200 e apaga. Só Administrador Master.
+  app.post("/api/admin/storage-check", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "system.observability.view");
+    if (!actor) return;
+    const resultado = await runStorageCheck();
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "storage.check",
+        entityType: "system",
+        payload: { ok: resultado.ok, passos: resultado.steps.map((s) => ({ id: s.id, ok: s.ok, httpStatus: s.httpStatus ?? null })) },
+      },
+      request
+    );
+    return resultado;
   });
 
   // Coletor externo (Prometheus/Grafana). Desligado enquanto METRICS_TOKEN não existir.
