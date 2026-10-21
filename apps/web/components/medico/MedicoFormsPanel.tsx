@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, ClipboardList, Lock, Pencil, RotateCcw, Save } from "lucide-react";
 import { MD_FORMS, MD_TEXTO_MAX, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
+import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 
 type Status = "nao_iniciado" | "rascunho" | "concluido";
 interface FormRow {
@@ -37,7 +38,7 @@ const COR: Record<Status, string> = {
 export function MedicoFormsPanel({ caseId }: { caseId: string }) {
   const [d, setD] = useState<Resp | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [rascunhos, setRascunhos] = useState<Record<string, string>>({});
+  const [rascunhos, setRascunhos] = useState<Record<string, Record<string, string>>>({});
   const [msg, setMsg] = useState<Record<string, { tom: "ok" | "erro"; texto: string }>>({});
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [motivo, setMotivo] = useState<Record<string, string>>({});
@@ -47,7 +48,7 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
     try {
       const r = await api.get<Resp>(`/api/cases/${caseId}/medical-forms`);
       setD(r);
-      setRascunhos(Object.fromEntries(r.forms.map((f) => [f.id, f.payload.registro ?? ""])));
+      setRascunhos(Object.fromEntries(r.forms.map((f) => [f.id, { ...f.payload }])));
       setErro(null);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível carregar os formulários do médico.");
@@ -65,7 +66,7 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
   async function salvar(id: MdFormId) {
     setOcupado(id);
     try {
-      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: { registro: rascunhos[id] ?? "" } });
+      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: rascunhos[id] ?? {} });
       aviso(id, "ok", "Rascunho salvo.");
       await carregar();
     } catch (e) {
@@ -78,7 +79,7 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
   async function concluir(id: MdFormId) {
     setOcupado(id);
     try {
-      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: { registro: rascunhos[id] ?? "" } });
+      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: rascunhos[id] ?? {} });
       await api.post(`/api/cases/${caseId}/medical-forms/${id}/complete`, {});
       aviso(id, "ok", "Seção concluída. Para alterar, reabra com o motivo.");
       await carregar();
@@ -132,9 +133,9 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
 
       {d.forms.map((f) => {
         const def = MD_FORMS[f.id];
-        const campo = def.campos[0];
         const travado = !d.editavel || f.status === "concluido";
-        const texto = rascunhos[f.id] ?? "";
+        const valores = rascunhos[f.id] ?? {};
+        const preenchido = def.campos.some((c) => (valores[c.id] ?? "").trim().length > 0);
         const m = msg[f.id];
         return (
           <details key={f.id} open={f.status !== "concluido"} className="rounded-xl border border-linha bg-white">
@@ -144,24 +145,39 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
             </summary>
             <div className="space-y-2 border-t border-linha p-3">
               <p className="text-xs text-neutral-800">{def.descricao}</p>
-              <label className="block text-xs font-semibold text-black" htmlFor={`md-${f.id}`}>
-                {campo.rotulo}
-              </label>
-              {campo.ajuda && <p className="text-[11px] text-neutral-700">{campo.ajuda}</p>}
-              <textarea
-                id={`md-${f.id}`}
-                rows={6}
-                maxLength={MD_TEXTO_MAX}
-                value={texto}
-                disabled={travado}
-                onChange={(e) => setRascunhos((r) => ({ ...r, [f.id]: e.target.value }))}
-                className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
-              />
+              {def.campos.map((campo) => {
+                const texto = valores[campo.id] ?? "";
+                const idCampo = `md-${f.id}-${campo.id}`;
+                const mudar = (v: string) => setRascunhos((r) => ({ ...r, [f.id]: { ...(r[f.id] ?? {}), [campo.id]: v } }));
+                return (
+                  <div key={campo.id} className="space-y-1">
+                    <label className="block text-xs font-semibold text-black" htmlFor={campo.tipo === "genograma" ? undefined : idCampo}>
+                      {campo.rotulo}
+                    </label>
+                    {campo.ajuda && <p className="text-[11px] text-neutral-700">{campo.ajuda}</p>}
+                    {campo.tipo === "genograma" ? (
+                      <GenogramaEditor idBase={idCampo} value={texto} onChange={mudar} disabled={travado} />
+                    ) : (
+                      <>
+                        <textarea
+                          id={idCampo}
+                          rows={6}
+                          maxLength={MD_TEXTO_MAX}
+                          value={texto}
+                          disabled={travado}
+                          onChange={(e) => mudar(e.target.value)}
+                          className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                        />
+                        <span className="block text-[11px] text-neutral-700">{texto.length}/{MD_TEXTO_MAX}</span>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-neutral-700">
-                  {texto.length}/{MD_TEXTO_MAX}
-                  {f.completedAt && ` · concluída em ${new Date(f.completedAt).toLocaleDateString("pt-BR")}`}
-                  {f.reaberturas > 0 && ` · reaberta ${f.reaberturas}×`}
+                  {f.completedAt && `Concluída em ${new Date(f.completedAt).toLocaleDateString("pt-BR")}`}
+                  {f.reaberturas > 0 && `${f.completedAt ? " · " : ""}reaberta ${f.reaberturas}×`}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {!travado && (
@@ -177,7 +193,7 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
                       <button
                         type="button"
                         onClick={() => void concluir(f.id)}
-                        disabled={ocupado === f.id || !texto.trim()}
+                        disabled={ocupado === f.id || !preenchido}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-roxo bg-roxo-100 px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-200 disabled:opacity-60"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Concluir seção

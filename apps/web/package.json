@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@famtree/renderer": "0.1.5",
+    "@famtree/schema": "0.1.5",
     "@neondatabase/neon-js": "0.7.0-beta",
     "@periscopio/shared": "workspace:*",
     "@radix-ui/react-select": "^2.3.8",

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { RE_TEXTO_MAX, type ReCampo, type ReFormDef, type ReOpcao } from "@periscopio/shared";
+import { RE_TEXTO_MAX, lerGenograma, type ReCampo, type ReFormDef, type ReOpcao } from "@periscopio/shared";
+import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
+import { GenogramaDesenho } from "@/components/genograma/GenogramaDesenho";
 
 type Payload = Record<string, any>;
 
@@ -228,6 +230,17 @@ function CampoView({
     );
   }
 
+  if (campo.tipo === "genograma") {
+    const bruto = value[campo.key];
+    return wrap(
+      <>
+        <p className="mb-1.5 text-sm font-semibold text-black">{campo.label}</p>
+        {campo.ajuda && <p className="-mt-1 mb-1.5 text-xs text-neutral-700">{campo.ajuda}</p>}
+        <GenogramaEditor idBase={id} value={typeof bruto === "string" ? bruto : ""} onChange={(texto) => onChange({ [campo.key]: texto })} disabled={readOnly} />
+      </>
+    );
+  }
+
   if (campo.tipo === "professor") {
     const atual = (value[campo.key] ?? {}) as { id?: string | null; nome?: string };
     const lista = ctx.professores ?? [];
@@ -431,6 +444,9 @@ export function ReFormLeitura({ form, value }: { form: ReFormDef; value: Payload
               let conteudo: React.ReactNode = vazio;
               if (c.tipo === "texto" || c.tipo === "texto_longo") {
                 conteudo = value[c.key] ? <span className="whitespace-pre-wrap">{String(value[c.key])}</span> : vazio;
+              } else if (c.tipo === "genograma") {
+                const g = lerGenograma(value[c.key]);
+                conteudo = g ? <GenogramaDesenho genograma={g} /> : vazio;
               } else if (c.tipo === "professor") {
                 const nome = (value[c.key] as { nome?: string } | undefined)?.nome;
                 conteudo = nome ? <span>{nome}</span> : vazio;

@@ -78,6 +78,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@famtree/renderer':
+        specifier: 0.1.5
+        version: 0.1.5
+      '@famtree/schema':
+        specifier: 0.1.5
+        version: 0.1.5
       '@neondatabase/neon-js':
         specifier: 0.7.0-beta
         version: 0.7.0-beta(uhicjdla36m2akm324g75jzyty)
@@ -1123,6 +1129,15 @@ packages:
   '@eslint/js@8.57.1':
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@famtree/core@0.1.5':
+    resolution: {integrity: sha512-hAHmMSwH+q9yry/gj5PmfDrrAUkcbSFijoPFVH4ZbwXvt5iTcYbe497u9LvyGt+XRQngbQY9WadHq9E8pydrbg==}
+
+  '@famtree/renderer@0.1.5':
+    resolution: {integrity: sha512-uCznk+TZnqifMtfV+xXwCq5SN3i0eBSPEBi9vzm12jFcLyrzBljKTy3K5uBqAL2bV0He2HjGGrcb2BELMH9kvw==}
+
+  '@famtree/schema@0.1.5':
+    resolution: {integrity: sha512-tbGo/CvP/qjaZJNe9OOn+iEcaTXG8pYNllUBkOJElRxw3SZKABnoB4zZPGQHMzc6qZkud/grOc+SyTrMunJkLw==}
 
   '@fastify/accept-negotiator@2.1.1':
     resolution: {integrity: sha512-gO48sJ/4+P9hYE24tEoWQF4fZvCfRmStf6NFhuT5hwXkH+3JXGdemoE/7ympeQZglieeLJx256rbg8e58IrCyA==}
@@ -6082,6 +6097,17 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.1': {}
+
+  '@famtree/core@0.1.5':
+    dependencies:
+      '@famtree/schema': 0.1.5
+
+  '@famtree/renderer@0.1.5':
+    dependencies:
+      '@famtree/core': 0.1.5
+      '@famtree/schema': 0.1.5
+
+  '@famtree/schema@0.1.5': {}
 
   '@fastify/accept-negotiator@2.1.1': {}
 
