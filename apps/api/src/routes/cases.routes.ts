@@ -30,6 +30,7 @@ import {
   FOGAP_FORM_CODE,
   FOGAP_VERSION,
   FOGAP_DESTINOS,
+  fogapSomenteSumario,
   prontoParaRevisao,
   sumarioComPadroes,
   validarPayloadFogap,
@@ -573,9 +574,16 @@ export async function casesRoutes(app: FastifyInstance) {
     if (!actor) return;
 
     const { caseId } = request.params as { caseId: string };
-    const { formCode } = request.query as { formCode?: string };
+    const { formCode, completo } = request.query as { formCode?: string; completo?: string };
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+
+    // Bloco de notas do RE: quem não preenche (médico, especialista...) só recebe o sumário.
+    // As respostas item a item e os demais formulários (ex.: SNAP-IV do RE) só saem para quem preenche.
+    const dono = await can(actor, "fogap.fill");
+    if (formCode && formCode !== FOGAP_FORM_CODE && !dono) {
+      return reply.status(404).send({ error: "Formulário não encontrado" });
+    }
 
     const conditions = [
       eq(reAssessments.caseId, caseId),
@@ -607,7 +615,13 @@ export async function casesRoutes(app: FastifyInstance) {
       returnReason = lastTransition?.reason ?? null;
     }
 
-    return { assessment: assessment ?? null, returnReason };
+    const integral = dono && completo === "1";
+    const saida =
+      assessment && assessment.formCode === FOGAP_FORM_CODE && !integral
+        ? { ...assessment, payload: fogapSomenteSumario(assessment.payload) }
+        : assessment ?? null;
+    reply.header("Cache-Control", "no-store");
+    return { assessment: saida, returnReason, somenteSumario: !integral };
   });
 
   app.post("/api/cases/:caseId/re-assessment", async (request, reply) => {
@@ -1371,7 +1385,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         grade: visible.student.grade ?? null,
         schoolName: escolaConsolidado?.name ?? null,
       },
-      reAssessment: assessment ?? null,
+      reAssessment: assessment ? { ...assessment, payload: fogapSomenteSumario(assessment.payload) } : null,
       sections: apenasConcluidasComConteudo(sections),
     };
   });

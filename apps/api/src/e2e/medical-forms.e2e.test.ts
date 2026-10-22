@@ -95,6 +95,23 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.equal(fogap.status, 200);
     assert.ok(fogap.body.assessment, "FOGAP deve vir preenchido");
     assert.equal(fogap.body.assessment.status, "enviado");
+    const pl = fogap.body.assessment.payload;
+    assert.ok(pl.secao_sumario && pl.secao_encaminhamento, "sumário e encaminhamento vêm");
+    for (const k of ["respostas_desenvolvimento", "respostas_comportamentos", "historico_insuficiente", "total_meses"]) {
+      assert.ok(!(k in pl), `${k} é do bloco de notas do RE e não pode chegar ao médico`);
+    }
+    assert.equal(fogap.body.somenteSumario, true);
+    // ?completo=1 não abre nada para o médico, e o SNAP-IV do RE não sai por esta rota
+    const tentativa = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "md");
+    assert.ok(!("respostas_desenvolvimento" in tentativa.body.assessment.payload));
+    assert.equal((await call("GET", `/api/cases/${caso}/re-assessment?formCode=${shared.SNAP4_FORM_CODE}`, "md")).status, 404);
+    const cons = await call("GET", `/api/cases/${caso}/consolidated`, "md");
+    assert.equal(cons.status, 200);
+    assert.ok(!("respostas_desenvolvimento" in cons.body.reAssessment.payload), "consolidado também só leva o sumário");
+    // o RE dono continua enxergando o próprio formulário inteiro
+    const doRe = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "re");
+    assert.equal(doRe.status, 200);
+    assert.ok("respostas_desenvolvimento" in doRe.body.assessment.payload);
 
     const j = await call("GET", `/api/cases/${caso}/re-journey`, "md");
     assert.equal(j.status, 200);
