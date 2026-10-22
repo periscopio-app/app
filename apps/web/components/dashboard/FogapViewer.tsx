@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  G3_ITENS,
-  FOGAP_COMPORTAMENTOS,
-  type FogapPayload,
-} from "@periscopio/shared";
-import { CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { type FogapPayload } from "@periscopio/shared";
+import { CheckCircle2 } from "lucide-react";
 import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 
 interface FogapViewerProps {
@@ -38,10 +34,7 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       ? `${p.idade_anos} ano(s)${p.idade_meses != null ? ` e ${p.idade_meses} mês(es)` : ""}`
       : (p.idade as string) || "Idade não informada";
 
-  const grupo = p.grupo_id ? p.grupo_id.toUpperCase() : "G3 (6 a 9 anos e 11 meses)";
-
-  const devAnswers = p.respostas_desenvolvimento || {};
-  const compAnswers = p.respostas_comportamentos || {};
+  const grupo = p.grupo ? String(p.grupo).toUpperCase() : "Grupo não definido";
 
   return (
     <div className="space-y-6">
@@ -78,88 +71,9 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
         </div>
       </div>
 
-      {/* 1. Marcos do Desenvolvimento Infantil */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-slate-100/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h4 className="font-bold text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-[#682880]" />
-            1. Marcos do Desenvolvimento Infantil ({grupo})
-          </h4>
-          <span className="text-[11px] font-semibold text-slate-500">15 itens avaliados</span>
-        </div>
-        <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-          {G3_ITENS.map((item) => {
-            const resp = devAnswers[item.id];
-            return (
-              <div key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-4 text-xs hover:bg-slate-50/50">
-                <span className="text-slate-800 leading-snug">
-                  <strong className="text-slate-900 font-mono mr-1.5">{item.id}.</strong>
-                  {item.texto}
-                </span>
-                <span className="shrink-0">
-                  {resp === "adequada" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      Adequada
-                    </span>
-                  ) : resp === "inadequada" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                      Inadequada
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500">
-                      Não preenchido
-                    </span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. Comportamentos Disfuncionais */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="bg-slate-100/80 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h4 className="font-bold text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            2. Comportamentos Disfuncionais (Últimos 6 meses)
-          </h4>
-          <span className="text-[11px] font-semibold text-slate-500">15 itens avaliados</span>
-        </div>
-        <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-          {FOGAP_COMPORTAMENTOS.map((comp) => {
-            const resp = compAnswers[comp.id];
-            const val = typeof resp === "string" ? resp : (resp as any)?.resposta;
-            return (
-              <div key={comp.id} className="px-4 py-2.5 flex items-center justify-between gap-4 text-xs hover:bg-slate-50/50">
-                <span className="text-slate-800 leading-snug">
-                  <strong className="text-slate-900 font-mono mr-1.5">{comp.id}.</strong>
-                  {comp.texto}
-                </span>
-                <span className="shrink-0">
-                  {val === "sim" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                      Sim
-                    </span>
-                  ) : val === "nao" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700">
-                      Não
-                    </span>
-                  ) : val === "historico_insuficiente" ? (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                      Histórico Insuficiente
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500">
-                      Não preenchido
-                    </span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <p className="text-[11px] text-neutral-700">
+        Aqui está só o sumário (Formulário I). As respostas item a item do FOGAP e os formulários A a H ficam no bloco de notas do RE, que as leva para a discussão do caso.
+      </p>
     </div>
   );
 }

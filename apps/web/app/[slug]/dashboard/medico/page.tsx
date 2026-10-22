@@ -523,7 +523,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         <div className="flex items-center justify-between border-b border-linha pb-3">
                           <h3 className="font-semibold text-black flex items-center gap-2">
                             <FileSearch className="h-4 w-4 text-black" />
-                            FOGAP e Formulário I (Sumário) do RE
+                            Sumário do RE (Formulário I)
                           </h3>
                           <button
                             type="button"

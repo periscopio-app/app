@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "../db/client";
 import {
   FOGAP_FORM_CODE,
+  fogapSomenteSumario,
   RE_FORMS,
   RE_PASSOS,
   SNAP4_ITENS,
@@ -69,7 +70,7 @@ export async function reJourneyRoutes(app: FastifyInstance) {
       return {
         caseState: visible.caseItem.journeyState,
         somenteSumario: true,
-        forms: { i: i ? { status: i.status, payload: i.payload, updatedAt: i.updatedAt } : null },
+        forms: { i: i ? { status: i.status, payload: fogapSomenteSumario(i.payload), updatedAt: i.updatedAt } : null },
         student: {
           id: visible.student.id,
           studentCode: visible.student.studentCode,

@@ -280,6 +280,24 @@ export function makeFogapPayloadVazio(): FogapPayload {
 }
 
 /**
+ * O que sai do bloco de notas do RE: só o sumário (Formulário I) e o encaminhamento.
+ * As respostas item a item (marcos, comportamentos, histórico) ficam com o RE.
+ * Lista branca: um campo novo no FOGAP nunca vaza para o médico por esquecimento.
+ */
+export function fogapSomenteSumario(payload: unknown): Partial<FogapPayload> {
+  const p = (payload && typeof payload === "object" ? payload : {}) as Partial<FogapPayload>;
+  return {
+    fogap_version: p.fogap_version,
+    fogap_state: p.fogap_state,
+    grupo: p.grupo ?? null,
+    idade_anos: p.idade_anos ?? null,
+    idade_meses: p.idade_meses ?? null,
+    secao_sumario: p.secao_sumario,
+    secao_encaminhamento: p.secao_encaminhamento,
+  };
+}
+
+/**
  * Regra confirmada pela Dra. (07/out/2026): o FOGAP pode ser enviado ao médico com itens em branco.
  * Só bloqueia o envio quando não há idade/grupo ou a criança está fora do piloto.
  * Itens em branco viram `avisos` (informativos), nunca `pendencias` (bloqueantes).
