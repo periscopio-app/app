@@ -42,10 +42,10 @@ describe("catálogo de capacidades", () => {
     }
     // RE cadastra e preenche; não encerra
     assert.ok(can("student.register", "ppi") && can("fogap.fill", "ppi") && !can("case.close", "ppi"));
-    // anexos e documentos clínicos: núcleo sim; RE e professor não
+    // laudos da família (Bloco 5): só RE e médico; especialista, professor, gestão e Board nunca
     for (const k of ["attachments.read", "attachments.write"]) {
-      assert.ok(can(k, "md1") && can(k, "specialist"), k);
-      for (const r of ["ppi", "re", "responsavel_escolar", "teacher", "school_manager", "board", "researcher"]) assert.ok(!can(k, r), `${k} não é do ${r}`);
+      for (const r of ["md1", "ppi", "re", "responsavel_escolar"]) assert.ok(can(k, r), `${k} é do ${r}`);
+      for (const r of ["specialist", "teacher", "school_manager", "board", "researcher"]) assert.ok(!can(k, r), `${k} não é do ${r}`);
     }
     // pesquisador: nenhum dado clínico
     for (const c of CAPABILITIES.filter((x) => x.group === "avaliacao_re" || x.group === "medico" || x.group === "dados_sensiveis")) {

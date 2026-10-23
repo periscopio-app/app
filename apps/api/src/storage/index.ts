@@ -37,11 +37,38 @@ const BUCKET = process.env.SUPABASE_BUCKET ?? "periscopio-uploads";
 
 const SIGNED_URL_EXPIRY = 600; // segundos
 
+let clinicalBucketReady: Promise<void> | null = null;
+
+/** Garante que o bucket clínico exista e seja PRIVADO (laudos nunca têm link público). Exige a Service Role Key. */
+export function ensureClinicalBucket(): Promise<void> {
+  if (!clinicalBucketReady) {
+    clinicalBucketReady = (async () => {
+      const { data: existente } = await supabase.storage.getBucket(BUCKET);
+      if (existente) {
+        if (existente.public) {
+          const { error } = await supabase.storage.updateBucket(BUCKET, { public: false });
+          if (error) throw new Error(`Falha ao tornar o bucket clínico privado: ${error.message}`);
+        }
+        return;
+      }
+      const { error } = await supabase.storage.createBucket(BUCKET, { public: false, fileSizeLimit: 10 * 1024 * 1024, allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"] });
+      if (error && !/already exists|duplicate/i.test(error.message)) {
+        throw new Error(`Falha ao criar o bucket clínico: ${error.message}`);
+      }
+    })().catch((err) => {
+      clinicalBucketReady = null;
+      throw err;
+    });
+  }
+  return clinicalBucketReady;
+}
+
 export async function uploadObject(
   key: string,
   body: Buffer | Uint8Array,
   contentType: string
 ) {
+  await ensureClinicalBucket();
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(key, body, {

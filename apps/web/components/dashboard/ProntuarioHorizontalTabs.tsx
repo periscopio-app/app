@@ -93,7 +93,8 @@ export function ProntuarioHorizontalTabs({
       id: "attachments",
       label: "Exames & Anexos",
       icon: Paperclip,
-      visible: true,
+      // Laudos dos pais: só o médico vê aqui. O RE tem o card no próprio painel; especialistas nunca.
+      visible: isDoctorOrMaster,
     },
     {
       id: "board",

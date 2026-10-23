@@ -125,11 +125,11 @@ export async function runStorageCheck(overrides: Partial<StorageDeps> = {}): Pro
   }
 
   // ── Bucket clínico (privado) ──────────────────────────────────────────────
-  const chaveClinica = `diagnostico/${crypto.randomUUID()}.txt`;
-  const conteudo = Buffer.from("teste sintetico do periscopio");
+  const chaveClinica = `diagnostico/${crypto.randomUUID()}.pdf`;
+  const conteudo = Buffer.from("%PDF-1.4 teste sintetico do periscopio");
   let assinada: string | null = null;
   const subiuClinico = await step("clinical_upload", "Anexos clínicos: enviar arquivo de teste ao bucket privado", async () => {
-    assinada = await d.uploadObject(chaveClinica, conteudo, "text/plain");
+    assinada = await d.uploadObject(chaveClinica, conteudo, "application/pdf");
     return { ok: true, detail: "Arquivo de teste gravado; link assinado temporário gerado." };
   });
   if (subiuClinico && assinada) {

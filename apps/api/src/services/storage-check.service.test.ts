@@ -33,7 +33,7 @@ test("tudo certo: link público responde 200 com a mesma imagem e depois some", 
     removeObject: async () => {},
     fetch: async (url) => {
       if (url.includes("/public/")) return removido ? resp(404, Buffer.from("{}"), "application/json") : resp(200, PNG);
-      return resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain");
+      return resp(200, Buffer.from("%PDF-1.4 teste sintetico do periscopio"), "application/pdf");
     },
   });
   assert.equal(r.ok, true, JSON.stringify(r.steps));
@@ -57,7 +57,7 @@ test("CDN ainda serve o link antigo depois de apagar: o teste confere a origem e
         if (!url.includes("?")) return resp(200, PNG);
         return removido ? resp(404, Buffer.from("{}"), "application/json") : resp(200, PNG);
       }
-      return resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain");
+      return resp(200, Buffer.from("%PDF-1.4 teste sintetico do periscopio"), "application/pdf");
     },
   });
   assert.equal(r.ok, true, JSON.stringify(r.steps));
@@ -72,7 +72,7 @@ test("imagem apagada que ainda responde 200 na origem continua sendo acusada", a
     avatarPublicUrl: () => "https://x.supabase.co/storage/v1/object/public/periscopio-avatars/diagnostico/a.png",
     uploadObject: async () => "https://x.supabase.co/signed",
     removeObject: async () => {},
-    fetch: async (url) => (url.includes("/public/") ? resp(200, PNG) : resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain")),
+    fetch: async (url) => (url.includes("/public/") ? resp(200, PNG) : resp(200, Buffer.from("%PDF-1.4 teste sintetico do periscopio"), "application/pdf")),
   });
   assert.equal(r.ok, false);
   assert.match(r.steps.find((s) => s.id === "avatar_cleanup")!.detail, /continua acessível/);
@@ -86,7 +86,7 @@ test("bucket de fotos privado: o link responde 400/404 e o teste acusa", async (
     avatarPublicUrl: () => "https://x.supabase.co/storage/v1/object/public/periscopio-avatars/diagnostico/a.png",
     uploadObject: async () => "https://x.supabase.co/signed",
     removeObject: async () => {},
-    fetch: async (url) => (url.includes("/public/") ? resp(400, Buffer.from("{}"), "application/json") : resp(200, Buffer.from("teste sintetico do periscopio"), "text/plain")),
+    fetch: async (url) => (url.includes("/public/") ? resp(400, Buffer.from("{}"), "application/json") : resp(200, Buffer.from("%PDF-1.4 teste sintetico do periscopio"), "application/pdf")),
   });
   assert.equal(r.ok, false);
   assert.equal(r.avatar.httpStatus, 400);

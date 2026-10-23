@@ -43,7 +43,7 @@ test("anexos clínicos: rejeita arquivos que excedem 10MB ou com formato inváli
   });
 
   assert.strictEqual(invalidTypeRes.allowed, false);
-  assert.match(invalidTypeRes.error || "", /Formato de arquivo não permitido/);
+  assert.match(invalidTypeRes.error || "", /Formato não permitido/);
 });
 
 test("download seguro: gera URL assinada temporária (600s) e nega acesso a perfis administrativos", () => {
