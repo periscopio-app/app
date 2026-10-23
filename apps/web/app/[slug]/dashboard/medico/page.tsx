@@ -95,7 +95,20 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   const [reAssessment, setReAssessment] = useState<ReAssessment | null>(null);
   const [reLoading, setReLoading] = useState(false);
   // Lista de casos recolhível: com um caso aberto, o prontuário pode usar a largura toda.
-  const [filaRecolhida, setFilaRecolhida] = useState(false);
+  const [filaRecolhida, setFilaRecolhidaEstado] = useState(false);
+  // Cabeçalho do prontuário recolhível: deixa a ficha ocupar a tela. As duas escolhas ficam lembradas neste navegador.
+  const [cabecalhoRecolhido, setCabecalhoRecolhidoEstado] = useState(false);
+  const lembrar = (chave: string, v: boolean) => {
+    try { window.localStorage.setItem(chave, v ? "1" : "0"); } catch { /* sem armazenamento: vale só nesta sessão */ }
+  };
+  const setFilaRecolhida = (v: boolean) => { setFilaRecolhidaEstado(v); lembrar("periscopio:medico:fila", v); };
+  const setCabecalhoRecolhido = (v: boolean) => { setCabecalhoRecolhidoEstado(v); lembrar("periscopio:medico:cabecalho", v); };
+  useEffect(() => {
+    try {
+      setFilaRecolhidaEstado(window.localStorage.getItem("periscopio:medico:fila") === "1");
+      setCabecalhoRecolhidoEstado(window.localStorage.getItem("periscopio:medico:cabecalho") === "1");
+    } catch { /* segue expandido */ }
+  }, []);
 
   // Delegation form
   const [delegations, setDelegations] = useState<Record<string, string>>({});
@@ -447,6 +460,21 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
             <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
               {/* Prontuário Oficial - 5 Colunas Padronizadas */}
               <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-800">
+                    {cabecalhoRecolhido ? `${activeCase.studentCode} · ${activeCase.grade ?? "série não informada"} · ${JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}` : "Prontuário do aluno"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCabecalhoRecolhido(!cabecalhoRecolhido)}
+                    aria-expanded={!cabecalhoRecolhido}
+                    data-testid="recolher-cabecalho"
+                    className="rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-roxo-50"
+                  >
+                    {cabecalhoRecolhido ? "Mostrar cabeçalho" : "Recolher cabeçalho"}
+                  </button>
+                </div>
+                <div className={cabecalhoRecolhido ? "hidden" : ""}>
                 <ProntuarioHeaderCard
                   studentCode={activeCase.studentCode}
                   studentName={`Aluno (${activeCase.studentCode.slice(-6)})`}
@@ -463,6 +491,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       : sumarioComPadroes(((reAssessment?.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).queixa_professor ?? ""
                   }
                 />
+                </div>
 
                 {/* Navegação Horizontal do Prontuário Clínico */}
                 <div className="pt-2">
@@ -476,7 +505,16 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       setAba(t);
                       if (t === "clinical_actions" && view === "queue") irParaAcao("delegate");
                     }}
-                    childrenMedical={<MedicoFormsPanel caseId={activeCase.id} />}
+                    childrenMedical={
+                      <MedicoFormsPanel
+                        caseId={activeCase.id}
+                        queixaEscola={
+                          reAssessment
+                            ? sumarioComPadroes(((reAssessment.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).queixa_professor ?? ""
+                            : undefined
+                        }
+                      />
+                    }
                     childrenOverview={
                       <div className="space-y-4">
                         {/* Próximos passos do médico: o que fazer com este caso, sempre à vista */}
@@ -502,7 +540,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                               onClick={() => setAba("medical")}
                               className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-fundo"
                             >
-                              <ClipboardList className="h-4 w-4" aria-hidden /> Registrar avaliação médica
+                              <ClipboardList className="h-4 w-4" aria-hidden /> Abrir formulário do médico
                             </button>
                             <button
                               type="button"
@@ -552,6 +590,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             grade={activeCase.grade}
                             schoolName={activeCase.schoolName}
                           />
+                        )}
+
+                        {/* Devolutiva dos especialistas: só o sumário executivo, direto no painel do médico */}
+                        {["delegado", "retornado", "encerrado"].includes(activeCase.journeyState) && (
+                          <div className="border-t border-linha pt-4">
+                            <EspecialidadesDevolutiva caseId={activeCase.id} />
+                          </div>
                         )}
                       </div>
                     }

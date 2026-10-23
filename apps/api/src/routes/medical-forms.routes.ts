@@ -24,7 +24,7 @@ const salvarBody = z.object({ payload: z.record(z.unknown()) });
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 /**
- * Formulários do médico. Só texto livre curto (md-0.1, estrutura provisória até a validação clínica).
+ * Formulários do médico. Só texto livre curto (md-0.2, estrutura provisória até a validação clínica).
  * O conteúdo clínico nunca vai para a trilha nem para o log de auditoria: só quem fez, quando e qual seção.
  */
 export async function medicalFormsRoutes(app: FastifyInstance) {
