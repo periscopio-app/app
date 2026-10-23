@@ -66,18 +66,52 @@ describe("jornada clínica (E2E)", { skip }, () => {
     };
   }
 
+  /** Formulário I que cumpre os campos obrigatórios e o mínimo de caracteres. */
+  const SUMARIO_VALIDO = {
+    serie: "3º ano",
+    queixa_professor: "Dificuldade para copiar da lousa e terminar as tarefas.",
+    hipotese_espectro: "Dimensão da comunicação social a observar.",
+    dificuldades_persistentes: ["Aprendizagem"],
+    conduta: "nao",
+    qual: "",
+    tempo: "",
+    resultado: "",
+  };
+
+  /** Só o que é obrigatório: série no cadastro, ATA enviada e Formulário I completo. A–F podem ficar em branco. */
+  async function preencherObrigatorios(who: string, cid: string) {
+    const { db, cases, students } = H;
+    const [cx] = await db.select({ studentId: cases.studentId }).from(cases).where(eq(cases.id, cid)).limit(1);
+    await db.update(students).set({ grade: "3º ano" }).where(eq(students.id, cx.studentId));
+    const ata = await call("PUT", `/api/cases/${cid}/tea/ata`, who, { answers: { marcados: { "1": [0] }, antes36meses: false }, respondent: "mae_pai", appliedOn: "2026-10-07" });
+    assert.equal(ata.status, 200, JSON.stringify(ata.body));
+    assert.equal((await call("POST", `/api/cases/${cid}/tea/ata/submit`, who)).status, 200);
+    const sum = await call("PUT", `/api/cases/${cid}/re-journey/sumario`, who, {
+      secao_sumario: SUMARIO_VALIDO,
+      secao_encaminhamento: { observacoes: "Registro sintético de teste.", data: "2026-10-07" },
+    });
+    assert.equal(sum.status, 200, JSON.stringify(sum.body));
+  }
+
   /** Percorre a jornada A→I pela API (A–F salvos, G pulado, H aguardando o responsável, I com sumário). */
   async function completarJornada(who: string, cid: string) {
+    // A série vem do cadastro do aluno e é obrigatória no Formulário I.
+    const { db, cases, students } = H;
+    const [cx] = await db.select({ studentId: cases.studentId }).from(cases).where(eq(cases.id, cid)).limit(1);
+    await db.update(students).set({ grade: "3º ano" }).where(eq(students.id, cx.studentId));
     for (const f of ["a", "b", "c", "d", "e", "f"]) {
       const put = await call("PUT", `/api/cases/${cid}/re-journey/forms/${f}`, who, { payload: f === "f" ? { data_aplicacao: "2026-10-07" } : { observacoes: "Registro sintético de teste." } });
       assert.equal(put.status, 200, `salvar ${f}: ${JSON.stringify(put.body)}`);
     }
     const g = await call("POST", `/api/cases/${cid}/re-journey/steps/g/skip`, who, { valor: true });
     assert.equal(g.status, 200, JSON.stringify(g.body));
-    const h = await call("POST", `/api/cases/${cid}/re-journey/steps/h/await`, who, { valor: true });
-    assert.equal(h.status, 200, JSON.stringify(h.body));
+    // A ATA é obrigatória: preenche e envia (respondente e data), em vez de "aguardando o responsável".
+    const ata = await call("PUT", `/api/cases/${cid}/tea/ata`, who, { answers: { marcados: { "1": [0] }, antes36meses: false }, respondent: "mae_pai", appliedOn: "2026-10-07" });
+    assert.equal(ata.status, 200, JSON.stringify(ata.body));
+    const ataEnv = await call("POST", `/api/cases/${cid}/tea/ata/submit`, who);
+    assert.equal(ataEnv.status, 200, JSON.stringify(ataEnv.body));
     const sum = await call("PUT", `/api/cases/${cid}/re-journey/sumario`, who, {
-      secao_sumario: { dificuldades_persistentes: [], conduta: "nao", qual: "", tempo: "", resultado: "" },
+      secao_sumario: SUMARIO_VALIDO,
       secao_encaminhamento: { observacoes: "Registro sintético de teste.", data: "2026-10-07" },
     });
     assert.equal(sum.status, 200, JSON.stringify(sum.body));
@@ -205,8 +239,8 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(c.status, 201, JSON.stringify(c.body));
 
     const early = await call("POST", `/api/cases/${caseId}/re-assessment/submit`, "re");
-    assert.equal(early.status, 422, "envio com campos em branco pede confirmação");
-    assert.equal(early.body.code, "LACUNAS");
+    assert.equal(early.status, 422, "envio com campos obrigatórios em branco é recusado");
+    assert.equal(early.body.code, "LACUNAS_BLOQUEANTES");
     assert.ok(Array.isArray(early.body.lacunas) && early.body.lacunas.length > 0);
 
     const futuro = await call("PUT", `/api/cases/${caseId}/re-assessment`, "re", {
@@ -328,10 +362,11 @@ describe("jornada clínica (E2E)", { skip }, () => {
     await assert.rejects(() => db.execute(sql`UPDATE re_optional_step_usage SET action = 'pulado' WHERE case_id = ${cid}`), /somente inserção|inserção/);
     await assert.rejects(() => db.execute(sql`DELETE FROM re_optional_step_usage WHERE case_id = ${cid}`), /somente inserção|inserção/);
 
-    // H: aguardando o responsável deixa seguir
+    // H: "aguardando o responsável" NÃO libera o envio (a ATA é obrigatória)
     const aguardando = await call("POST", `${base}/steps/h/await`, "re", { valor: true });
     assert.equal(aguardando.status, 200);
     assert.equal(aguardando.body.situacao.passos[7].estado, "aguardando_responsavel");
+    assert.ok(aguardando.body.situacao.lacunas.some((l: any) => l.passo === "h" && l.bloqueante));
 
     // Edição auditada dos dados do aluno
     const edit = await call("PATCH", `/api/students/${sid}`, "re", { grade: "4º ano" });
@@ -351,7 +386,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
     // Envio: lista as lacunas e só segue com confirmação
     const semConfirmar = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
     assert.equal(semConfirmar.status, 422);
-    assert.equal(semConfirmar.body.code, "LACUNAS");
+    assert.equal(semConfirmar.body.code, "LACUNAS_BLOQUEANTES");
     assert.ok(semConfirmar.body.total > 0);
 
     // Sumário I: série vem do cadastro, mesmo que o cliente mande outra
@@ -364,12 +399,28 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(sum.body.form.payload.secao_sumario.serie, "4º ano");
     assert.equal(sum.body.form.payload.secao_encaminhamento.data, "2099-02-01", "data futura de encaminhamento é aceita");
 
+    // Mesmo "enviando assim mesmo", faltam obrigatórios (hipótese do RE curta/ausente e ATA): recusado
+    const assimMesmo = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re", { confirmarLacunas: true });
+    assert.equal(assimMesmo.status, 422, JSON.stringify(assimMesmo.body));
+    assert.equal(assimMesmo.body.code, "LACUNAS_BLOQUEANTES");
+    assert.ok(assimMesmo.body.lacunas.some((l: any) => l.passo === "h" && l.bloqueante), "ATA é obrigatória");
+    assert.ok(assimMesmo.body.lacunas.some((l: any) => l.campo === "hipotese_espectro" && l.bloqueante));
+    const curto = await call("PUT", `${base}/sumario`, "re", {
+      secao_sumario: { serie: "", queixa_professor: "curta", hipotese_espectro: "x", dificuldades_persistentes: ["Aprendizagem"], conduta: "nao", qual: "", tempo: "", resultado: "" },
+      secao_encaminhamento: { observacoes: "", data: "2099-02-01" },
+    });
+    assert.equal(curto.status, 200);
+    const poucos = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re", { confirmarLacunas: true });
+    assert.ok(poucos.body.lacunas.some((l: any) => l.campo === "queixa_professor" && /pelo menos 20 caracteres/.test(l.rotulo)), "mínimo de caracteres");
+    await preencherObrigatorios("re", cid);
+    await call("PATCH", `/api/students/${sid}`, "re", { grade: "4º ano" });
+
     const enviado = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re", { confirmarLacunas: true });
     assert.equal(enviado.status, 200, JSON.stringify(enviado.body));
     assert.match(enviado.body.summary, /Série: 4º ano/);
     assert.match(enviado.body.summary, /Escola: Escola A1/);
     assert.match(enviado.body.summary, /Nascimento: 03\/2019/);
-    assert.match(enviado.body.summary, /H \(ATA\) aguardando o responsável/);
+    assert.match(enviado.body.summary, /H \(ATA\) registrada/);
 
     // Depois do envio tudo é somente leitura (inclusive o cadastro do aluno)
     assert.equal((await call("PUT", `${base}/forms/a`, "re", { payload: {} })).status, 409);
@@ -381,6 +432,9 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.ok(!("reJourney" in cons.body), "formulários A a G do RE não vão ao médico");
     assert.ok(!JSON.stringify(cons.body).includes("as_vezes"), "nenhuma resposta do Formulário A no consolidado");
     assert.ok(cons.body.reAssessment, "o sumário (FOGAP) continua disponível");
+    const escalas = (cons.body.reAssessment.payload ?? cons.body.reAssessment).escalas;
+    assert.equal(escalas?.ata?.total, 1, "o médico recebe o retrato da ATA (1 grupo com 1 comportamento = 1 ponto)");
+    assert.equal(escalas?.snap4, null, "SNAP-IV foi pulado: não aparece");
     assert.equal(cons.body.student.grade, "4º ano");
     assert.equal(cons.body.student.schoolName, "Escola A1");
     assert.equal(cons.body.student.birthMonth, 3);
@@ -394,16 +448,20 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(reenvio.status, 200, JSON.stringify(reenvio.body));
   });
 
-  test("envio com tudo em branco e confirmação cria o FOGAP a partir do cadastro do aluno", async () => {
+  test("A–F em branco ainda podem ir com confirmação, mas só depois dos obrigatórios (série, ATA e Formulário I)", async () => {
     const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: 2018, birthMonth: 6 });
     const c = await call("POST", "/api/cases", "re", { studentId: s.body.student.id });
     const cid = c.body.case.id;
     const semConfirmar = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
     assert.equal(semConfirmar.status, 422);
-    assert.equal(semConfirmar.body.code, "LACUNAS");
+    assert.equal(semConfirmar.body.code, "LACUNAS_BLOQUEANTES");
+    await preencherObrigatorios("re", cid);
+    const pedeConfirmacao = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re");
+    assert.equal(pedeConfirmacao.status, 422);
+    assert.equal(pedeConfirmacao.body.code, "LACUNAS", "A–F em branco continuam pedindo confirmação, sem bloquear");
     const enviado = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re", { confirmarLacunas: true });
     assert.equal(enviado.status, 200, JSON.stringify(enviado.body));
-    assert.match(enviado.body.summary, /Série: não informada/);
+    assert.match(enviado.body.summary, /Série: 3º ano/);
   });
 
   test("RE não delega; médico delega a especialista e a outra especialidade", async () => {
