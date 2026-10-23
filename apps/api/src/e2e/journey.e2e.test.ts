@@ -466,6 +466,12 @@ describe("jornada clínica (E2E)", { skip }, () => {
     // Depois do envio tudo é somente leitura (inclusive o cadastro do aluno)
     assert.equal((await call("PUT", `${base}/forms/a`, "re", { payload: {} })).status, 409);
     assert.equal((await call("PATCH", `/api/students/${sid}`, "re", { grade: "5º ano" })).status, 409);
+    // O Formulário I e os itens do FOGAP também travam (a tela do RE vira somente leitura pelo estado do caso)
+    assert.equal((await call("PUT", `${base}/sumario`, "re", { secao_sumario: { dificuldades_persistentes: [], conduta: "nao", qual: "", tempo: "", resultado: "" } })).status, 409);
+    assert.equal((await call("PUT", `${base}/fogap-desenvolvimento`, "re", { faixa: "6a9", respostas: { "FOGAP-D-095": "adequada" } })).status, 409);
+    const lido = await call("GET", base, "re");
+    assert.equal(lido.status, 200);
+    assert.notEqual(lido.body.caseState, "rascunho", "estado do caso manda a tela para somente leitura");
 
     // Médico lê o sumário do RE e os dados do aluno no consolidado (A–G ficam com o RE) e devolve; o RE volta a poder editar e reenviar
     const cons = await call("GET", `/api/cases/${cid}/consolidated`, "md");
