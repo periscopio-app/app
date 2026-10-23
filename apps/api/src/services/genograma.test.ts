@@ -13,7 +13,6 @@ import {
   normalizarGenograma,
   normalizarGenogramaTexto,
   normalizarPayloadMedico,
-  normalizarPayloadReForm,
   removerMembro,
   resumoDoGenograma,
   serializarGenograma,
@@ -138,14 +137,9 @@ test("formulário do médico: estrutura do genograma é normalizada e conta como
   assert.equal(medicoTemConteudo(normalizarPayloadMedico("genograma", { estrutura: sujo })), true);
 });
 
-test("RE: o desenho é opcional, é validado e normalizado", () => {
-  const t = serializarGenograma(montar(["mae", "pai"]));
-  assert.equal(validarPayloadReForm("c", { genograma_estrutura: t }), null);
-  // o servidor normaliza antes de validar: lixo vira campo em branco, nunca é guardado
-  assert.equal(normalizarPayloadReForm("c", { genograma_estrutura: 5 }).genograma_estrutura, "");
-  assert.equal(normalizarPayloadReForm("c", { genograma_estrutura: "x".repeat(9000) }).genograma_estrutura, "");
-  const n = normalizarPayloadReForm("c", { genograma_estrutura: "lixo" });
-  assert.equal(n.genograma_estrutura, "");
-  // em branco não vira pendência: o campo é opcional
+test("RE: o genograma saiu do fluxo (só o médico desenha); o Form C não tem mais o campo", () => {
+  // Campo removido do Form C (23/out): o validador agora recusa genograma_estrutura como desconhecido,
+  // a normalização o descarta e ele nunca entra como pendência.
+  assert.match(validarPayloadReForm("c", { genograma_estrutura: "qualquer" }) ?? "", /desconhecido/i);
   assert.ok(!lacunasDoForm("c", {}).some((l) => l.campo === "genograma_estrutura"));
 });
