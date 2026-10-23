@@ -120,6 +120,17 @@ describe("Meu painel (E2E)", { skip }, () => {
     assert.ok(!JSON.stringify(r.body).includes("12345678909"), "CPF completo não pode vazar");
   });
 
+  test("/api/me traz o que o hero do painel mostra: cargo, conselho, especialidade, escola e bio", async () => {
+    const re = (await call("GET", "/api/me", "re@teste.local")).body.user;
+    assert.equal(re.role, "ppi");
+    assert.equal(re.specialty, "psicopedagogia");
+    assert.equal(re.schoolName, "Escola Girassol");
+    assert.ok("bio" in re && "classCode" in re, "hero recebe bio e conselho");
+    const md = (await call("GET", "/api/me", "md@teste.local")).body.user;
+    assert.equal(md.classCode, "CRM-SP 000000");
+    assert.equal(md.schoolName, null, "médico é da rede, sem escola fixa");
+  });
+
   test("editar: nome, telefone e apresentação; apagar com vazio; trilha guarda só os nomes dos campos", async () => {
     const r = await call("PATCH", "/api/me/profile", "re@teste.local", { name: "  Maria Souza ", phone: "(11) 91234-5678", bio: "Psicopedagoga institucional" });
     assert.equal(r.status, 200);
