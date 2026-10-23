@@ -9,7 +9,7 @@ import {
   type Student,
 } from "@/lib/api";
 
-import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ProfileHero } from "@/components/ui/ProfileHero";
 import { ConsentCard } from "@/components/dashboard/ConsentCard";
 import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentityVaultCard";
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
@@ -292,7 +292,7 @@ export default function REDashboardPage({
 
   return (
     <div className="space-y-6">
-      {me && <RoleBanner me={me} />}
+      {me && <ProfileHero me={me} slug={slug} />}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-black">

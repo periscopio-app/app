@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, MessageSquareText, Pencil, RotateCcw, Save, Send } from "lucide-react";
+import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, MessageSquareText, Pencil, RotateCcw, Save, School, Send } from "lucide-react";
 import { MD_FORMS, MD_TEXTO_MAX, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
@@ -35,7 +35,17 @@ const COR: Record<Status, string> = {
  * Formulário do Médico: ficha única, na sequência do papel (seções B a R).
  * Estrutura provisória (texto livre curto) até a validação clínica. O sistema não sugere nem preenche nada.
  */
-export function MedicoFormsPanel({ caseId, queixaEscola }: { caseId: string; queixaEscola?: string | null }) {
+export function MedicoFormsPanel({
+  caseId,
+  queixaEscola,
+  schoolName,
+  studentCode,
+}: {
+  caseId: string;
+  queixaEscola?: string | null;
+  schoolName?: string | null;
+  studentCode?: string | null;
+}) {
   const [d, setD] = useState<Resp | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [rascunhos, setRascunhos] = useState<Record<string, Record<string, string>>>({});
@@ -130,6 +140,17 @@ export function MedicoFormsPanel({ caseId, queixaEscola }: { caseId: string; que
 
   return (
     <section aria-label="Formulário do Médico" className="space-y-3">
+      {(schoolName || studentCode) && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-linha bg-fundo px-3 py-2 text-xs text-black" data-testid="md-form-escola">
+          {studentCode && <span className="font-mono font-bold">{studentCode}</span>}
+          {schoolName && (
+            <>
+              {studentCode && <span className="text-neutral-300">·</span>}
+              <span className="flex items-center gap-1"><School className="h-3.5 w-3.5 text-roxo" aria-hidden /> {schoolName}</span>
+            </>
+          )}
+        </div>
+      )}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-sm font-bold text-black">

@@ -114,8 +114,22 @@ export async function usersRoutes(app: FastifyInstance) {
     if (!actor) return;
 
     const [user] = await db
-      .select({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId, schoolId: users.schoolId, avatarKey: users.avatarKey })
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        tenantId: users.tenantId,
+        schoolId: users.schoolId,
+        avatarKey: users.avatarKey,
+        // Hero do painel: cargo/conselho, especialidade, apresentação curta e escola.
+        classCode: users.classCode,
+        specialty: users.specialty,
+        bio: users.bio,
+        schoolName: schools.name,
+      })
       .from(users)
+      .leftJoin(schools, eq(users.schoolId, schools.id))
       .where(eq(users.id, actor.id))
       .limit(1);
 

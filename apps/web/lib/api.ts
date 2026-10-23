@@ -79,6 +79,14 @@ export interface Me {
   schoolId: string | null;
   /** Link público da foto de perfil (null = sem foto). */
   avatarUrl?: string | null;
+  /** Conselho de classe (CRM, CRP…), para o hero do painel. */
+  classCode?: string | null;
+  /** Especialidade do núcleo, quando houver. */
+  specialty?: string | null;
+  /** Minibiografia curta exibida no hero (editável em "Meu painel"). */
+  bio?: string | null;
+  /** Escola vinculada, quando houver. */
+  schoolName?: string | null;
 }
 
 export interface CaseItem {

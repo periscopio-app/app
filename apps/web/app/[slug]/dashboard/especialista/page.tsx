@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { api, type CaseSection, type Me } from "@/lib/api";
-import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ProfileHero } from "@/components/ui/ProfileHero";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
 import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-react";
@@ -170,7 +170,7 @@ export default function EspecialistaDashboardPage({
 
   return (
     <div className="space-y-6">
-      {me && <RoleBanner me={me} />}
+      {me && <ProfileHero me={me} slug={slug} />}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-black">

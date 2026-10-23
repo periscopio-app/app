@@ -11,7 +11,7 @@ import {
   type Professional,
   type Me,
 } from "@/lib/api";
-import { RoleBanner } from "@/components/ui/RoleBanner";
+import { ProfileHero } from "@/components/ui/ProfileHero";
 import { AuditTrail } from "@/components/ui/AuditTrail";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { sumarioComPadroes } from "@periscopio/shared";
@@ -357,7 +357,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="space-y-6">
-      {me && <RoleBanner me={me} />}
+      {me && <ProfileHero me={me} slug={slug} />}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-black">
@@ -508,6 +508,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     childrenMedical={
                       <MedicoFormsPanel
                         caseId={activeCase.id}
+                        schoolName={activeCase.schoolName || slug}
+                        studentCode={activeCase.studentCode}
                         queixaEscola={
                           reAssessment
                             ? sumarioComPadroes(((reAssessment.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).queixa_professor ?? ""
