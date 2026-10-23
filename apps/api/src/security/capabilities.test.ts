@@ -42,6 +42,8 @@ describe("catálogo de capacidades", () => {
     }
     // RE cadastra e preenche; não encerra
     assert.ok(can("student.register", "ppi") && can("fogap.fill", "ppi") && !can("case.close", "ppi"));
+    // na escola só o RE preenche o FOGAP (decisão da Dra., 23/out): professor e gestor escolar não
+    assert.ok(!can("fogap.fill", "teacher") && !can("fogap.fill", "school_manager") && !can("fogap.read", "teacher"));
     // laudos da família (Bloco 5): só RE e médico; especialista, professor, gestão e Board nunca
     for (const k of ["attachments.read", "attachments.write"]) {
       for (const r of ["md1", "ppi", "re", "responsavel_escolar"]) assert.ok(can(k, r), `${k} é do ${r}`);

@@ -24,6 +24,7 @@ import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentity
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { FogapViewer } from "@/components/dashboard/FogapViewer";
+import { ReJourneyPanel } from "@/components/re/ReJourneyPanel";
 import { Button } from "@/components/ui";
 import {
   ClipboardList,
@@ -594,6 +595,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             schoolName={activeCase.schoolName}
                           />
                         )}
+
+                        {/* O médico vê tudo o que a escola registrou sobre a criança encaminhada (somente leitura) */}
+                        <details className="rounded-2xl border border-linha bg-white p-4" data-testid="registro-completo-escola">
+                          <summary className="cursor-pointer text-sm font-bold text-black">Tudo o que a escola registrou (formulários A a I, escalas e ATA)</summary>
+                          <div className="mt-4">
+                            <ReJourneyPanel caseId={activeCase.id} somenteLeitura />
+                          </div>
+                        </details>
 
                         {/* Devolutiva dos especialistas: só o sumário executivo, direto no painel do médico */}
                         {["delegado", "retornado", "encerrado"].includes(activeCase.journeyState) && (

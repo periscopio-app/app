@@ -77,6 +77,8 @@ interface Props {
   onStudentChanged?: (aluno: { studentId: string; birthYear: number | null; birthMonth: number | null; grade: string | null }) => void;
   /** Abre o pedido de acesso ao nome civil no Cofre (auditado). */
   onVerNome?: () => void;
+  /** Médico que recebeu o caso: vê tudo o que a escola registrou, sem editar, enviar ou salvar nada. */
+  somenteLeitura?: boolean;
 }
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : "Não foi possível concluir agora. Tente de novo.");
@@ -179,7 +181,7 @@ function useTempoAtivo(caseId: string, ativo: boolean) {
   return { definirAtual: (id: RePassoId) => (atual.current = id) };
 }
 
-export function ReJourneyPanel({ caseId, professionalName, professionalRole, onSent, onStudentChanged, onVerNome }: Props) {
+export function ReJourneyPanel({ caseId, professionalName, professionalRole, onSent, onStudentChanged, onVerNome, somenteLeitura = false }: Props) {
   const base = `/api/cases/${caseId}`;
   const nomeAluno = useNomeDoAluno(caseId);
   const [j, setJ] = useState<Jornada | null>(null);
@@ -209,7 +211,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   latest.current = { drafts, snap, sum, j, dev };
   const topo = useRef<HTMLDivElement>(null);
 
-  const readOnly = j ? j.caseState !== "rascunho" : true;
+  const readOnly = somenteLeitura || (j ? j.caseState !== "rascunho" : true);
   const tempo = useTempoAtivo(caseId, !readOnly && !loading && !!j);
 
   const hidratar = useCallback((d: Jornada, inicial: boolean) => {
@@ -485,7 +487,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       )}
       {readOnly && (
         <div role="status" className="flex items-center gap-2 rounded-xl border border-ceu-300 bg-ceu-50 px-4 py-3 text-sm text-black">
-          <Lock className="h-4 w-4 shrink-0" /> Avaliação enviada ao médico — somente leitura até uma devolução.
+          <Lock className="h-4 w-4 shrink-0" /> {somenteLeitura ? "Registro da escola — somente leitura." : "Avaliação enviada ao médico — somente leitura até uma devolução."}
         </div>
       )}
 

@@ -136,8 +136,9 @@ export const CAPABILITIES = [
   { key: "case.forward", group: "cadastro", label: "Encaminhar caso ao médico", description: "Passar o caso da escola para o núcleo assistencial.", defaultRoles: TRIAGEM_ROLES },
 
   // ── Avaliação da escola ─────────────────────────────────────────────────
+  { key: "school.read_full", group: "avaliacao_re", label: "Ver tudo da escola sobre o aluno encaminhado", description: "Leitura integral do que a escola registrou (formulários A a I, FOGAP item a item, escalas e ATA). Somente leitura.", defaultRoles: MD_ROLES, sensitive: true },
   { key: "fogap.read", group: "avaliacao_re", label: "Ler a avaliação do RE (FOGAP)", description: "Abrir a avaliação enviada pelo Responsável Escolar.", defaultRoles: ["ppi", "md1"], sensitive: true },
-  { key: "fogap.fill", group: "avaliacao_re", label: "Preencher e enviar o FOGAP", description: "Criar, editar rascunho e enviar a avaliação da escola.", defaultRoles: [...RE_ROLES, "teacher", ...ADMIN], sensitive: true },
+  { key: "fogap.fill", group: "avaliacao_re", label: "Preencher e enviar o FOGAP", description: "Criar, editar rascunho e enviar a avaliação da escola.", defaultRoles: [...RE_ROLES, ...ADMIN], sensitive: true },
   { key: "scales.fill", group: "avaliacao_re", label: "Registrar escalas (SNAP-IV, ABC, M-CHAT...)", description: "Salvar respostas de escalas clínicas.", defaultRoles: CLINICAL_ROLES, sensitive: true },
   { key: "scales.read", group: "avaliacao_re", label: "Ler escalas registradas", description: "Consultar escalas já registradas.", defaultRoles: CLINICAL_ROLES, sensitive: true },
   { key: "scales.score", group: "avaliacao_re", label: "Usar calculadoras de pontuação", description: "SNAP-IV e ABC (indicador de apoio, não é diagnóstico).", defaultRoles: CLINICAL_ROLES },

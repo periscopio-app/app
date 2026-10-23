@@ -138,13 +138,16 @@ describe("Validação de rotas por perfil (E2E)", { skip }, () => {
     return out;
   };
 
-  test("médico: só o sumário do RE e a seção concluída; nada de formulários A a H, itens do FOGAP nem rascunhos", async () => {
+  test("médico: vê tudo o que a escola registrou (A a I, itens do FOGAP) e só a seção concluída dos especialistas; nunca rascunhos", async () => {
     const r = await lerTudo("md");
     const tudo = Object.values(r).map((x) => x.texto).join("\n");
 
-    for (const proibido of [RE_FORM_A, RE_FOGAP_ITENS, FONO_RASCUNHO, FONO_NOTAS]) {
+    for (const proibido of [FONO_RASCUNHO, FONO_NOTAS]) {
       assert.ok(!tudo.includes(proibido), `o médico não pode receber ${proibido}`);
     }
+    // regra da Dra. (23/out): o médico vê tudo da escola sobre a criança encaminhada
+    assert.ok(tudo.includes(RE_FORM_A), "o médico lê o formulário A do RE");
+    assert.ok(tudo.includes(RE_FOGAP_ITENS), "o médico lê os itens do FOGAP");
     assert.equal(r[`/api/cases/${caso}/re-assessment`].status, 200);
     assert.ok(r[`/api/cases/${caso}/re-assessment`].texto.includes(RE_SUMARIO), "o sumário do RE chega ao médico");
     assert.ok(r[`/api/cases/${caso}/consolidated`].texto.includes(PSM_CONCLUIDA), "seção concluída aparece no consolidado");
