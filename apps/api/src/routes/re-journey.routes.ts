@@ -64,9 +64,11 @@ export async function reJourneyRoutes(app: FastifyInstance) {
 
     const j = await carregarJornada(visible.caseItem.tenantId, caseId);
 
-    // Quem só LÊ (médico) recebe apenas o Formulário I (Sumário/FOGAP). Os formulários A a H são o bloco de notas do RE.
+    // Na escola só o RE preenche. O médico que recebeu o caso vê tudo da escola sobre a criança (somente leitura);
+    // quem não preenche nem tem leitura integral (especialista) recebe só o Formulário I (Sumário/FOGAP).
     const dono = await can(actor, "fogap.fill");
-    if (!dono) {
+    const leituraIntegral = dono || (await can(actor, "school.read_full"));
+    if (!leituraIntegral) {
       const i = j.linhas.i;
       return {
         caseState: visible.caseItem.journeyState,

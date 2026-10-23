@@ -580,7 +580,8 @@ export async function casesRoutes(app: FastifyInstance) {
 
     // Bloco de notas do RE: quem não preenche (médico, especialista...) só recebe o sumário.
     // As respostas item a item e os demais formulários (ex.: SNAP-IV do RE) só saem para quem preenche.
-    const dono = await can(actor, "fogap.fill");
+    // Médico com o caso encaminhado: leitura integral (somente leitura). Especialista: só o sumário.
+    const dono = (await can(actor, "fogap.fill")) || (await can(actor, "school.read_full"));
     if (formCode && formCode !== FOGAP_FORM_CODE && !dono) {
       return reply.status(404).send({ error: "Formulário não encontrado" });
     }
@@ -1398,7 +1399,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         grade: visible.student.grade ?? null,
         schoolName: escolaConsolidado?.name ?? null,
       },
-      reAssessment: assessment ? { ...assessment, payload: fogapSomenteSumario(assessment.payload) } : null,
+      reAssessment: assessment ?? null, // médico: leitura integral do que a escola registrou
       sections: apenasConcluidasComConteudo(sections),
     };
   });
