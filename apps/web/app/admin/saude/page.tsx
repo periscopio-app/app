@@ -6,6 +6,7 @@ import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } 
 import { api, ApiError } from "@/lib/api";
 import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
 import { FactoryResetCard } from "@/components/admin/FactoryResetCard";
+import { Button } from "@/components/ui";
 
 // ─── tipos (espelham GET /api/admin/observability) ──────────────────────────
 
@@ -103,13 +104,13 @@ export default function AdminSaudePage() {
               <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> Atualizar a cada 30 s
               </label>
-              <button
+              <Button
                 onClick={() => void load()}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E1E9ED] bg-white px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
+                variant="outline" size="sm"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
-              </button>
+              </Button>
             </div>
           </div>
           <p className="text-sm text-slate-600 max-w-3xl">

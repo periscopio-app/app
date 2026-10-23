@@ -6,6 +6,7 @@ import { ESPECIALIDADE_FORMS, ehFormularioDeSumario, isEspecialidadeId, progress
 import { api, ApiError } from "@/lib/api";
 import { ReFormRenderer } from "@/components/re/ReFormRenderer";
 import { ResumoVisual } from "@/components/formularios/ResumoVisual";
+import { Button } from "@/components/ui";
 
 type Status = "nao_iniciado" | "rascunho" | "concluido";
 type Payload = Record<string, any>;
@@ -248,18 +249,18 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
             <div className="flex flex-wrap gap-2">
               {!travado && (
                 <>
-                  <button type="button" onClick={() => void salvar()} disabled={ocupado || !alterado} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-linha bg-white px-3 text-xs font-semibold text-black hover:bg-fundo disabled:opacity-60">
+                  <Button type="button" onClick={() => void salvar()} disabled={ocupado || !alterado} variant="outline" size="sm">
                     <Save className="h-3.5 w-3.5" aria-hidden /> Salvar rascunho
-                  </button>
-                  <button type="button" onClick={() => void concluir()} disabled={ocupado || Object.keys(valor).length === 0} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-roxo bg-roxo-100 px-3 text-xs font-semibold text-black hover:bg-roxo-200 disabled:opacity-60">
+                  </Button>
+                  <Button type="button" onClick={() => void concluir()} disabled={ocupado || Object.keys(valor).length === 0} variant="primary" size="sm">
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Concluir formulário
-                  </button>
+                  </Button>
                 </>
               )}
               {d.editavel && status === "concluido" && !reabrindo && (
-                <button type="button" onClick={() => setReabrindo(true)} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-ouro-400 bg-ouro-50 px-3 text-xs font-semibold text-black hover:bg-ouro-100">
+                <Button type="button" onClick={() => setReabrindo(true)} variant="warning" size="sm">
                   <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir para retificar
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -269,10 +270,10 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
               <label htmlFor="esp-motivo" className="block text-xs font-semibold text-black">Motivo da reabertura (fica na trilha do caso)</label>
               <input id="esp-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} className="w-full rounded-lg border border-linha bg-white px-3 py-2 text-sm text-black" />
               <div className="flex gap-2">
-                <button type="button" onClick={() => void reabrir()} disabled={ocupado || motivo.trim().length < 3} className="inline-flex items-center gap-1.5 rounded-lg border border-ouro-400 bg-white px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-60">
+                <Button type="button" onClick={() => void reabrir()} disabled={ocupado || motivo.trim().length < 3} variant="warning" size="sm">
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Confirmar reabertura
-                </button>
-                <button type="button" onClick={() => setReabrindo(false)} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-black hover:bg-white">Cancelar</button>
+                </Button>
+                <Button type="button" onClick={() => setReabrindo(false)} variant="ghost" size="sm">Cancelar</Button>
               </div>
             </div>
           )}

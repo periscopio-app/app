@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, Send, Plus, Users, Mail, CheckCircle2, Clock, RefreshCw, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface IssueItem {
   id: string;
@@ -131,12 +132,12 @@ export default function AdminNewsletterPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button type="submit"
               onClick={() => setModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-sky-600 text-white hover:bg-sky-700 transition flex items-center gap-1.5 shadow-sm"
+              variant="primary" size="sm"
             >
               <Plus className="w-4 h-4" /> Nova Edição
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -238,14 +239,14 @@ export default function AdminNewsletterPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
+                          <Button type="submit"
                             onClick={() => handleSendIssue(i.id)}
                             disabled={sendingId === i.id}
-                            className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 font-semibold text-[11px] transition flex items-center gap-1.5 ml-auto disabled:opacity-50"
+                            variant="outline" size="sm" className="ml-auto"
                           >
                             <Send className="w-3 h-3" />
                             {sendingId === i.id ? "Disparando..." : "Disparar E-mails"}
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -357,20 +358,20 @@ export default function AdminNewsletterPage() {
                 </div>
 
                 <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    variant="outline" size="sm"
                   >
                     Cancelar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2 text-xs font-bold rounded-xl bg-sky-600 hover:bg-sky-700 text-white transition disabled:opacity-50"
+                    variant="primary" size="sm"
                   >
                     {submitting ? "Publicando..." : "Publicar Boletim"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>

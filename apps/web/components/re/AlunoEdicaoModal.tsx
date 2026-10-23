@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, Save } from "lucide-react";
 import { api } from "@/lib/api";
-import { Modal } from "@/components/ui";
+import { Modal, Button } from "@/components/ui";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 export const SERIES_SUGERIDAS = ["1º ano", "2º ano", "3º ano", "4º ano", "5º ano"];
@@ -116,10 +116,10 @@ export function AlunoEdicaoModal({ open, onClose, studentId, studentCode, birthY
         <p className="text-xs text-neutral-800">Piloto: alunos de 6 anos a 9 anos e 11 meses. Toda alteração fica registrada com quem fez e quando.</p>
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="min-h-[44px] rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-50">Cancelar</button>
-          <button type="submit" disabled={busy} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-roxo px-5 py-2 text-sm font-bold text-white hover:bg-roxo-800 disabled:opacity-50">
+          <Button type="button" onClick={onClose} variant="outline" size="md">Cancelar</Button>
+          <Button type="submit" disabled={busy} variant="primary" size="md">
             <Save className="h-4 w-4" aria-hidden /> {busy ? "Salvando…" : "Salvar alteração"}
-          </button>
+          </Button>
         </div>
 
         <section aria-label="Histórico de alterações" className="rounded-xl border border-linha bg-fundo p-3">

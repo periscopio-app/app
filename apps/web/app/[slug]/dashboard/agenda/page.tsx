@@ -167,7 +167,7 @@ export default function AgendaPage() {
                   <span className="flex items-center gap-3">
                     <span className="text-neutral-800">{s.status === "available" ? "Livre" : s.status === "booked" ? "Reservado" : "Cancelado"}</span>
                     {s.status === "available" && (
-                      <Button variant="ghost" className="min-h-9 px-3 text-sm" disabled={busy} onClick={() => run(() => api.delete(`/api/expert-meetings/slots/${s.id}`), "Horário cancelado.")}>
+                      <Button variant="ghost" size="sm" disabled={busy} onClick={() => run(() => api.delete(`/api/expert-meetings/slots/${s.id}`), "Horário cancelado.")}>
                         Cancelar
                       </Button>
                     )}

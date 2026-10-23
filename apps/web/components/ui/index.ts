@@ -1,7 +1,7 @@
 export { Alert } from "./Alert";
 export { Avatar } from "./Avatar";
 export { Badge, type EstadoCaso } from "./Badge";
-export { Button, type ButtonVariant } from "./Button";
+export { Button, buttonClass, type ButtonVariant, type ButtonSize } from "./Button";
 export { Card } from "./Card";
 export { Field } from "./Field";
 export {

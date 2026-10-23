@@ -84,21 +84,21 @@ export function FotoPerfil({
         />
         {novaFoto ? (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={salvar} disabled={salvando} className="min-h-10 px-4 text-sm">
+            <Button onClick={salvar} disabled={salvando} size="md">
               {salvando ? "Salvando..." : "Salvar esta foto"}
             </Button>
-            <Button variant="ghost" onClick={() => setNovaFoto(null)} disabled={salvando} className="min-h-10 px-4 text-sm">
+            <Button variant="ghost" onClick={() => setNovaFoto(null)} disabled={salvando} size="md">
               Cancelar
             </Button>
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={salvando} className="min-h-10 px-4 text-sm">
+            <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={salvando} size="md">
               <Camera className="h-4 w-4" aria-hidden="true" />
               {avatarUrl ? "Trocar foto" : "Enviar foto"}
             </Button>
             {avatarUrl && (
-              <Button variant="danger" onClick={() => setConfirmarRemocao(true)} disabled={salvando} className="min-h-10 px-4 text-sm">
+              <Button variant="danger" onClick={() => setConfirmarRemocao(true)} disabled={salvando} size="md">
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                 Remover foto
               </Button>

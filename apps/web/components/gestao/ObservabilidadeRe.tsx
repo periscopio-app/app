@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Clock, EyeOff, Hourglass, Save, SkipForward, Users } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface Cell { value: number | null; suppressed: boolean }
 interface PassoTempo { step: string; casos: number; medianaSegundos: Cell; baselineMinutos: number | null; ganhoMedianoMinutos: number | null }
@@ -148,10 +149,10 @@ export function ObservabilidadeRe({ schoolId }: { schoolId: string }) {
         </div>
         {d.podeEditarBaselines && (
           <div className="flex flex-wrap items-center gap-3 border-t border-linha px-4 py-3">
-            <button type="button" onClick={salvarBaselines} disabled={salvando || !Object.values(editando).some((v) => v.trim())}
-              className="inline-flex items-center gap-2 rounded-xl bg-roxo px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <Button type="button" onClick={salvarBaselines} disabled={salvando || !Object.values(editando).some((v) => v.trim())}
+              variant="primary" size="md">
               <Save className="h-4 w-4" aria-hidden /> Salvar tempos de referência
-            </button>
+            </Button>
             {okMsg && <span role="status" className="text-sm">{okMsg}</span>}
             <span className="text-xs text-neutral-700">Informe quanto cada parte leva hoje no papel. É a base do tempo ganho.</span>
           </div>

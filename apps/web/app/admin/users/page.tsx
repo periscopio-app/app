@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui";
 
 interface UserItem {
   id: string;
@@ -294,12 +295,12 @@ export default function AdminUsersPage() {
             >
               Provisionar Escola
             </Link>
-            <button
+            <Button type="submit"
               onClick={() => setModalOpen(true)}
-              className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg transition"
+              variant="secondary" size="md"
             >
               + Novo Usuário
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -390,21 +391,21 @@ export default function AdminUsersPage() {
                           {new Date(u.createdAt).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2">
-                          <button
+                          <Button type="submit"
                             onClick={() => {
                               setEditingUser(u);
                               setEditRole(u.role);
                             }}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#F0F9FC] hover:bg-[#E1E9ED] text-slate-800 border border-[#E1E9ED] transition"
+                            variant="outline" size="sm"
                           >
                             Alterar Perfil
-                          </button>
-                          <button
+                          </Button>
+                          <Button type="submit"
                             onClick={() => handleDeleteUser(u)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 border border-rose-500/30 transition"
+                            variant="danger" size="sm"
                           >
                             Excluir
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -581,20 +582,20 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#E1E9ED]">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] text-slate-700 hover:bg-[#E1E9ED]"
+                    variant="ghost" size="md"
                   >
                     Cancelar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg disabled:opacity-50"
+                    variant="secondary" size="md"
                   >
                     {submitting ? "Criando..." : "Salvar Usuário"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -629,20 +630,20 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#E1E9ED]">
-                <button
+                <Button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] text-slate-700 hover:bg-[#E1E9ED]"
+                  variant="ghost" size="md"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => handleUpdateRole(editingUser.id, editRole)}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 text-black shadow-lg"
+                  variant="secondary" size="md"
                 >
                   Confirmar Alteração
-                </button>
+                </Button>
               </div>
             </div>
           </div>

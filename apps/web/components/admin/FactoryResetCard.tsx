@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, Eraser, Loader2, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface DemoTenant { id: string; name: string; municipalityCode: string }
 interface CountRow { table: string; label: string; rows: number }
@@ -73,13 +74,13 @@ export function FactoryResetCard() {
       )}
 
       {!preview ? (
-        <button
+        <Button
           type="button"
           onClick={() => void carregarPreview()}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-50"
+          variant="danger" size="md" className="mt-4"
         >
           <Eraser className="h-4 w-4" aria-hidden /> Ver o que seria apagado
-        </button>
+        </Button>
       ) : (
         <div className="mt-4 space-y-3">
           {preview.tenants.length === 0 ? (
@@ -108,18 +109,18 @@ export function FactoryResetCard() {
                 />
               </label>
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => void executar()}
                   disabled={rodando || confirm.trim() !== preview.confirmacao}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-600 bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                  variant="danger" size="md"
                 >
                   {rodando ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Eraser className="h-4 w-4" aria-hidden />}
                   Apagar dados de demonstração
-                </button>
-                <button type="button" onClick={() => { setPreview(null); setConfirm(""); }} className="rounded-xl px-4 py-2 text-sm font-semibold text-black hover:bg-fundo">
+                </Button>
+                <Button type="button" onClick={() => { setPreview(null); setConfirm(""); }} variant="ghost" size="md">
                   Cancelar
-                </button>
+                </Button>
               </div>
             </>
           )}

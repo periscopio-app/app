@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Lock, RotateCcw, Save, Search, ShieldAlert, SlidersHorizontal, User } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 // ─── tipos (espelham /api/admin/privileges/*) ───────────────────────────────
 
@@ -313,27 +314,27 @@ export default function AdminPrivilegesPage() {
                 <span className="text-[11px] text-slate-500">A regra de uma rede específica vence a regra geral. {dirty > 0 && "Salve ou descarte para trocar de escopo."}</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button type="submit"
                   onClick={() => setPending({})}
                   disabled={dirty === 0 || saving}
-                  className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] border border-[#E1E9ED] disabled:opacity-40"
+                  variant="outline" size="md"
                 >
                   Descartar
-                </button>
-                <button
+                </Button>
+                <Button type="submit"
                   onClick={resetScope}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-white border border-[#E1E9ED] hover:bg-[#F0F9FC] disabled:opacity-40"
+                  variant="outline" size="md"
                 >
                   <RotateCcw className="w-4 h-4" /> Voltar tudo ao padrão
-                </button>
-                <button
+                </Button>
+                <Button type="submit"
                   onClick={() => save(false)}
                   disabled={dirty === 0 || saving}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-semibold rounded-xl bg-ceu-100 border border-ceu-700 hover:bg-ceu-300 disabled:opacity-40"
+                  variant="secondary" size="md"
                 >
                   <Save className="w-4 h-4" /> {saving ? "Salvando…" : `Salvar${dirty ? ` (${dirty})` : ""}`}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -452,9 +453,9 @@ export default function AdminPrivilegesPage() {
                   placeholder="Nome ou e-mail"
                   className="flex-1 px-3 py-2 rounded-xl border border-[#E1E9ED] text-sm"
                 />
-                <button className="px-3 py-2 rounded-xl bg-ceu-100 border border-ceu-700" aria-label="Buscar">
+                <Button type="submit" variant="secondary" size="md" aria-label="Buscar">
                   <Search className="w-4 h-4" />
-                </button>
+                </Button>
               </form>
               <ul className="mt-3 max-h-[60vh] overflow-y-auto divide-y divide-[#EEF3F6]">
                 {people.length === 0 && <li className="py-6 text-center text-sm text-slate-500">Ninguém encontrado.</li>}
@@ -611,15 +612,15 @@ export default function AdminPrivilegesPage() {
               placeholder="Ex.: acordado com a coordenação do piloto"
             />
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setConfirm(null)} className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#F0F9FC] border border-[#E1E9ED]">
+              <Button type="submit" onClick={() => setConfirm(null)} variant="outline" size="md">
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button type="submit"
                 onClick={() => void confirm.run()}
-                className="px-4 py-2 text-sm font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700"
+                variant="danger" size="md"
               >
                 Confirmar e liberar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

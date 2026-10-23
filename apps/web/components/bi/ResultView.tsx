@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { Button } from "@/components/ui";
 
 export interface Row { dims: Record<string, string>; value: number | null; suppressed: boolean; n?: number }
 export interface Result {
@@ -86,9 +87,9 @@ export function ResultView({ r, title }: { r: Result; title?: string }) {
               {v === "bar" ? "Barras" : v === "line" ? "Linha" : "Tabela"}
             </button>
           ))}
-          <button type="button" onClick={download} className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-black">
+          <Button type="button" onClick={download} variant="outline" size="md">
             <Download className="h-3 w-3" /> CSV
-          </button>
+          </Button>
         </div>
       </div>
       {canChart && view === "bar" && <Bars rows={r.rows} />}

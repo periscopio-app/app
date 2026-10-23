@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, ClipboardList, Lock, Sparkles, Scale } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 /**
  * Triagem TEA (5 instrumentos). Um único painel para todos os papéis: o servidor devolve só os instrumentos
@@ -410,10 +411,10 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
           <p className="text-[11px] text-neutral-800">Organiza o que a equipe marcou. Não é diagnóstico e não substitui a avaliação do profissional responsável.</p>
         </div>
         {data.canSummarize && (
-          <button type="button" onClick={summarize} disabled={summarizing} className="flex items-center gap-1.5 rounded-xl border border-roxo bg-roxo-100 px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-200 disabled:opacity-60">
+          <Button type="button" onClick={summarize} disabled={summarizing} variant="primary" size="sm">
             <Sparkles className="h-3.5 w-3.5" />
             {summarizing ? "Organizando…" : "Resumo organizado (IA)"}
-          </button>
+          </Button>
         )}
       </header>
 
@@ -580,12 +581,12 @@ export function TeaScreeningPanel({ caseId, onChanged }: { caseId: string; onCha
 
           {!locked && (
             <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 border-t border-linha bg-white/95 py-3 backdrop-blur">
-              <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-black hover:bg-fundo disabled:opacity-60">
+              <Button type="button" disabled={busy} onClick={() => void save()} variant="outline" size="md">
                 Salvar rascunho
-              </button>
-              <button type="button" disabled={busy} onClick={() => void submit()} className="flex items-center gap-2 rounded-xl border border-roxo bg-roxo-100 px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60">
+              </Button>
+              <Button type="button" disabled={busy} onClick={() => void submit()} variant="primary" size="md">
                 <CheckCircle2 className="h-4 w-4" /> Enviar e travar
-              </button>
+              </Button>
             </div>
           )}
         </div>

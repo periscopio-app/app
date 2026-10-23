@@ -24,6 +24,7 @@ import { StudentIdentityVaultCard } from "@/components/dashboard/StudentIdentity
 import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { FogapViewer } from "@/components/dashboard/FogapViewer";
+import { Button } from "@/components/ui";
 import {
   ClipboardList,
   Users,
@@ -374,14 +375,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       </div>
 
       {filaRecolhida && (
-        <button
+        <Button
           type="button"
           onClick={() => setFilaRecolhida(false)}
           data-testid="mostrar-fila"
-          className="mb-3 inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3 py-2 text-xs font-bold text-black hover:bg-roxo-50"
+          variant="outline" size="sm" className="mb-3"
         >
           <ClipboardList className="h-4 w-4" aria-hidden /> Mostrar fila de casos ({cases.length})
-        </button>
+        </Button>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: case queue */}
@@ -392,15 +393,15 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
               Fila de casos ({cases.length})
             </span>
             {activeCase && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setFilaRecolhida(true)}
                 data-testid="recolher-fila"
-                className="hidden lg:inline-flex rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-roxo-50"
+                variant="outline" size="sm"
                 title="Esconde a lista e abre o prontuário na largura toda"
               >
                 Recolher lista
-              </button>
+              </Button>
             )}
           </h2>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
@@ -464,15 +465,15 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                   <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-800">
                     {cabecalhoRecolhido ? `${activeCase.studentCode} · ${activeCase.grade ?? "série não informada"} · ${JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}` : "Prontuário do aluno"}
                   </span>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setCabecalhoRecolhido(!cabecalhoRecolhido)}
                     aria-expanded={!cabecalhoRecolhido}
                     data-testid="recolher-cabecalho"
-                    className="rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-roxo-50"
+                    variant="outline" size="sm"
                   >
                     {cabecalhoRecolhido ? "Mostrar cabeçalho" : "Recolher cabeçalho"}
-                  </button>
+                  </Button>
                 </div>
                 <div className={cabecalhoRecolhido ? "hidden" : ""}>
                 <ProntuarioHeaderCard
@@ -528,30 +529,30 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <button
+                            <Button
                               type="button"
                               onClick={() => irParaAcao("delegate")}
                               disabled={activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado"}
-                              className="inline-flex items-center gap-2 rounded-xl border border-roxo bg-roxo-100 px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-50"
+                              variant="primary" size="md"
                             >
                               <Users className="h-4 w-4" aria-hidden />
                               {activeCase.journeyState === "delegado" ? "Acrescentar especialista" : "Encaminhar a especialistas"}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               onClick={() => setAba("medical")}
-                              className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-fundo"
+                              variant="outline" size="md"
                             >
                               <ClipboardList className="h-4 w-4" aria-hidden /> Abrir formulário do médico
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               onClick={() => irParaAcao("return")}
                               disabled={activeCase.journeyState !== "revisao_medica"}
-                              className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-fundo disabled:opacity-50"
+                              variant="outline" size="md"
                             >
                               <RotateCcw className="h-4 w-4" aria-hidden /> Devolver ao RE
-                            </button>
+                            </Button>
                           </div>
                           {activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado" && (
                             <p className="text-[11px] text-neutral-800">
@@ -754,14 +755,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       })}
                     </div>
                     <div className="flex justify-end pt-2">
-                      <button
+                      <Button
                         type="submit"
                         disabled={delegating || (activeCase.journeyState !== "revisao_medica" && activeCase.journeyState !== "delegado")}
-                        className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                        variant="primary" size="md"
                       >
                         <ChevronRight className="h-4 w-4" />
                         {delegating ? "Encaminhando..." : activeCase.journeyState === "delegado" ? "Acrescentar especialistas" : "Confirmar encaminhamento"}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 )}
@@ -847,14 +848,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           />
                         </div>
                         <div className="flex justify-end">
-                          <button
+                          <Button
                             type="submit"
                             disabled={returning || !returnReason.trim()}
-                            className="flex items-center gap-2 rounded-xl border border-ouro-400 bg-ouro-50 px-5 py-2 text-sm font-semibold text-black hover:bg-ouro-100 disabled:opacity-60 transition"
+                            variant="warning" size="md"
                           >
                             <RotateCcw className="h-4 w-4" />
                             {returning ? "Devolvendo..." : "Devolver ao RE"}
-                          </button>
+                          </Button>
                         </div>
                       </>
                     )}
@@ -936,13 +937,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           />
                         </div>
                         <div className="flex justify-end">
-                          <button
+                          <Button
                             type="submit"
                             disabled={closing || !closeReason.trim()}
-                            className="rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                            variant="primary" size="md"
                           >
                             {closing ? "Encerrando..." : "Encerrar caso"}
-                          </button>
+                          </Button>
                         </div>
                       </>
                     )}
