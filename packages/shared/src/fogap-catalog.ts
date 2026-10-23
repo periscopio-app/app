@@ -5,7 +5,8 @@
  *
  * Textos das perguntas copiados literalmente da fonte; nada foi reescrito.
  * O FOGAP não contém pontuação nem escore.
- * Piloto ativo: somente G3 (6 a 9 anos e 11 meses).
+ * Piloto ativo: faixas 4 a 5 anos (itens 75–94, dentro do G2) e 6 a 9 anos (G3). Validado em call com a Dra.
+ * Pesos e pontos de corte NÃO existem no FOGAP (não há escore).
  */
 
 import type { EscalasSumario } from "./escalas-sumario";
@@ -14,6 +15,8 @@ export const FOGAP_FORM_CODE = "fogap" as const;
 export const FOGAP_VERSION = "0.1.0-rascunho" as const;
 
 export type GrupoId = "G1" | "G2" | "G3";
+/** Faixas de itens ativas no piloto. */
+export type FaixaFogap = "4a5" | "6a9";
 export type OpcaoDesenvolvimento = "adequada" | "inadequada";
 export type OpcaoComportamento = "sim" | "nao";
 export type EstadoFogap =
@@ -117,6 +120,8 @@ export interface FogapPayload {
   fogap_version: string;
   fogap_state: EstadoFogap;
   grupo: GrupoId | null;
+  /** Faixa de itens que a RE está respondendo. Padrão vem da idade; a RE pode trocar. Ausente em registros antigos. */
+  faixa_fogap?: FaixaFogap | null;
   idade_anos: number | null;
   idade_meses: number | null;
   total_meses: number | null;
@@ -137,7 +142,10 @@ const FAIXAS: { id: GrupoId; min: number; max: number }[] = [
   { id: "G3", min: 72, max: 119 },
 ];
 
-export const GRUPOS_ATIVOS_NO_PILOTO: GrupoId[] = ["G3"];
+export const GRUPOS_ATIVOS_NO_PILOTO: GrupoId[] = ["G2", "G3"];
+
+/** Dentro do G2 (3 a 5a11m), o piloto cobre só quem tem 4 anos ou mais: os itens de 3 anos não estão ativos. */
+export const G2_MIN_MESES_PILOTO = 48;
 
 export type ResultadoRoteamento =
   | { estado: "aguardando_idade"; erro: "idade_invalida" }
@@ -162,7 +170,7 @@ export function rotearPorIdade(
   const total_meses = anos * 12 + meses;
   const faixa = FAIXAS.find((f) => total_meses >= f.min && total_meses <= f.max);
   if (!faixa) return { estado: "fora_da_faixa", total_meses };
-  if (!gruposAtivos.includes(faixa.id)) {
+  if (!gruposAtivos.includes(faixa.id) || (faixa.id === "G2" && total_meses < G2_MIN_MESES_PILOTO)) {
     return { estado: "faixa_fora_do_piloto", grupo: faixa.id, total_meses };
   }
   return { estado: "rascunho", grupo: faixa.id, total_meses };
@@ -192,7 +200,7 @@ export const GRUPOS_META: Record<GrupoId, FogapGrupoMeta> = {
     idade_min_meses: 36,
     idade_max_meses: 71,
     infancia_fonte: "1ª Infância",
-    ativo_no_piloto: false,
+    ativo_no_piloto: true,
   },
   G3: {
     id: "G3",
@@ -224,6 +232,65 @@ export const G3_ITENS: FogapItem[] = [
   { id: "FOGAP-D-108", n: 108, bloco_idade: "6 a 9 anos", fase_fonte: "Operacional-concreto Corpo representado", texto: "Lê e escreve" },
   { id: "FOGAP-D-109", n: 109, bloco_idade: "6 a 9 anos", fase_fonte: "Operacional-concreto Corpo representado", texto: "Fala sem omissões e trocas" },
 ];
+
+// ── G2 — itens de 4 a 5 anos (piloto ativo; os de 3 anos seguem fora) ─────────────
+
+const FASE_4A5 = "Pré-operatório Corpo percebido Pré-operacional";
+const textos4a5: [number, string][] = [
+  [75, "Executa preensão"],
+  [76, "Revela tonicidade"],
+  [77, "Conhece o corpo"],
+  [78, "Tem orientação espacial"],
+  [79, "Senta-se na cadeira de forma harmônica"],
+  [80, "Apresenta dominância lateral"],
+  [81, "Interage socialmente"],
+  [82, "Inicia e mantém diálogo"],
+  [83, "Compreende comandos mais longos"],
+  [84, "Executa tarefas"],
+  [85, "Narra fatos ou conta histórias, produzindo os sons /x/, /j/, /l/, /lh/, /r/; até os 5 anos, /pl/, /pr/, com omissões e trocas"],
+  [86, "Usa palavras adequadas ao contexto"],
+  [87, "Entende palavras como “primeiro”, “próximo”, “último”, “hoje”, “ontem”, “amanhã”"],
+  [88, "Faz perguntas para descobrir novas informações"],
+  [89, "Usa gramática correta no presente, passado e futuro"],
+  [90, "Aumenta o uso de adjetivos, advérbios e pronomes"],
+  [91, "Fala de forma diferente com criança e adulto"],
+  [92, "Modula a intensidade da voz de acordo com o objetivo"],
+  [93, "Pode ser entendido por todos"],
+  [94, "Espera-se que não omita e nem faça trocas"],
+];
+export const G2_ITENS_4A5: FogapItem[] = textos4a5.map(([n, texto]) => ({
+  id: `FOGAP-D-${String(n).padStart(3, "0")}`,
+  n,
+  bloco_idade: "4 a 5 anos",
+  fase_fonte: FASE_4A5,
+  texto,
+}));
+
+export const FAIXAS_FOGAP: { id: FaixaFogap; rotulo: string; grupo: GrupoId }[] = [
+  { id: "4a5", rotulo: "4 a 5 anos", grupo: "G2" },
+  { id: "6a9", rotulo: "6 a 9 anos", grupo: "G3" },
+];
+
+export function isFaixaFogap(v: unknown): v is FaixaFogap {
+  return v === "4a5" || v === "6a9";
+}
+
+/** Faixa sugerida pela idade (48–71 meses = 4 a 5 anos; 72–119 = 6 a 9 anos). Fora disso, não há faixa no piloto. */
+export function faixaPadraoPorMeses(totalMeses: number | null | undefined): FaixaFogap | null {
+  if (typeof totalMeses !== "number" || !Number.isFinite(totalMeses)) return null;
+  if (totalMeses >= G2_MIN_MESES_PILOTO && totalMeses <= 71) return "4a5";
+  if (totalMeses >= 72 && totalMeses <= 119) return "6a9";
+  return null;
+}
+
+export function itensDaFaixa(faixa: FaixaFogap): FogapItem[] {
+  return faixa === "4a5" ? G2_ITENS_4A5 : G3_ITENS;
+}
+
+/** Faixa em uso: a que a RE escolheu ou, na falta, a da idade. */
+export function faixaEmUso(p: { faixa_fogap?: unknown; total_meses?: number | null }): FaixaFogap | null {
+  return isFaixaFogap(p.faixa_fogap) ? p.faixa_fogap : faixaPadraoPorMeses(p.total_meses);
+}
 
 // ── Seção 4 — Comportamentos disfuncionais por 6 meses ────────────────────
 
@@ -264,6 +331,7 @@ export const DIFICULDADES_PERSISTENTES_OPCOES: string[] = [
 
 export function getItensGrupo(grupo: GrupoId): FogapItem[] {
   if (grupo === "G3") return G3_ITENS;
+  if (grupo === "G2") return G2_ITENS_4A5;
   return [];
 }
 
@@ -272,6 +340,7 @@ export function makeFogapPayloadVazio(): FogapPayload {
     fogap_version: FOGAP_VERSION,
     fogap_state: "aguardando_idade",
     grupo: null,
+    faixa_fogap: null,
     idade_anos: null,
     idade_meses: null,
     total_meses: null,
@@ -320,7 +389,8 @@ export function prontoParaRevisao(payload: FogapPayload): { pronto: boolean; pen
     return { pronto: false, pendencias, avisos };
   }
 
-  const itens = getItensGrupo(payload.grupo);
+  const faixa = faixaEmUso(payload);
+  const itens = faixa ? itensDaFaixa(faixa) : getItensGrupo(payload.grupo);
   const respostasDev = payload.respostas_desenvolvimento ?? {};
   const respostasComp = payload.respostas_comportamentos ?? {};
   const devPendentes = itens.filter((item) => !respostasDev[item.id]);
@@ -379,6 +449,11 @@ export function validarPayloadFogap(payload: unknown, now = new Date()): string 
         if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) return `Data de encaminhamento (${k}) inválida.`;
       }
     }
+  }
+
+  const faixaEscolhida = p["faixa_fogap"];
+  if (faixaEscolhida !== undefined && faixaEscolhida !== null && !isFaixaFogap(faixaEscolhida)) {
+    return "Faixa do FOGAP inválida — use 4a5 ou 6a9.";
   }
 
   const dev = p["respostas_desenvolvimento"];

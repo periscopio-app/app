@@ -12,11 +12,15 @@ import {
   SNAP4_OPCOES,
   SUMARIO_TEXTO_MAX,
   encaminhadosVazio,
+  faixaEmUso,
+  faixaPadraoPorMeses,
+  itensDaFaixa,
   isReFormId,
   lacunasDoSumario,
   makeSnap4PayloadVazio,
   situacaoDaJornada,
   sumarioComPadroes,
+  type FaixaFogap,
   type FogapSecaoSumario,
   type JornadaSituacao,
   type Lacuna,
@@ -35,6 +39,7 @@ import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCar
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { OpcoesUnica, ReFormLeitura, ReFormRenderer, type ProfessorOpcao } from "./ReFormRenderer";
 import { AlunoEdicaoModal } from "./AlunoEdicaoModal";
+import { FogapDesenvolvimento, type RespostasDesenvolvimento } from "./FogapDesenvolvimento";
 
 type Payload = Record<string, any>;
 interface Linha {
@@ -183,6 +188,8 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const [drafts, setDrafts] = useState<Partial<Record<ReFormId, Payload>>>({});
   const [snap, setSnap] = useState<Snap4Payload>(makeSnap4PayloadVazio());
   const [sum, setSum] = useState<FogapSecaoSumario>(sumarioComPadroes(null));
+  const [dev, setDev] = useState<{ faixa: FaixaFogap | null; respostas: RespostasDesenvolvimento }>({ faixa: null, respostas: {} });
+  const devAlterado = useRef(false);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -198,8 +205,8 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const [, forcar] = useState(0);
 
   const dirty = useRef<Set<RePassoId>>(new Set());
-  const latest = useRef({ drafts, snap, sum, j });
-  latest.current = { drafts, snap, sum, j };
+  const latest = useRef({ drafts, snap, sum, j, dev });
+  latest.current = { drafts, snap, sum, j, dev };
   const topo = useRef<HTMLDivElement>(null);
 
   const readOnly = j ? j.caseState !== "rascunho" : true;
@@ -225,6 +232,10 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     if (!dirty.current.has("i")) {
       const p = d.forms.i?.payload as { secao_sumario?: unknown } | undefined;
       setSum(sumarioComPadroes((p?.secao_sumario as Partial<FogapSecaoSumario>) ?? null));
+    }
+    if (!devAlterado.current) {
+      const p = d.forms.i?.payload as { faixa_fogap?: FaixaFogap | null; respostas_desenvolvimento?: RespostasDesenvolvimento } | undefined;
+      setDev({ faixa: p?.faixa_fogap ?? null, respostas: p?.respostas_desenvolvimento ?? {} });
     }
   }, []);
 
@@ -284,7 +295,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
   const salvar = useCallback(
     async (id: RePassoId, forcarSalvar = false): Promise<boolean> => {
-      const { drafts: dr, snap: sn, sum: su, j: jj } = latest.current;
+      const { drafts: dr, snap: sn, sum: su, j: jj, dev: dv } = latest.current;
       if (!jj || jj.caseState !== "rascunho") return true;
       if (!forcarSalvar && !dirty.current.has(id)) return true;
       if (id === "h") return true;
@@ -297,6 +308,16 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
           setJ((cur) => (cur ? { ...cur, forms: { ...cur.forms, g: { status: "rascunho", payload: sn, updatedAt: new Date().toISOString() } } } : cur));
         } else if (id === "i") {
           await api.put(`${base}/re-journey/sumario`, { secao_sumario: su });
+          if (devAlterado.current) {
+            const meses = jj.student.birthYear ? new Date().getFullYear() * 12 + new Date().getMonth() + 1 - (jj.student.birthYear * 12 + (jj.student.birthMonth ?? 1)) : null;
+            const faixa = faixaEmUso({ faixa_fogap: dv.faixa, total_meses: meses });
+            if (faixa) {
+              const ids = new Set(itensDaFaixa(faixa).map((i) => i.id));
+              const respostas = Object.fromEntries(Object.entries(dv.respostas).filter(([k]) => ids.has(k)));
+              await api.put(`${base}/re-journey/fogap-desenvolvimento`, { faixa, respostas });
+            }
+            devAlterado.current = false;
+          }
         }
         dirty.current.delete(id);
         return true;
@@ -332,7 +353,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     if (readOnly || dirty.current.size === 0) return;
     const t = setTimeout(() => void salvarTudo(), 1500);
     return () => clearTimeout(t);
-  }, [drafts, snap, sum, readOnly, salvarTudo]);
+  }, [drafts, snap, sum, dev, readOnly, salvarTudo]);
 
   const marcarAlterado = (id: RePassoId) => {
     dirty.current.add(id);
@@ -422,6 +443,11 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const respondidosForms = situacao.passos.reduce((acc, p) => acc + p.respondidos, 0);
   const totalForms = situacao.passos.reduce((acc, p) => acc + p.total, 0);
   const porPasso = (id: RePassoId) => situacao.lacunas.filter((l) => l.passo === id).length;
+  const idadeMeses = aluno.birthYear
+    ? new Date().getFullYear() * 12 + new Date().getMonth() + 1 - (aluno.birthYear * 12 + (aluno.birthMonth ?? 1))
+    : null;
+  const faixaSugerida = faixaPadraoPorMeses(idadeMeses);
+  const faixaAtual = faixaEmUso({ faixa_fogap: dev.faixa, total_meses: idadeMeses });
   const idade = (() => {
     if (!aluno.birthYear) return "—";
     const hoje = new Date();
@@ -566,6 +592,32 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                 />
               )}
 
+              {passo.id === "i" && (
+                <div className="mb-4">
+                  {faixaAtual ? (
+                    <FogapDesenvolvimento
+                      faixa={faixaAtual}
+                      faixaSugerida={faixaSugerida}
+                      respostas={dev.respostas}
+                      readOnly={!emEdicao}
+                      onFaixa={(f) => {
+                        devAlterado.current = true;
+                        marcarAlterado("i");
+                        setDev((d) => ({ ...d, faixa: f }));
+                      }}
+                      onResponder={(id, valor) => {
+                        devAlterado.current = true;
+                        marcarAlterado("i");
+                        setDev((d) => ({ ...d, faixa: d.faixa ?? faixaAtual, respostas: { ...d.respostas, [id]: valor } }));
+                      }}
+                    />
+                  ) : (
+                    <p className="rounded-xl border border-linha bg-fundo p-3 text-xs text-neutral-800" role="status" data-testid="fogap-fora-do-piloto">
+                      Os itens de desenvolvimento do FOGAP cobrem alunos de 4 a 9 anos. Confira o nascimento do aluno nos dados do cadastro.
+                    </p>
+                  )}
+                </div>
+              )}
               {passo.id === "i" && (
                 <SumarioPasso
                   sum={sum}

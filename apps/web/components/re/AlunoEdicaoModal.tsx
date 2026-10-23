@@ -113,7 +113,7 @@ export function AlunoEdicaoModal({ open, onClose, studentId, studentCode, birthY
             </datalist>
           </div>
         </div>
-        <p className="text-xs text-neutral-800">Piloto: alunos de 6 anos a 9 anos e 11 meses. Toda alteração fica registrada com quem fez e quando.</p>
+        <p className="text-xs text-neutral-800">Piloto: alunos de 4 anos a 9 anos e 11 meses. Toda alteração fica registrada com quem fez e quando.</p>
 
         <div className="flex justify-end gap-2">
           <Button type="button" onClick={onClose} variant="outline" size="md">Cancelar</Button>
