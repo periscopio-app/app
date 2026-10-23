@@ -349,7 +349,7 @@ export async function casesRoutes(app: FastifyInstance) {
       }
       const b = validateBirth(r ?? {});
       if (!b.ok) errors.push({ row: i + 1, error: b.error });
-      else if (!validatePilotAge(b.birthYear, b.birthMonth).ok) errors.push({ row: i + 1, error: "Fora da faixa do piloto (6 anos a 9 anos e 11 meses)." });
+      else if (!validatePilotAge(b.birthYear, b.birthMonth).ok) errors.push({ row: i + 1, error: "Fora da faixa do piloto (4 anos a 9 anos e 11 meses)." });
       else valid.push({ birthYear: b.birthYear, birthMonth: b.birthMonth, grade: g.grade });
     });
     if (errors.length > 0) return reply.status(400).send({ error: "Planilha com erros; nada foi importado", errors: errors.slice(0, 20) });
@@ -810,7 +810,7 @@ export async function casesRoutes(app: FastifyInstance) {
     const { pronto, pendencias } = prontoParaRevisao(fogapPayload);
     if (!pronto) {
       return reply.status(422).send({
-        error: "Não é possível enviar: confira a data de nascimento do aluno — a idade precisa estar na faixa do piloto (6 a 9 anos e 11 meses).",
+        error: "Não é possível enviar: confira a data de nascimento do aluno — a idade precisa estar na faixa do piloto (4 a 9 anos e 11 meses).",
         pendencias,
       });
     }

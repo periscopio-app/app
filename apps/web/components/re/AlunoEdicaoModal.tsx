@@ -113,7 +113,7 @@ export function AlunoEdicaoModal({ open, onClose, studentId, studentCode, birthY
             </datalist>
           </div>
         </div>
-        <p className="text-xs text-neutral-800">Piloto: alunos de 6 anos a 9 anos e 11 meses. Toda alteração fica registrada com quem fez e quando.</p>
+        <p className="text-xs text-neutral-800">Piloto: alunos de 4 anos a 9 anos e 11 meses. Toda alteração fica registrada com quem fez e quando.</p>
 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="min-h-[44px] rounded-xl border border-linha bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-50">Cancelar</button>

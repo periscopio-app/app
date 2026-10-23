@@ -23,13 +23,14 @@ test("faixa etária", () => {
   assert.equal(ageBracketOf(2021, 1, now), "00-05");
 });
 
-test("trava de idade do piloto: 6 anos completos até 9 anos e 11 meses", () => {
+test("trava de idade do piloto: 4 anos completos até 9 anos e 11 meses", () => {
   const now = new Date("2026-10-13T12:00:00Z");
-  assert.equal(validatePilotAge(2020, 10, now).ok, true, "6a0m entra");
-  assert.equal(validatePilotAge(2020, 11, now).ok, false, "5a11m fica de fora");
+  assert.equal(validatePilotAge(2022, 10, now).ok, true, "4a0m entra");
+  assert.equal(validatePilotAge(2022, 11, now).ok, false, "3a11m fica de fora");
+  assert.equal(validatePilotAge(2020, 11, now).ok, true, "5a11m entra (faixa 4 a 5 anos)");
   assert.equal(validatePilotAge(2016, 11, now).ok, true, "9a11m entra");
   assert.equal(validatePilotAge(2016, 10, now).ok, false, "10a0m fica de fora");
   assert.equal(validatePilotAge(2024, 1, now).ok, false, "2 anos (caso do print) fica de fora");
   const r = validatePilotAge(2024, 1, now);
-  assert.ok(!r.ok && /6 anos a 9 anos e 11 meses/.test(r.error));
+  assert.ok(!r.ok && /4 anos a 9 anos e 11 meses/.test(r.error));
 });

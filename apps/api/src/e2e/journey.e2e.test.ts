@@ -210,11 +210,11 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(list.body.cases.filter((x: any) => x.id === caseId).length, 1);
   });
 
-  test("trava de idade do piloto: só 6 anos a 9 anos e 11 meses (individual e em lote)", async () => {
+  test("trava de idade do piloto: só 4 anos a 9 anos e 11 meses (individual e em lote)", async () => {
     const Y = new Date().getFullYear();
     const novo = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: Y - 2, birthMonth: 1 });
     assert.equal(novo.status, 400);
-    assert.match(novo.body.error, /6 anos a 9 anos e 11 meses/);
+    assert.match(novo.body.error, /4 anos a 9 anos e 11 meses/);
     const velho = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: Y - 12, birthMonth: 1 });
     assert.equal(velho.status, 400);
     const lote = await call("POST", `/api/schools/${ids.schoolA}/students/bulk`, "re", {
@@ -290,6 +290,47 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(after.body.assessment?.status ?? after.body.status, "rascunho", "a transação foi desfeita: o RE ainda pode enviar");
     const ok = await call("POST", `/api/cases/${cid}/re-assessment/submit`, "re", { confirmarLacunas: true });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  });
+
+  test("FOGAP por faixa: 4–5 e 6–9 anos selecionáveis, respostas só da faixa, médico não recebe os itens", async () => {
+    const Y = new Date().getFullYear();
+    const s = await call("POST", "/api/students", "re", { schoolId: ids.schoolA, birthYear: Y - 5, birthMonth: 1, grade: "Pré II" });
+    assert.equal(s.status, 201, JSON.stringify(s.body));
+    const c = await call("POST", "/api/cases", "re", { studentId: s.body.student.id });
+    const cid = c.body.case.id;
+    const url = `/api/cases/${cid}/re-journey/fogap-desenvolvimento`;
+
+    // 4 a 5 anos: item 75 pertence à faixa; item 95 (6 a 9) não
+    const ok = await call("PUT", url, "re", { faixa: "4a5", respostas: { "FOGAP-D-075": "adequada", "FOGAP-D-076": "inadequada", "FOGAP-D-077": null } });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.form.payload.faixa_fogap, "4a5");
+    assert.equal(ok.body.form.payload.respostas_desenvolvimento["FOGAP-D-076"], "inadequada");
+    assert.equal(ok.body.form.payload.grupo, "G2");
+    assert.equal((await call("PUT", url, "re", { faixa: "4a5", respostas: { "FOGAP-D-095": "adequada" } })).status, 400, "item de outra faixa");
+    assert.equal((await call("PUT", url, "re", { faixa: "4a5", respostas: { "FOGAP-D-075": "talvez" } })).status, 400, "valor fora do enum");
+    assert.equal((await call("PUT", url, "re", { faixa: "9a12", respostas: {} })).status, 400, "faixa inválida");
+
+    // Trocar para 6 a 9 anos mantém as respostas da faixa anterior (nada é apagado)
+    const troca = await call("PUT", url, "re", { faixa: "6a9", respostas: { "FOGAP-D-095": "adequada" } });
+    assert.equal(troca.status, 200);
+    assert.equal(troca.body.form.payload.faixa_fogap, "6a9");
+    assert.equal(troca.body.form.payload.respostas_desenvolvimento["FOGAP-D-075"], "adequada");
+
+    // Salvar o sumário depois não perde as respostas nem a faixa
+    const sum = await call("PUT", `/api/cases/${cid}/re-journey/sumario`, "re", {
+      secao_sumario: { dificuldades_persistentes: [], conduta: "nao", qual: "", tempo: "", resultado: "" },
+    });
+    assert.equal(sum.status, 200);
+    assert.equal(sum.body.form.payload.faixa_fogap, "6a9");
+    assert.equal(sum.body.form.payload.respostas_desenvolvimento["FOGAP-D-095"], "adequada");
+
+    // O RE relê tudo; quem só lê (médico) nunca recebe os itens
+    const re = await call("GET", `/api/cases/${cid}/re-journey`, "re");
+    assert.equal(re.body.forms.i.payload.respostas_desenvolvimento["FOGAP-D-076"], "inadequada");
+
+    // Especialista e gestor não gravam
+    assert.equal((await call("PUT", url, "esp", { faixa: "4a5", respostas: {} })).status, 403);
+    assert.equal((await call("PUT", url, "md", { faixa: "4a5", respostas: {} })).status, 403);
   });
 
   test("jornada do RE: formulário único — qualquer ordem, lacunas listadas e envio com confirmação", async () => {
@@ -425,6 +466,12 @@ describe("jornada clínica (E2E)", { skip }, () => {
     // Depois do envio tudo é somente leitura (inclusive o cadastro do aluno)
     assert.equal((await call("PUT", `${base}/forms/a`, "re", { payload: {} })).status, 409);
     assert.equal((await call("PATCH", `/api/students/${sid}`, "re", { grade: "5º ano" })).status, 409);
+    // O Formulário I e os itens do FOGAP também travam (a tela do RE vira somente leitura pelo estado do caso)
+    assert.equal((await call("PUT", `${base}/sumario`, "re", { secao_sumario: { dificuldades_persistentes: [], conduta: "nao", qual: "", tempo: "", resultado: "" } })).status, 409);
+    assert.equal((await call("PUT", `${base}/fogap-desenvolvimento`, "re", { faixa: "6a9", respostas: { "FOGAP-D-095": "adequada" } })).status, 409);
+    const lido = await call("GET", base, "re");
+    assert.equal(lido.status, 200);
+    assert.notEqual(lido.body.caseState, "rascunho", "estado do caso manda a tela para somente leitura");
 
     // Médico lê o sumário do RE e os dados do aluno no consolidado (A–G ficam com o RE) e devolve; o RE volta a poder editar e reenviar
     const cons = await call("GET", `/api/cases/${cid}/consolidated`, "md");
