@@ -6,6 +6,7 @@ import { formDaEspecialidade, type EspecialidadeId, ESPECIALIDADE_NOMES, isEspec
 import { api, ApiError } from "@/lib/api";
 import { ResumoVisual } from "@/components/formularios/ResumoVisual";
 import { ReFormLeitura } from "@/components/re/ReFormRenderer";
+import { Button } from "@/components/ui";
 
 interface Resp {
   version: string;
@@ -74,13 +75,13 @@ export function EspecialidadesDevolutiva({ caseId }: { caseId: string }) {
                       {def.letra} · {def.titulo}
                       {f.status !== "concluido" && <span className="ml-2 font-normal text-neutral-700">· o especialista não marcou este formulário como concluído</span>}
                     </p>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setFolha((x) => ({ ...x, [chave]: !x[chave] }))}
-                      className="rounded-lg border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-fundo"
+                      variant="outline" size="sm"
                     >
                       {folha[chave] ? "Ver resumo visual" : "Ver folha do sumário"}
-                    </button>
+                    </Button>
                     {folha[chave] ? <ReFormLeitura form={def} value={f.payload} /> : <ResumoVisual form={def} value={f.payload} />}
                   </div>
                 );

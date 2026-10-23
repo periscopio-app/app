@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
+import { Button } from "@/components/ui";
 import {
   Activity,
   BarChart3,
@@ -249,13 +250,13 @@ function ResultView({ r, title }: { r: Result; title?: string }) {
                 {v === "bar" ? "Barras" : v === "line" ? "Linha" : "Tabela"}
               </button>
             ))}
-          <button
+          <Button
             type="button"
             onClick={download}
-            className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2.5 py-1 text-black hover:bg-neutral-50 transition"
+            variant="outline" size="md"
           >
             <Download className="h-3 w-3" /> CSV
-          </button>
+          </Button>
         </div>
       </div>
       {canChart && view === "bar" && <Bars rows={r.rows} />}
@@ -528,14 +529,14 @@ export default function BiPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={loadData}
             disabled={loadingInitial}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3 py-2 text-xs font-semibold hover:bg-neutral-50 transition"
+            variant="outline" size="sm"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loadingInitial ? "animate-spin" : ""}`} /> Atualizar Dados
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -683,14 +684,14 @@ export default function BiPage() {
                               >
                                 <ThumbsUp className="h-3 w-3" /> Sim
                               </button>
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => feedback(m.id, m.reply!.questionId, -1, true)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 hover:bg-amber-100 transition font-medium"
+                                variant="outline" size="md"
                                 title="Solicitar ajuste ou sugerir correção para o plano de consulta"
                               >
                                 <Edit3 className="h-3 w-3" /> Corrigir Consulta
-                              </button>
+                              </Button>
                             </div>
                           </div>
 
@@ -758,13 +759,13 @@ export default function BiPage() {
                     placeholder="Pergunte qualquer coisa sobre o banco de dados de Tarumã (ex.: queixas mais comuns, casos por escola)..."
                     className="flex-1 rounded-xl border border-linha bg-neutral-50 px-3.5 py-2.5 text-sm text-black placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:border-roxo transition"
                   />
-                  <button
+                  <Button
                     type="submit"
                     disabled={asking || question.trim().length < 3}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-roxo-100 border border-roxo px-4 py-2.5 text-sm font-bold text-black hover:bg-roxo-200 disabled:opacity-50 transition shadow-sm"
+                    variant="primary" size="md"
                   >
                     <Send className="h-4 w-4" /> Perguntar
-                  </button>
+                  </Button>
                 </form>
               </div>
             </div>
@@ -1062,13 +1063,13 @@ export default function BiPage() {
 
           {metric && <p className="text-xs text-neutral-600">{metric.description}</p>}
 
-          <button
+          <Button
             type="button"
             onClick={runBuilder}
-            className="rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-bold text-black hover:bg-roxo-200 transition"
+            variant="primary" size="md"
           >
             Executar Consulta
-          </button>
+          </Button>
 
           {buildErr && <p role="alert" className="text-sm text-rose-700 border border-rose-200 bg-rose-50 rounded-xl p-2.5">{buildErr}</p>}
 
@@ -1142,20 +1143,20 @@ export default function BiPage() {
                   </div>
                 </div>
                 <div className="flex gap-1.5">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => decide(q.id, true)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-roxo bg-roxo-100 px-3 py-1 text-xs font-bold text-black hover:bg-roxo-200"
+                    variant="primary" size="sm"
                   >
                     <Check className="h-3 w-3" /> Aprovar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => decide(q.id, false)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-linha px-3 py-1 text-xs hover:bg-neutral-100"
+                    variant="outline" size="sm"
                   >
                     <X className="h-3 w-3" /> Descartar
-                  </button>
+                  </Button>
                 </div>
               </div>
             );

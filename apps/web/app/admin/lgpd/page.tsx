@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Clock, CheckCircle2, XCircle, AlertTriangle, RefreshCw, FileText, Database, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface LGPDRequestItem {
   id: string;
@@ -174,12 +175,12 @@ export default function AdminLGPDPage() {
                   Prazo legal de resposta de até 15 dias úteis (Art. 19, II da Lei 13.709/2018).
                 </p>
               </div>
-              <button
+              <Button
                 onClick={fetchData}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1.5"
+                variant="outline" size="sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Atualizar
-              </button>
+              </Button>
             </div>
 
             {loading ? (
@@ -290,12 +291,12 @@ export default function AdminLGPDPage() {
                 </p>
               </div>
 
-              <button
+              <Button
                 onClick={handleDryRun}
-                className="px-4 py-2 text-xs font-bold rounded-xl bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition flex items-center gap-2"
+                variant="outline" size="sm"
               >
                 <ShieldAlert className="w-4 h-4" /> Simular Varredura Preventiva de Expurgo
-              </button>
+              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -335,12 +336,12 @@ export default function AdminLGPDPage() {
                   Art. 37 da LGPD: registro das operações de revelação civil temporária e prova de conformidade do encarregado.
                 </p>
               </div>
-              <button
+              <Button
                 onClick={fetchData}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1.5"
+                variant="outline" size="sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Atualizar Auditoria
-              </button>
+              </Button>
             </div>
 
             {/* Destaques Técnicos de Governança */}

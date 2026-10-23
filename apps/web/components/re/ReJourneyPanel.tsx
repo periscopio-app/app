@@ -27,7 +27,7 @@ import {
   type Snap4Payload,
 } from "@periscopio/shared";
 import { ApiError, api } from "@/lib/api";
-import { ConfirmDialog, Modal } from "@/components/ui";
+import { ConfirmDialog, Modal, buttonClass } from "@/components/ui";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
@@ -95,10 +95,8 @@ const COR_ESTADO: Record<RePassoEstado, string> = {
 const inputCls =
   "w-full rounded-xl border border-linha bg-white px-3 py-2.5 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800";
 
-const btnPrimario =
-  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-roxo px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-roxo-800 disabled:cursor-not-allowed disabled:opacity-50";
-const btnSecundario =
-  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-roxo-50 disabled:cursor-not-allowed disabled:opacity-50";
+const btnPrimario = buttonClass("primary", "md", "min-h-[44px]");
+const btnSecundario = buttonClass("outline", "md", "min-h-[44px]");
 
 /** Rola até o campo em branco (A–F) ou até o bloco (G, H, I). */
 function irParaLacuna(l: Lacuna) {

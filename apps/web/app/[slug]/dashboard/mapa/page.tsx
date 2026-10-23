@@ -6,6 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { api, type Me } from "@/lib/api";
 import { RoleBanner } from "@/components/ui/RoleBanner";
 import { AlertCircle, MapPinned } from "lucide-react";
+import { Button } from "@/components/ui";
 import {
   ColumnChart,
   HBarChart,
@@ -291,13 +292,13 @@ export default function MapaPage() {
             </label>
           ))}
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => load(capacity)}
-          className="mt-3 rounded-xl bg-roxo-100 border border-roxo px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 transition"
+          variant="primary" size="md" className="mt-3"
         >
           Recalcular
-        </button>
+        </Button>
       </section>
 
       <section className="rounded-2xl bg-white border border-linha p-2 shadow-suave">
@@ -412,8 +413,8 @@ export default function MapaPage() {
               </label>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="rounded-xl bg-roxo-100 border border-roxo px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 transition">Salvar</button>
-              <button type="button" onClick={geocode} className="rounded-xl bg-ceu-100 border border-ceu-700 px-4 py-2 text-sm font-semibold text-black hover:bg-ceu-300 transition">Localizar pelo endereço</button>
+              <Button type="submit" variant="primary" size="md">Salvar</Button>
+              <Button type="button" onClick={geocode} variant="secondary" size="md">Localizar pelo endereço</Button>
             </div>
             {geoMsg && <p role="status" className="text-xs text-black">{geoMsg}</p>}
           </form>

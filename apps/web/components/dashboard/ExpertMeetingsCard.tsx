@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Calendar, Video, Clock, CheckCircle2, AlertCircle, Send, ExternalLink, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface ExpertSlot {
   id: string;
@@ -211,14 +212,14 @@ export function ExpertMeetingsCard({ caseId, studentCode }: ExpertMeetingsCardPr
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
                 disabled={requesting || !selectedSlotId}
-                className="w-full py-2 px-3 text-xs font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                variant="primary" size="sm" className="w-full"
               >
                 <Send className="w-3.5 h-3.5" />
                 {requesting ? "Enviando solicitação..." : "Agendar e Notificar por E-mail"}
-              </button>
+              </Button>
             </form>
           )}
         </div>

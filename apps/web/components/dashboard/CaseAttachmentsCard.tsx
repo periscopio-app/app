@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Paperclip, UploadCloud, Eye, FileText, X, Loader2, ExternalLink, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface ClinicalAttachment {
   id: string;
@@ -125,14 +126,14 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
       >
         {uploading ? <Loader2 className="h-6 w-6 animate-spin text-purple-700" aria-hidden /> : <UploadCloud className="h-6 w-6 text-purple-700" aria-hidden />}
         <p className="text-sm font-semibold text-black">{uploading ? "Enviando…" : "Arraste o PDF aqui"}</p>
-        <button
+        <Button
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="rounded-xl border border-purple-300 bg-white px-3 py-1.5 text-xs font-bold text-purple-800 hover:bg-purple-50 disabled:opacity-50"
+          variant="outline" size="sm"
         >
           ou escolher o arquivo
-        </button>
+        </Button>
         <p className="text-[11px] text-slate-600">PDF, JPG ou PNG (foto do celular), até 10 MB cada.</p>
         <input ref={inputRef} type="file" multiple accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => e.target.files && void enviar(e.target.files)} />
       </div>
@@ -158,15 +159,15 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
                   </p>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => void abrir(att)}
                 disabled={opening === att.id}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                variant="outline" size="sm" className="shrink-0"
               >
                 {opening === att.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
                 Visualizar
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

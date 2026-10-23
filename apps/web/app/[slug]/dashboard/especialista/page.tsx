@@ -10,6 +10,7 @@ import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-re
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { EspecialidadeFormsPanel } from "@/components/especialista/EspecialidadeFormsPanel";
+import { Button } from "@/components/ui";
 
 const SPECIALTY_NAMES: Record<string, string> = {
   servico_social: "Assistente Social (AS)",
@@ -346,23 +347,23 @@ export default function EspecialistaDashboardPage({
                               Mínimo de 100 caracteres exigido pelo Zod para conclusão imutável.
                             </div>
                             <div className="flex gap-3">
-                              <button
+                              <Button
                                 type="button"
                                 disabled={saving}
                                 onClick={() => handleSave(false)}
-                                className="rounded-xl border border-linha px-4 py-2 text-sm font-semibold text-black hover:bg-fundo transition disabled:opacity-60"
+                                variant="outline" size="md"
                               >
                                 Salvar rascunho
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
                                 disabled={saving || notes.trim().length < 100}
                                 onClick={() => handleSave(true)}
-                                className="flex items-center gap-2 rounded-xl bg-roxo-100 border border-roxo px-5 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                                variant="primary" size="md"
                               >
                                 <CheckCircle className="h-4 w-4" />
                                 {saving ? "Salvando..." : "Concluir parecer (100+ car.)"}
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         )}

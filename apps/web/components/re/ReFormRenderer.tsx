@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { RE_TEXTO_MAX, lerGenograma, type FormDef, type ReCampo, type ReOpcao } from "@periscopio/shared";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { GenogramaDesenho } from "@/components/genograma/GenogramaDesenho";
+import { Button } from "@/components/ui";
 
 type Payload = Record<string, any>;
 
@@ -143,9 +144,9 @@ function SugestaoObservacao({ formId, value, onUsar, sugerir }: { formId: string
   }
   return (
     <div className="mt-2 space-y-2">
-      <button type="button" onClick={pedir} disabled={busy} className="inline-flex items-center gap-1.5 rounded-xl border border-roxo bg-roxo-50 px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-100 disabled:opacity-60">
+      <Button type="button" onClick={pedir} disabled={busy} variant="outline" size="sm">
         <Sparkles className="h-3.5 w-3.5" aria-hidden /> {busy ? "Preparando…" : "Sugerir texto com base no que preenchi"}
-      </button>
+      </Button>
       {erro && <p role="alert" className="text-xs font-semibold text-erro">{erro}</p>}
       {sug && (
         <div className="space-y-2 rounded-xl border border-roxo/40 bg-roxo-50 p-3 text-sm text-black" role="status">
@@ -155,12 +156,12 @@ function SugestaoObservacao({ formId, value, onUsar, sugerir }: { formId: string
           <p className="whitespace-pre-wrap">{sug.texto}</p>
           <p className="text-[11px] text-neutral-800">{sug.aviso}</p>
           <div className="flex gap-2">
-            <button type="button" className="rounded-lg bg-roxo px-3 py-1.5 text-xs font-semibold text-white" onClick={() => { onUsar(sug.texto); setSug(null); }}>
+            <Button type="button" variant="primary" size="sm" onClick={() => { onUsar(sug.texto); setSug(null); }}>
               Usar este texto
-            </button>
-            <button type="button" className="rounded-lg border border-linha bg-white px-3 py-1.5 text-xs font-semibold" onClick={() => setSug(null)}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setSug(null)}>
               Descartar
-            </button>
+            </Button>
           </div>
         </div>
       )}

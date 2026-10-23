@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, Mess
 import { MD_FORMS, MD_TEXTO_MAX, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
+import { Button } from "@/components/ui";
 
 type Status = "nao_iniciado" | "rascunho" | "concluido";
 interface FormRow {
@@ -158,20 +159,20 @@ export function MedicoFormsPanel({
           </h3>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-neutral-800" data-testid="md-progresso">{concluidos} de {d.forms.length} seções concluídas</span>
-            <button
+            <Button
               type="button"
               onClick={() => setAbertas(new Set(d.forms.map((f) => f.id)))}
-              className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-fundo"
+              variant="outline" size="sm"
             >
               <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden /> Abrir todas
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setAbertas(new Set())}
-              className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-fundo"
+              variant="outline" size="sm"
             >
               <ChevronsDownUp className="h-3.5 w-3.5" aria-hidden /> Recolher todas
-            </button>
+            </Button>
           </div>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-linha" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Seções concluídas">
@@ -297,32 +298,32 @@ export function MedicoFormsPanel({
                 <div className="flex flex-wrap gap-2">
                   {!travado && (
                     <>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void salvar(f.id)}
                         disabled={ocupado === f.id}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-fundo disabled:opacity-60"
+                        variant="outline" size="sm"
                       >
                         <Save className="h-3.5 w-3.5" aria-hidden /> Salvar rascunho
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => void concluir(f.id)}
                         disabled={ocupado === f.id || !preenchido}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-roxo bg-roxo-100 px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-200 disabled:opacity-60"
+                        variant="primary" size="sm"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Concluir seção
-                      </button>
+                      </Button>
                     </>
                   )}
                   {d.editavel && f.status === "concluido" && reabrindo !== f.id && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setReabrindo(f.id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-ouro-400 bg-ouro-50 px-3 py-1.5 text-xs font-semibold text-black hover:bg-ouro-100"
+                      variant="warning" size="sm"
                     >
                       <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir para retificar
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -339,17 +340,17 @@ export function MedicoFormsPanel({
                     className="w-full rounded-lg border border-linha bg-white px-3 py-2 text-sm text-black"
                   />
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void reabrir(f.id)}
                       disabled={ocupado === f.id || (motivo[f.id] ?? "").trim().length < 3}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-ouro-400 bg-white px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-60"
+                      variant="warning" size="sm"
                     >
                       <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Confirmar reabertura
-                    </button>
-                    <button type="button" onClick={() => setReabrindo(null)} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-black hover:bg-white">
+                    </Button>
+                    <Button type="button" onClick={() => setReabrindo(null)} variant="ghost" size="sm">
                       Cancelar
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

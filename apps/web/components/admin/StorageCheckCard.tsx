@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, ImageIcon, Loader2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface Step {
   id: string;
@@ -46,15 +47,15 @@ export function StorageCheckCard() {
           Envia uma imagem sintética de 1 pixel ao bucket de fotos, abre o link público e confere o código <strong>200</strong>. Faz o mesmo com o bucket
           privado dos anexos clínicos. Os arquivos de teste são apagados no final.
         </p>
-        <button
+        <Button
           type="button"
           onClick={() => void testar()}
           disabled={rodando}
-          className="inline-flex items-center gap-2 rounded-lg border border-[#E1E9ED] bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+          variant="outline" size="md"
         >
           {rodando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <ImageIcon className="w-4 h-4" aria-hidden />}
           {rodando ? "Testando…" : "Testar armazenamento de fotos"}
-        </button>
+        </Button>
         {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
         {res && (
           <div className="space-y-2" aria-live="polite">

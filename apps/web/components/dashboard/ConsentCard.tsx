@@ -5,6 +5,7 @@ import { ShieldCheck, CheckCircle2, AlertTriangle, FileText, UserCheck } from "l
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
 import { consentAcceptSchema, cpfFieldError, formatCpf } from "@periscopio/shared";
+import { Button } from "@/components/ui";
 
 interface ConsentAcceptance {
   id: string;
@@ -132,12 +133,12 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
           </div>
         </div>
 
-        <button
+        <Button type="submit"
           onClick={openSignModal}
-          className="px-3 py-1.5 text-xs font-bold rounded-xl bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition"
+          variant="outline" size="sm"
         >
           {hasActiveConsent ? "Ver / Adicionar Prova de Aceite" : "Registrar Consentimento"}
-        </button>
+        </Button>
       </div>
 
       {acceptances.length > 0 && (
@@ -245,20 +246,20 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
             </p>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
+              <Button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
+                variant="outline" size="md"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 text-sm font-bold rounded-xl bg-[#682880] text-white hover:bg-[#531e66] disabled:opacity-50"
+                variant="primary" size="md"
               >
                 {saving ? "Registrando Prova..." : "Confirmar e Registrar Aceite"}
-              </button>
+              </Button>
             </div>
           </form>
         )}

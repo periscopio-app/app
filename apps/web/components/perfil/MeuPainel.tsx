@@ -153,7 +153,7 @@ export function MeuPainel() {
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-xl font-bold text-black">Meus dados</h2>
             {!editando && (
-              <Button variant="outline" onClick={abrirEdicao} className="min-h-10 px-4 text-sm">
+              <Button variant="outline" onClick={abrirEdicao} size="md">
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 Editar
               </Button>
@@ -193,10 +193,10 @@ export function MeuPainel() {
               </div>
               {erroForm && <Alert tom="erro">{erroForm}</Alert>}
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={salvando} className="min-h-10 px-5 text-sm">
+                <Button type="submit" disabled={salvando} size="md">
                   {salvando ? "Salvando..." : "Salvar"}
                 </Button>
-                <Button variant="ghost" onClick={() => setEditando(false)} disabled={salvando} className="min-h-10 px-4 text-sm">
+                <Button variant="ghost" onClick={() => setEditando(false)} disabled={salvando} size="md">
                   Cancelar
                 </Button>
               </div>
@@ -260,7 +260,7 @@ export function MeuPainel() {
           <>
             {erroExclusao && <Alert tom="erro">{erroExclusao}</Alert>}
             <div className="flex flex-wrap gap-2">
-              <Button variant="danger" onClick={() => setConfirmarExclusao(true)} className="min-h-10 px-4 text-sm">
+              <Button variant="danger" onClick={() => setConfirmarExclusao(true)} size="md">
                 Pedir eliminação da minha conta
               </Button>
               <Link href="/privacidade" className="inline-flex min-h-10 items-center px-3 text-sm font-semibold text-black underline">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 import {
   GraduationCap,
   BookOpen,
@@ -241,14 +242,14 @@ export default function CourseCatalog() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={() => handleOpenCourse(course)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-roxo-100 border border-roxo text-black text-xs font-bold hover:bg-roxo-200 shadow-sm transition-all"
+                  variant="primary" size="sm" className="w-full"
                 >
                   <PlayCircle className="w-4 h-4" />
                   <span>{progressPercent > 0 ? "Continuar Curso" : "Iniciar Formação"}</span>
-                </button>
+                </Button>
               </div>
             </div>
           );
@@ -376,13 +377,13 @@ export default function CourseCatalog() {
               <span className="text-xs text-neutral-800">
                 Instrutor: <strong>{selectedCourse.instructor}</strong>
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={() => setSelectedCourse(null)}
-                className="px-4 py-1.5 rounded-xl bg-roxo-100 border border-roxo text-black text-xs font-bold hover:bg-roxo-200"
+                variant="primary" size="sm"
               >
                 Concluir & Voltar ao Painel
-              </button>
+              </Button>
             </div>
           </div>
         </div>

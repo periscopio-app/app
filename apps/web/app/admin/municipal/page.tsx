@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui";
 import {
   Building2,
   Users,
@@ -121,14 +122,14 @@ export default function MunicipalDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#F0F9FC] hover:bg-[#E1E9ED] text-black border border-[#E1E9ED] transition"
+            variant="outline" size="sm"
           >
             <Download className="w-4 h-4 text-black" />
             <span>Exportar Relatório (CSV)</span>
-          </button>
+          </Button>
           <Link
             href="/admin/users"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black shadow-sm transition"

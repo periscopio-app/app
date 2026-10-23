@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, HelpCircle, Bug, CheckCircle2, Clock, AlertTriangle, RefreshCw, Send, ShieldAlert, Monitor, Globe, Mail, User } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 interface SupportTicket {
   id: string;
@@ -101,12 +102,12 @@ export default function AdminSuportePage() {
               </p>
             </div>
           </div>
-          <button
+          <Button
             onClick={fetchTickets}
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5"
+            variant="outline" size="sm"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Atualizar
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -264,20 +265,20 @@ export default function AdminSuportePage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       onClick={() => handleUpdateStatus(selectedTicket.id, "em_atendimento")}
                       disabled={updating || selectedTicket.status === "em_atendimento"}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition disabled:opacity-50"
+                      variant="outline" size="sm"
                     >
                       Em Atendimento
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleUpdateStatus(selectedTicket.id, "resolvido")}
                       disabled={updating || selectedTicket.status === "resolvido"}
-                      className="px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-1.5"
+                      variant="primary" size="sm"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Marcar como Resolvido
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -357,13 +358,13 @@ export default function AdminSuportePage() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-black focus:outline-none focus:border-sky-500"
                   />
                   <div className="flex justify-end">
-                    <button
+                    <Button
                       onClick={() => handleUpdateStatus(selectedTicket.id, selectedTicket.status)}
                       disabled={updating || !responseNotes.trim()}
-                      className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition disabled:opacity-50 flex items-center gap-1.5"
+                      variant="primary" size="sm"
                     >
                       <Send className="w-3.5 h-3.5" /> {updating ? "Enviando..." : "Salvar & Notificar Usuário"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

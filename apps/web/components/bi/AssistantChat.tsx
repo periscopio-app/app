@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Send, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, User } from "lucide-react";
 import { api } from "@/lib/api";
 import { ResultView, type Result } from "./ResultView";
+import { Button } from "@/components/ui";
 
 export interface ChatPlan {
   metric: string;
@@ -138,13 +139,13 @@ export function AssistantChat({
           </div>
         </div>
         {!fresh && (
-          <button
+          <Button
             type="button"
             onClick={() => setMsgs([{ id: nextId(), from: "bot", kind: "text", text: WELCOME }])}
-            className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-xs text-black hover:bg-roxo-50"
+            variant="outline" size="sm"
           >
             <Trash2 className="h-3 w-3" /> Nova conversa
-          </button>
+          </Button>
         )}
       </header>
 
@@ -171,15 +172,15 @@ export function AssistantChat({
                     <div className="flex flex-wrap items-center gap-2 border-t border-linha pt-2 text-xs text-black">
                       {m.reply.source && <span className="text-[11px] text-neutral-800">Origem: {SOURCE_LABEL[m.reply.source] ?? m.reply.source}.</span>}
                       <span className="ml-auto">Ajudou?</span>
-                      <button type="button" aria-label="Resposta útil" onClick={() => feedback(m.id, m.reply.questionId, 1)} className="inline-flex items-center gap-1 rounded-lg border border-linha px-2 py-1 hover:bg-roxo-50">
+                      <Button type="button" aria-label="Resposta útil" onClick={() => feedback(m.id, m.reply.questionId, 1)} variant="outline" size="md">
                         <ThumbsUp className="h-3 w-3" /> Sim
-                      </button>
-                      <button type="button" aria-label="Resposta não ajudou" onClick={() => feedback(m.id, m.reply.questionId, -1)} className="inline-flex items-center gap-1 rounded-lg border border-linha px-2 py-1 hover:bg-roxo-50">
+                      </Button>
+                      <Button type="button" aria-label="Resposta não ajudou" onClick={() => feedback(m.id, m.reply.questionId, -1)} variant="outline" size="md">
                         <ThumbsDown className="h-3 w-3" /> Não
-                      </button>
-                      <button type="button" onClick={() => feedback(m.id, m.reply.questionId, 1, true)} className="rounded-lg border border-linha px-2 py-1 hover:bg-roxo-50" title="Usa a consulta mostrada em “Montar consulta” como a resposta certa">
+                      </Button>
+                      <Button type="button" onClick={() => feedback(m.id, m.reply.questionId, 1, true)} variant="outline" size="md" title="Usa a consulta mostrada em “Montar consulta” como a resposta certa">
                         Corrigir com a consulta abaixo
-                      </button>
+                      </Button>
                     </div>
                     {m.feedback && <p role="status" className="text-xs text-black">{m.feedback}</p>}
                   </div>
@@ -240,13 +241,13 @@ export function AssistantChat({
             placeholder="Escreva sua pergunta. Ex.: casos por escola nos últimos 6 meses"
             className="max-h-32 min-h-[40px] flex-1 resize-none rounded-xl border border-black bg-white px-3 py-2 text-sm text-black"
           />
-          <button
+          <Button
             type="submit"
             disabled={busy || draft.trim().length < 3}
-            className="inline-flex h-10 items-center gap-1 rounded-xl border border-roxo bg-roxo-100 px-4 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60"
+            variant="primary" size="md"
           >
             <Send className="h-4 w-4" /> {busy ? "Pensando…" : "Enviar"}
-          </button>
+          </Button>
         </form>
         <p className="text-[11px] text-neutral-800">Enter envia, Shift+Enter quebra a linha. {draft.length}/500</p>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ShieldAlert, CheckCircle2, FileText, Lock } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui";
 
 export function ProfessionalConsentModal() {
   const [hasAccepted, setHasAccepted] = useState<boolean | null>(null);
@@ -92,15 +93,15 @@ export function ProfessionalConsentModal() {
           </span>
         </label>
 
-        <button
+        <Button
           type="button"
           disabled={loading || !acceptedCheckbox}
           onClick={handleAccept}
-          className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-purple-700 hover:bg-purple-800 text-white flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+          variant="primary" size="md" className="w-full"
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>{loading ? "Registrando aceite e prova..." : "Confirmar Aceite e Prosseguir"}</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { Button } from "@/components/ui";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -402,12 +403,12 @@ export default function REDashboardPage({
                   {["1º ano", "2º ano", "3º ano", "4º ano", "5º ano"].map((x) => <option key={x} value={x} />)}
                 </datalist>
               </div>
-              <button
+              <Button
                 type="submit"
-                className="w-full rounded-xl bg-roxo-100 border border-roxo px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 transition"
+                variant="primary" size="md" className="w-full"
               >
                 Gerar código pseudonimizado
-              </button>
+              </Button>
             </form>
             <details className="mt-3 rounded-xl border border-linha p-3 bg-white">
               <summary className="cursor-pointer text-xs font-semibold text-black">
@@ -451,14 +452,14 @@ export default function REDashboardPage({
                 placeholder={"2018;5\n2019;11\n2020;2"}
                 className="mt-2 w-full rounded-xl border border-linha px-3 py-2 text-sm text-black font-mono outline-none focus:ring-2 focus:ring-roxo/40 bg-white"
               />
-              <button
+              <Button
                 type="button"
                 onClick={handleBulkImport}
                 disabled={bulkBusy}
-                className="mt-2 w-full rounded-xl bg-roxo-100 border border-roxo px-4 py-2 text-sm font-semibold text-black hover:bg-roxo-200 disabled:opacity-60 transition"
+                variant="primary" size="md" className="mt-2 w-full"
               >
                 {bulkBusy ? "Importando..." : "Importar lista"}
-              </button>
+              </Button>
             </details>
                         </div>
             </div>
@@ -485,12 +486,12 @@ export default function REDashboardPage({
                       {st.grade ? ` · ${st.grade}` : ""}
                     </span>
                   </div>
-                  <button
+                  <Button type="submit"
                     onClick={() => handleOpenCase(st.id)}
-                    className="flex items-center gap-1 rounded-lg bg-ceu-100 px-2 py-1 text-xs font-semibold text-black hover:bg-ceu-300 transition"
+                    variant="secondary" size="sm"
                   >
                     Abrir <ChevronRight className="h-3 w-3" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

@@ -5,6 +5,7 @@ import { BarChart3, Search, ShieldCheck, User, Users } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useCapabilities } from "@/lib/capabilities";
 import { RoleBanner } from "@/components/ui/RoleBanner";
+import { Button } from "@/components/ui";
 
 // ─── tipos (espelham /api/pilot/*) ──────────────────────────────────────────
 
@@ -390,9 +391,9 @@ function MeasureForm({ caseId, sources, onSaved }: { caseId: string; sources: ("
           </li>
         ))}
       </ol>
-      <button type="submit" disabled={!complete || busy} className="rounded-xl border border-black bg-roxo-100 px-4 py-2 text-sm font-bold disabled:opacity-50">
+      <Button type="submit" disabled={!complete || busy} variant="primary" size="md">
         {busy ? "Gravando…" : "Gravar medida"}
-      </button>
+      </Button>
       {msg && <p role="status" className="text-sm">{msg}</p>}
     </form>
   );
@@ -423,7 +424,7 @@ function StudentPanel({ canRecord, role }: { canRecord: boolean; role: string })
       <form className="flex flex-wrap items-end gap-3 rounded-xl border border-linha bg-white p-3" onSubmit={(e) => { e.preventDefault(); void search(code); }}>
         <label className="text-sm"><span className="block text-xs font-semibold">Código do aluno</span>
           <input className="mt-1 w-72 rounded-lg border border-black bg-white px-2 py-1.5 font-mono" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ex.: DEMO-2026-AB12CD34" autoComplete="off" /></label>
-        <button type="submit" className="inline-flex items-center gap-1 rounded-xl border border-black bg-roxo-100 px-4 py-2 text-sm font-bold"><Search className="h-4 w-4" /> Acompanhar</button>
+        <Button type="submit" variant="primary" size="md"><Search className="h-4 w-4" /> Acompanhar</Button>
         {loading && <span role="status" className="text-sm">Carregando…</span>}
       </form>
       <p className="text-xs">O aluno é sempre identificado pelo código. Cada consulta fica registrada na auditoria.</p>
