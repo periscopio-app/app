@@ -29,6 +29,14 @@ describe("jornada do RE — catálogo A–F", () => {
     assert.equal(RE_PASSOS.find((p) => p.id === "g")?.opcional, true);
   });
 
+  test("o RE não desenha genograma: nenhum campo do tipo genograma no fluxo do RE (só o médico desenha)", () => {
+    for (const f of Object.values(RE_FORMS)) {
+      for (const c of camposDoForm(f)) {
+        assert.notEqual(c.tipo, "genograma", `o formulário ${f.letra} ainda tem um campo de genograma (${c.key})`);
+      }
+    }
+  });
+
   test("chaves dos campos são únicas dentro de cada formulário", () => {
     for (const f of Object.values(RE_FORMS)) {
       const keys = camposDoForm(f).map((c) => c.key);

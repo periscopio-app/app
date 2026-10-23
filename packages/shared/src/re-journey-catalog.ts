@@ -603,11 +603,12 @@ const FORM_C: ReFormDef = {
       ],
     },
     {
-      id: "genograma",
-      titulo: "Genograma",
-      descricao: "Complete com as informações sobre antecedentes familiares que o responsável forneceu.",
+      // O desenho do genograma saiu do fluxo do RE (23/out): só o médico monta o genograma.
+      // Aqui fica apenas o relato de antecedentes familiares em texto, que a família traz ao RE.
+      id: "antecedentes_familiares",
+      titulo: "Antecedentes familiares",
+      descricao: "Registre em texto o que o responsável informou sobre antecedentes da família. O genograma é montado depois pelo médico.",
       campos: [
-        { key: "genograma_estrutura", label: "Desenho do genograma", ajuda: "Escolha o parentesco para adicionar cada figura. Não use nomes.", tipo: "genograma", opcional: true },
         tl("genograma_texto", "Antecedentes familiares informados (descrição em texto)", "Sem nomes. Ex.: \"avô materno com ...\"."),
       ],
     },
