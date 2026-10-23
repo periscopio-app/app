@@ -26,6 +26,9 @@ export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   municipalityCode: varchar("municipality_code", { length: 20 }).notNull(),
+  // Só municípios de demonstração/teste podem ser zerados pelo reset de fábrica do Admin.
+  // Municípios reais (ex.: Tarumã) nunca recebem esta marca — e ainda há uma trava extra no serviço.
+  demo: boolean("demo").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

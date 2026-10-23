@@ -124,6 +124,7 @@ export const CAPABILITIES = [
   { key: "population.import", group: "plataforma", label: "Importar dados populacionais (Tarumã)", description: "Carga de dados agregados do município.", defaultRoles: ADMIN, locked: true },
   { key: "system.observability.view", group: "plataforma", label: "Ver a saúde do sistema", description: "Erros, lentidão, banco, e-mail e configuração da plataforma.", defaultRoles: ADMIN, locked: true },
   { key: "lgpd.manage", group: "plataforma", label: "Governança LGPD (DPO)", description: "Tratar pedidos de titulares e consultar a política de retenção.", defaultRoles: ADMIN, locked: true },
+  { key: "system.factory_reset", group: "plataforma", label: "Reset de fábrica do piloto", description: "Zerar os dados de aluno/caso dos municípios de DEMONSTRAÇÃO antes do piloto. Nunca toca municípios reais (Tarumã).", defaultRoles: ADMIN, locked: true },
 
   // ── Cadastro e fila ─────────────────────────────────────────────────────
   { key: "student.register", group: "cadastro", label: "Cadastrar alunos (código pseudonimizado)", description: "Criar aluno por código, sem nome nem documento.", defaultRoles: REGISTRY_ROLES },
