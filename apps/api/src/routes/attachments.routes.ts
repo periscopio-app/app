@@ -12,6 +12,7 @@ import {
   validateSignedUrlAccess,
 } from "../services/attachment.service";
 import { recordAudit } from "../services/audit.service";
+import { can } from "../services/privilege.service";
 
 type Actor = NonNullable<Awaited<ReturnType<typeof requireCapability>>>;
 
@@ -156,6 +157,8 @@ export async function attachmentsRoutes(app: FastifyInstance) {
     const { caseId } = request.params;
     if (!(await casoAcessivel(actor, caseId, reply))) return;
 
+    // Regra da Dra. (23/out): o médico vê todos os laudos do caso; o RE só os que ele mesmo enviou.
+    const veTodos = await can(actor, "school.read_full");
     const items = await db
       .select({
         id: clinicalAttachments.id,
@@ -167,7 +170,13 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         createdAt: clinicalAttachments.createdAt,
       })
       .from(clinicalAttachments)
-      .where(and(eq(clinicalAttachments.tenantId, actor.tenantId), eq(clinicalAttachments.caseId, caseId)))
+      .where(
+        and(
+          eq(clinicalAttachments.tenantId, actor.tenantId),
+          eq(clinicalAttachments.caseId, caseId),
+          veTodos ? undefined : eq(clinicalAttachments.uploaderId, actor.id)
+        )
+      )
       .orderBy(desc(clinicalAttachments.createdAt));
 
     return { attachments: items };
@@ -183,10 +192,18 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       const { caseId, attachmentId } = request.params;
       if (!(await casoAcessivel(actor, caseId, reply))) return;
 
+      const veTodos = await can(actor, "school.read_full");
       const [attachment] = await db
         .select()
         .from(clinicalAttachments)
-        .where(and(eq(clinicalAttachments.id, attachmentId), eq(clinicalAttachments.caseId, caseId), eq(clinicalAttachments.tenantId, actor.tenantId)))
+        .where(
+          and(
+            eq(clinicalAttachments.id, attachmentId),
+            eq(clinicalAttachments.caseId, caseId),
+            eq(clinicalAttachments.tenantId, actor.tenantId),
+            veTodos ? undefined : eq(clinicalAttachments.uploaderId, actor.id)
+          )
+        )
         .limit(1);
       if (!attachment) {
         reply.status(404);

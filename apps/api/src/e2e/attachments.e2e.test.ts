@@ -98,11 +98,19 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.doesNotMatch(key, /joao|silva/i);
   });
 
-  test("médico também envia e lista os dois laudos", async () => {
-    assert.equal((await enviar("md")).status, 200);
+  test("médico também envia e lista os dois laudos; o RE só vê o que ele mesmo enviou (regra da Dra., 23/out)", async () => {
+    const up = await enviar("md");
+    assert.equal(up.status, 200);
     const r = await call("GET", `/api/cases/${caseId}/attachments`, "md");
     assert.equal(r.status, 200);
     assert.equal(r.body.attachments.length, 2);
+    const doRe = await call("GET", `/api/cases/${caseId}/attachments`, "re");
+    assert.equal(doRe.status, 200);
+    assert.equal(doRe.body.attachments.length, 1, "RE vê só o próprio laudo");
+    assert.equal(doRe.body.attachments[0].id, attId);
+    // abrir o laudo do médico: para o RE ele não existe
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${up.body.attachment.id}/file`, "re")).status, 404);
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${up.body.attachment.id}/file`, "md")).status, 200);
   });
 
   test("RE e médico abrem o PDF; o conteúdo volta igual e sem cache", async () => {
@@ -140,7 +148,8 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${a.body.attachment.id}/file`, "md")).headers["content-type"], "image/png");
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${b.body.attachment.id}/file`, "re")).headers["content-type"], "image/jpeg");
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${b.body.attachment.id}/file`, "md")).headers["content-type"], "image/jpeg");
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${b.body.attachment.id}/file`, "re")).status, 404, "RE não abre laudo do médico");
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${a.body.attachment.id}/file`, "esp")).status, 403);
     for (const k of [...objetos.keys()].filter((k) => !k.endsWith(".pdf"))) objetos.delete(k);
     await dbx.delete(shared.clinicalAttachments).where(eq(shared.clinicalAttachments.mimeType, "image/png"));
@@ -154,7 +163,7 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.equal((await call("POST", `/api/cases/${caseId}/attachments`, "re", { fileName: "v.pdf", dataBase64: "" })).status, 400);
     const grande = Buffer.concat([PDF, Buffer.alloc(10 * 1024 * 1024)]);
     assert.equal((await enviar("re", grande, "grande.pdf")).status, 413);
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "re")).body.attachments.length, 2, "nada novo foi gravado");
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2, "nada novo foi gravado");
   });
 
   test("se o armazenamento cair, devolve 503 e não deixa registro órfão", async () => {
@@ -170,6 +179,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
       async get(key) { const o = objetos.get(key); if (!o) throw new Error("x"); return o; },
       async remove(key) { objetos.delete(key); },
     });
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "re")).body.attachments.length, 2);
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2);
   });
 });
