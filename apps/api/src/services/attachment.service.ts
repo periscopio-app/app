@@ -32,7 +32,7 @@ export interface SignedUrlRequestParams {
   roleAllowedByPolicy?: boolean;
 }
 
-const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"]; // laudos dos pais: PDF e foto do celular (JPG/PNG)
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 /**
@@ -63,7 +63,7 @@ export function validateAttachmentUpload(params: AttachmentUploadParams): {
 
   // 4. Validação do tipo MIME
   if (!ALLOWED_MIME_TYPES.includes(mimeType.toLowerCase())) {
-    return { allowed: false, error: "Formato de arquivo não permitido. Apenas PDF, JPG, PNG e WEBP são aceitos." };
+    return { allowed: false, error: "Formato não permitido. Envie o laudo em PDF, JPG ou PNG." };
   }
 
   // 5. Geração de chave opaca sem PII (pasta da escola + uuid do aluno no bucket do Supabase)
@@ -98,4 +98,43 @@ export function validateSignedUrlAccess(params: SignedUrlRequestParams): {
 
   // Expiração curta de 10 minutos (600s)
   return { allowed: true, expiresInSeconds: 600 };
+}
+
+
+export type FormatoLaudo = { mime: "application/pdf" | "image/jpeg" | "image/png"; ext: "pdf" | "jpg" | "png" };
+
+/** Descobre o formato pelos primeiros bytes (o tipo informado pelo navegador não é confiável). Null se não for PDF, JPG ou PNG. */
+export function detectarFormatoLaudo(bytes: Uint8Array): FormatoLaudo | null {
+  const b = Buffer.from(bytes.subarray(0, 1024));
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { mime: "image/jpeg", ext: "jpg" };
+  if (b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { mime: "image/png", ext: "png" };
+  if (b.length >= 5 && b.toString("latin1").includes("%PDF-")) return { mime: "application/pdf", ext: "pdf" };
+  return null;
+}
+
+export const ATTACHMENT_MAX_BYTES = MAX_FILE_SIZE_BYTES;
+
+/** Armazenamento dos laudos. O padrão usa o bucket privado do Supabase; os testes trocam por uma versão em memória. */
+export interface AttachmentStorage {
+  put(key: string, body: Buffer, contentType: string): Promise<void>;
+  get(key: string): Promise<Buffer>;
+  remove(key: string): Promise<void>;
+}
+
+let storageOverride: AttachmentStorage | null = null;
+
+export function setAttachmentStorage(storage: AttachmentStorage | null) {
+  storageOverride = storage;
+}
+
+export async function getAttachmentStorage(): Promise<AttachmentStorage> {
+  if (storageOverride) return storageOverride;
+  const store = await import("../storage");
+  return {
+    put: async (key, body, contentType) => {
+      await store.uploadObject(key, body, contentType);
+    },
+    get: async (key) => Buffer.from(await (await store.getObject(key)).arrayBuffer()),
+    remove: (key) => store.removeObject(key),
+  };
 }

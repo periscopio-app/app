@@ -1,390 +1,238 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "../db/client";
 import { clinicalAttachments, cases, students } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
-import { validateAttachmentUpload, validateSignedUrlAccess } from "../services/attachment.service";
+import {
+  ATTACHMENT_MAX_BYTES,
+  getAttachmentStorage,
+  detectarFormatoLaudo,
+  validateAttachmentUpload,
+  validateSignedUrlAccess,
+} from "../services/attachment.service";
 import { recordAudit } from "../services/audit.service";
-import { isSuperAdminEmail } from "../security/roles";
 
+type Actor = NonNullable<Awaited<ReturnType<typeof requireCapability>>>;
+
+const RE_LIKE = new Set(["ppi", "re", "responsavel_escolar"]);
+
+/**
+ * Laudos que os pais levam (Bloco 5): PDF e foto do celular (JPG/PNG). Só o RE e o médico enviam e abrem; especialistas, gestão e Board nunca
+ * (a regra mora nas capacidades attachments.write/read). O arquivo vai para o bucket PRIVADO do Supabase e é
+ * servido pelo próprio servidor, depois de conferir sessão, município e escola. Não existe link público.
+ */
 export async function attachmentsRoutes(app: FastifyInstance) {
-  /**
-   * 1. Solicitar intenção de upload de anexo clínico
-   */
-  app.post<{
-    Params: { caseId: string };
-    Body: { fileName: string; mimeType: string; fileSizeBytes: number; category?: string; description?: string };
-  }>(
-    "/api/cases/:caseId/attachments/upload-intent",
-    {
-      schema: {
-        description: "Gera chave opaca segura de armazenamento sem PII no bucket para upload de documento clínico",
-        tags: ["Anexos Clínicos"],
-        params: {
-          type: "object",
-          required: ["caseId"],
-          properties: {
-            caseId: { type: "string", format: "uuid", example: "45f088ee-f001-4686-90e8-0b5c1fb67111" },
-          },
-        },
-        body: {
-          type: "object",
-          required: ["fileName", "mimeType", "fileSizeBytes"],
-          properties: {
-            fileName: { type: "string", example: "avaliacao_neuropsicologica_laudo.pdf" },
-            mimeType: { type: "string", example: "application/pdf" },
-            fileSizeBytes: { type: "number", example: 1048576 },
-            category: { type: "string", example: "relatorio_clinico" },
-            description: { type: "string", example: "Laudo com testagem WISC-IV e parecer multiprofissional" },
-          },
-        },
-        response: {
-          200: {
-            description: "Chave opaca aprovada para envio seguro",
-            type: "object",
-            properties: {
-              success: { type: "boolean", example: true },
-              storageKey: { type: "string", example: "tenants/00000000/cases/45f088ee/att-98a76b5c4d3e2f1a.pdf" },
-              expiresInSeconds: { type: "number", example: 900 },
-              maxSizeBytes: { type: "number", example: 10485760 },
-              message: { type: "string", example: "Intenção de upload aprovada. Chave opaca de armazenamento gerada sem PII." },
-            },
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const actor = await requireCapability(request, reply, "attachments.write");
-      if (!actor) return;
-
-      const { caseId } = request.params;
-      const body = request.body;
-
-      if (!body.fileName || !body.mimeType || !body.fileSizeBytes) {
-        reply.status(400);
-        return { error: "Campos obrigatórios: fileName, mimeType e fileSizeBytes." };
-      }
-
-      const [caseRecord] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
-      if (!caseRecord) {
-        reply.status(404);
-        return { error: "Caso clínico não encontrado." };
-      }
-
-      const [studentRec] = await db
-        .select({ schoolId: students.schoolId })
-        .from(students)
-        .where(eq(students.id, caseRecord.studentId))
-        .limit(1);
-
-      const validation = validateAttachmentUpload({
-        actor: {
-          id: actor.id,
-          tenantId: actor.tenantId,
-          schoolId: actor.schoolId || undefined,
-          role: actor.role as any,
-        },
-        caseId,
-        caseTenantId: caseRecord.tenantId,
-        filename: body.fileName,
-        mimeType: body.mimeType,
-        sizeInBytes: body.fileSizeBytes,
-        roleAllowedByPolicy: true, // caixinha attachments.write já exigida acima
-        schoolId: studentRec?.schoolId || actor.schoolId || undefined,
-        studentId: caseRecord.studentId,
-      });
-
-      if (!validation.allowed) {
-        reply.status(400);
-        return { error: validation.error || "Arquivo não atende aos requisitos de segurança." };
-      }
-
-      return {
-        success: true,
-        storageKey: validation.objectKey,
-        expiresInSeconds: 900,
-        maxSizeBytes: 10 * 1024 * 1024,
-        message: "Intenção de upload aprovada. Chave opaca de armazenamento gerada sem PII.",
-      };
+  /** Carrega o caso e confere município (e escola, quando quem pede é do RE). Responde 404 sem vazar nada. */
+  async function casoAcessivel(actor: Actor, caseId: string, reply: FastifyReply) {
+    const [caso] = await db.select().from(cases).where(and(eq(cases.id, caseId), eq(cases.tenantId, actor.tenantId))).limit(1);
+    if (!caso) {
+      reply.status(404).send({ error: "Caso clínico não encontrado." });
+      return null;
     }
-  );
+    const [aluno] = await db.select({ schoolId: students.schoolId }).from(students).where(eq(students.id, caso.studentId)).limit(1);
+    if (RE_LIKE.has(String(actor.role)) && actor.schoolId && aluno?.schoolId && aluno.schoolId !== actor.schoolId) {
+      reply.status(404).send({ error: "Caso clínico não encontrado." });
+      return null;
+    }
+    return { caso, schoolId: aluno?.schoolId ?? null };
+  }
 
-  /**
-   * 2. Confirmar upload e registrar anexo no prontuário
-   */
+  /** 1. Enviar um laudo em PDF, JPG ou PNG (base64, até 10 MB). */
   app.post<{
     Params: { caseId: string };
-    Body: {
-      storageKey: string;
-      originalName: string;
-      mimeType: string;
-      fileSizeBytes: number;
-      sha256?: string;
-      category?: string;
-      description?: string;
-    };
-  }>(
-    "/api/cases/:caseId/attachments/confirm",
-    {
-      schema: {
-        description: "Confirma e vincula o documento no prontuário clínico com cálculo de hash SHA-256 e trilha de auditoria",
-        tags: ["Anexos Clínicos"],
-        params: {
-          type: "object",
-          required: ["caseId"],
-          properties: {
-            caseId: { type: "string", format: "uuid", example: "45f088ee-f001-4686-90e8-0b5c1fb67111" },
-          },
-        },
-        body: {
-          type: "object",
-          required: ["storageKey", "originalName", "fileSizeBytes"],
-          properties: {
-            storageKey: { type: "string", example: "tenants/00000000/cases/45f088ee/att-98a76b5c4d3e2f1a.pdf" },
-            originalName: { type: "string", example: "laudo_fonoaudiologico_audicao.pdf" },
-            mimeType: { type: "string", example: "application/pdf" },
-            fileSizeBytes: { type: "number", example: 524288 },
-            sha256: { type: "string", example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
-            category: { type: "string", example: "fonoaudiologia" },
-            description: { type: "string", example: "Audiometria e triagem de processamento auditivo central" },
-          },
-        },
-        response: {
-          200: {
-            description: "Anexo confirmado no prontuário",
-            type: "object",
-            properties: {
-              success: { type: "boolean", example: true },
-              message: { type: "string", example: "Documento clínico anexado ao prontuário com sucesso." },
-            },
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const actor = await requireCapability(request, reply, "attachments.write");
-      if (!actor) return;
+    Body: { fileName?: string; dataBase64?: string; description?: string };
+  }>("/api/cases/:caseId/attachments", { bodyLimit: 15 * 1024 * 1024 }, async (request, reply) => {
+    const actor = await requireCapability(request, reply, "attachments.write");
+    if (!actor) return;
 
-      const { caseId } = request.params;
-      const body = request.body;
+    const { caseId } = request.params;
+    const acesso = await casoAcessivel(actor, caseId, reply);
+    if (!acesso) return;
 
-      if (!body.storageKey || !body.originalName || !body.fileSizeBytes) {
-        reply.status(400);
-        return { error: "Dados incompletos para confirmação do anexo." };
-      }
+    const { fileName, dataBase64, description } = request.body ?? {};
+    if (typeof fileName !== "string" || !fileName.trim() || typeof dataBase64 !== "string" || !dataBase64) {
+      reply.status(400);
+      return { error: "Envie o nome e o conteúdo do arquivo." };
+    }
+    const bytes = Buffer.from(dataBase64.replace(/^data:[^,]*,/, ""), "base64");
+    if (bytes.length === 0) {
+      reply.status(400);
+      return { error: "O arquivo veio vazio." };
+    }
+    if (bytes.length > ATTACHMENT_MAX_BYTES) {
+      reply.status(413);
+      return { error: "Arquivo excede o limite máximo permitido de 10 MB." };
+    }
+    const formato = detectarFormatoLaudo(bytes);
+    if (!formato) {
+      reply.status(400);
+      return { error: "Formato não permitido. Envie o laudo em PDF, JPG ou PNG." };
+    }
 
-      const [caseRecord] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
-      if (!caseRecord) {
-        reply.status(404);
-        return { error: "Caso clínico não encontrado." };
-      }
+    const validation = validateAttachmentUpload({
+      actor: { id: actor.id, tenantId: actor.tenantId, schoolId: actor.schoolId || undefined, role: actor.role as never },
+      caseId,
+      caseTenantId: acesso.caso.tenantId,
+      filename: `laudo.${formato.ext}`,
+      mimeType: formato.mime,
+      sizeInBytes: bytes.length,
+      roleAllowedByPolicy: true, // capacidade attachments.write já exigida acima
+      schoolId: acesso.schoolId ?? undefined,
+      studentId: acesso.caso.studentId,
+    });
+    if (!validation.allowed || !validation.objectKey) {
+      reply.status(400);
+      return { error: validation.error || "Arquivo não atende aos requisitos de segurança." };
+    }
 
-      const fileHash = body.sha256 || crypto.createHash("sha256").update(body.storageKey).digest("hex");
+    const storage = await getAttachmentStorage().catch(() => null);
+    try {
+      if (!storage) throw new Error("storage indisponível");
+      await storage.put(validation.objectKey, bytes, formato.mime);
+    } catch (err) {
+      request.log.error({ err }, "falha ao enviar laudo ao armazenamento");
+      reply.status(503);
+      return { error: "O armazenamento de laudos não está disponível agora. Tente de novo em instantes; se persistir, avise o suporte." };
+    }
 
-      const [attachment] = await db
+    let attachment;
+    try {
+      [attachment] = await db
         .insert(clinicalAttachments)
         .values({
           tenantId: actor.tenantId,
           caseId,
-          studentId: caseRecord.studentId,
+          studentId: acesso.caso.studentId,
           uploaderId: actor.id,
-          storageKey: body.storageKey,
-          originalName: body.originalName,
-          mimeType: body.mimeType || "application/octet-stream",
-          fileSizeBytes: body.fileSizeBytes,
-          sha256: fileHash,
-          category: body.category || "relatorio_clinico",
-          description: body.description || null,
+          storageKey: validation.objectKey,
+          originalName: fileName.trim().slice(0, 200),
+          mimeType: formato.mime,
+          fileSizeBytes: bytes.length,
+          sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+          category: "laudo_externo",
+          description: description?.trim().slice(0, 500) || null,
         })
         .returning();
-
-      await recordAudit(
-        {
-          tenantId: actor.tenantId,
-          userId: actor.id,
-          userEmail: actor.email,
-          action: "attachment.uploaded",
-          entityType: "clinical_attachment",
-          entityId: attachment.id,
-          payload: {
-            caseId,
-            category: attachment.category,
-            fileSizeBytes: attachment.fileSizeBytes,
-            storageKey: attachment.storageKey,
-          },
-        },
-        request
-      );
-
-      return {
-        success: true,
-        attachment,
-        message: "Documento clínico anexado ao prontuário com sucesso.",
-      };
+    } catch (err) {
+      request.log.error({ err }, "falha ao registrar o laudo");
+      await storage!.remove(validation.objectKey).catch(() => undefined);
+      reply.status(503);
+      return { error: "Não foi possível registrar o laudo agora. Tente de novo." };
     }
-  );
 
-  /**
-   * 3. Listar anexos de um caso clínico
-   */
-  app.get<{ Params: { caseId: string } }>(
-    "/api/cases/:caseId/attachments",
-    {
-      schema: {
-        description: "Lista todos os anexos e exames clínicos de um prontuário",
-        tags: ["Anexos Clínicos"],
-        params: {
-          type: "object",
-          required: ["caseId"],
-          properties: {
-            caseId: { type: "string", format: "uuid", example: "45f088ee-f001-4686-90e8-0b5c1fb67111" },
-          },
-        },
-        response: {
-          200: {
-            description: "Lista de anexos do caso",
-            type: "object",
-            properties: {
-              attachments: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string", format: "uuid" },
-                    originalName: { type: "string", example: "laudo_neurologico_infantil.pdf" },
-                    category: { type: "string", example: "relatorio_clinico" },
-                    fileSizeBytes: { type: "number", example: 842100 },
-                    mimeType: { type: "string", example: "application/pdf" },
-                    description: { type: "string" },
-                    createdAt: { type: "string" },
-                  },
-                },
-              },
-            },
-          },
-        },
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "attachment.uploaded",
+        entityType: "clinical_attachment",
+        entityId: attachment.id,
+        payload: { caseId, fileSizeBytes: attachment.fileSizeBytes, sha256: attachment.sha256 },
       },
-    },
-    async (request, reply) => {
-      const actor = await requireCapability(request, reply, "attachments.read");
-      if (!actor) return;
+      request
+    );
 
-      const { caseId } = request.params;
+    return {
+      success: true,
+      attachment: {
+        id: attachment.id,
+        originalName: attachment.originalName,
+        category: attachment.category,
+        fileSizeBytes: attachment.fileSizeBytes,
+        mimeType: attachment.mimeType,
+        description: attachment.description,
+        createdAt: attachment.createdAt,
+      },
+    };
+  });
 
-      const items = await db
-        .select({
-          id: clinicalAttachments.id,
-          originalName: clinicalAttachments.originalName,
-          category: clinicalAttachments.category,
-          fileSizeBytes: clinicalAttachments.fileSizeBytes,
-          mimeType: clinicalAttachments.mimeType,
-          description: clinicalAttachments.description,
-          createdAt: clinicalAttachments.createdAt,
-        })
-        .from(clinicalAttachments)
-        .where(and(eq(clinicalAttachments.tenantId, actor.tenantId), eq(clinicalAttachments.caseId, caseId)))
-        .orderBy(desc(clinicalAttachments.createdAt));
+  /** 2. Listar os laudos do caso. */
+  app.get<{ Params: { caseId: string } }>("/api/cases/:caseId/attachments", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "attachments.read");
+    if (!actor) return;
 
-      return { attachments: items };
-    }
-  );
+    const { caseId } = request.params;
+    if (!(await casoAcessivel(actor, caseId, reply))) return;
 
-  /**
-   * 4. Gerar URL assinada temporária (600s) com bloqueio a perfis administrativos
-   */
+    const items = await db
+      .select({
+        id: clinicalAttachments.id,
+        originalName: clinicalAttachments.originalName,
+        category: clinicalAttachments.category,
+        fileSizeBytes: clinicalAttachments.fileSizeBytes,
+        mimeType: clinicalAttachments.mimeType,
+        description: clinicalAttachments.description,
+        createdAt: clinicalAttachments.createdAt,
+      })
+      .from(clinicalAttachments)
+      .where(and(eq(clinicalAttachments.tenantId, actor.tenantId), eq(clinicalAttachments.caseId, caseId)))
+      .orderBy(desc(clinicalAttachments.createdAt));
+
+    return { attachments: items };
+  });
+
+  /** 3. Abrir o PDF no visualizador interno. O servidor lê do bucket privado; não há link público nem URL externa. */
   app.get<{ Params: { caseId: string; attachmentId: string } }>(
-    "/api/cases/:caseId/attachments/:attachmentId/signed-url",
-    {
-      schema: {
-        description: "Gera URL de download temporária pré-assinada (600s de expiração) com bloqueio rigoroso para perfis não-clínicos/administrativos",
-        tags: ["Anexos Clínicos"],
-        params: {
-          type: "object",
-          required: ["caseId", "attachmentId"],
-          properties: {
-            caseId: { type: "string", format: "uuid" },
-            attachmentId: { type: "string", format: "uuid" },
-          },
-        },
-        response: {
-          200: {
-            description: "URL assinada gerada",
-            type: "object",
-            properties: {
-              signedUrl: { type: "string", example: "/api/storage/download/tenants/00000000/att-123.pdf?expires=1791654000&token=abc..." },
-              expiresInSeconds: { type: "number", example: 600 },
-              fileName: { type: "string", example: "laudo_neurologico_infantil.pdf" },
-              message: { type: "string", example: "URL assinada gerada com validade estrita de 10 minutos (600s)." },
-            },
-          },
-        },
-      },
-    },
+    "/api/cases/:caseId/attachments/:attachmentId/file",
     async (request, reply) => {
       const actor = await requireCapability(request, reply, "attachments.read");
       if (!actor) return;
 
       const { caseId, attachmentId } = request.params;
+      if (!(await casoAcessivel(actor, caseId, reply))) return;
 
       const [attachment] = await db
         .select()
         .from(clinicalAttachments)
-        .where(and(eq(clinicalAttachments.id, attachmentId), eq(clinicalAttachments.caseId, caseId)))
+        .where(and(eq(clinicalAttachments.id, attachmentId), eq(clinicalAttachments.caseId, caseId), eq(clinicalAttachments.tenantId, actor.tenantId)))
         .limit(1);
-
       if (!attachment) {
         reply.status(404);
         return { error: "Anexo não encontrado." };
       }
 
-      const accessCheck = validateSignedUrlAccess({
-        actor: {
-          id: actor.id,
-          tenantId: actor.tenantId,
-          role: actor.role,
-        },
+      const acesso = validateSignedUrlAccess({
+        actor: { id: actor.id, tenantId: actor.tenantId, role: actor.role as never },
         attachmentId,
         caseId,
         caseTenantId: attachment.tenantId,
-        roleAllowedByPolicy: true, // caixinha attachments.read já exigida acima
+        roleAllowedByPolicy: true, // capacidade attachments.read já exigida acima
       });
-
-      if (!accessCheck.allowed && !isSuperAdminEmail(actor.email)) {
+      if (!acesso.allowed) {
         reply.status(403);
-        return { error: accessCheck.error || "Acesso negado: perfis administrativos não podem baixar anexos clínicos." };
+        return { error: acesso.error };
       }
 
-      const expiresAt = Math.floor(Date.now() / 1000) + 600;
-      const token = crypto
-        .createHmac("sha256", process.env.STORAGE_SIGN_KEY || "periscopio-sign-storage-secret!")
-        .update(`${attachment.storageKey}:${expiresAt}`)
-        .digest("hex");
-
-      const signedUrl = `/api/storage/download/${attachment.storageKey}?expires=${expiresAt}&token=${token}`;
+      let bytes: Buffer;
+      try {
+        bytes = await (await getAttachmentStorage()).get(attachment.storageKey);
+      } catch (err) {
+        request.log.error({ err }, "falha ao ler laudo do armazenamento");
+        reply.status(503);
+        return { error: "Não foi possível abrir o laudo agora. Tente de novo em instantes." };
+      }
 
       await recordAudit(
         {
           tenantId: attachment.tenantId,
           userId: actor.id,
           userEmail: actor.email,
-          action: "attachment.download_authorized",
+          action: "attachment.viewed",
           entityType: "clinical_attachment",
           entityId: attachment.id,
-          payload: {
-            caseId,
-            expiresInSeconds: 600,
-          },
+          payload: { caseId },
         },
         request
       );
 
-      return {
-        signedUrl,
-        expiresInSeconds: 600,
-        fileName: attachment.originalName,
-        message: "URL assinada gerada com validade estrita de 10 minutos (600s).",
-      };
+      reply
+        .header("Content-Type", attachment.mimeType === "image/jpeg" || attachment.mimeType === "image/png" ? attachment.mimeType : "application/pdf")
+        .header("Content-Disposition", `inline; filename="laudo-${attachment.id}.${attachment.mimeType === "image/jpeg" ? "jpg" : attachment.mimeType === "image/png" ? "png" : "pdf"}"`)
+        .header("Cache-Control", "private, no-store")
+        .header("X-Content-Type-Options", "nosniff");
+      return reply.send(bytes);
     }
   );
 }

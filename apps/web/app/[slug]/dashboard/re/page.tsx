@@ -564,7 +564,7 @@ export default function REDashboardPage({
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} abrirSinal={vaultSinal} />
                 </div>
-                {/* Documentos clínicos são do núcleo: não aparecem para o RE (a API também recusa). */}
+                {/* Laudos da família: RE e médico enviam e abrem (PDF); especialista nunca. A API também recusa. */}
                 {(caps.has("attachments.read") || caps.has("attachments.write")) && (
                   <div className="mt-4"><CaseAttachmentsCard caseId={activeCase.id} /></div>
                 )}
