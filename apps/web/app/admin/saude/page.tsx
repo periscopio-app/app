@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
+import { FactoryResetCard } from "@/components/admin/FactoryResetCard";
 
 // ─── tipos (espelham GET /api/admin/observability) ──────────────────────────
 
@@ -205,6 +206,8 @@ export default function AdminSaudePage() {
             </section>
 
             <StorageCheckCard />
+
+            <FactoryResetCard />
 
             {/* rotas */}
             <section>

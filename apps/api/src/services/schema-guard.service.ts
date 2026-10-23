@@ -21,6 +21,7 @@ function migrationSql(): string[] {
     "0022_meu_painel_perfil_foto.sql",
     "0023_formularios_do_medico.sql",
     "0024_formularios_das_especialidades.sql",
+    "0025_tenant_demo_flag.sql",
   ];
   const allSql: string[] = [];
 

@@ -35,6 +35,7 @@ import { attachmentsRoutes } from "./routes/attachments.routes";
 import { pilotIndicatorsRoutes } from "./routes/pilot-indicators.routes";
 import { newsletterRoutes } from "./routes/newsletter.routes";
 import { supportRoutes } from "./routes/support.routes";
+import { factoryResetRoutes } from "./routes/factory-reset.routes";
 import { profileRoutes } from "./routes/profile.routes";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
@@ -157,6 +158,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(newsletterRoutes);
   app.register(supportRoutes);
   app.register(profileRoutes);
+  app.register(factoryResetRoutes);
 
   return app;
 }
