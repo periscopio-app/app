@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import {
   FOGAP_FORM_CODE,
+  montarEscalasSumario,
   cases,
   students,
   makeFogapPayloadVazio,
@@ -158,5 +159,24 @@ export async function salvarMeta(params: {
     status: "rascunho",
     payload: meta,
     createdBy: userId,
+  });
+}
+
+
+/** Retrato da ATA e do SNAP-IV (opcional) com o que está salvo agora. Usado na prévia do RE e gravado no envio. */
+export async function escalasDaJornada(
+  tenantId: string,
+  caseId: string,
+  j: { meta: { g_pulado?: boolean }; linhas: { g?: { payload: unknown } } }
+) {
+  const [ataRow] = await db
+    .select({ answers: teaScreenings.answers, status: teaScreenings.status })
+    .from(teaScreenings)
+    .where(and(eq(teaScreenings.caseId, caseId), eq(teaScreenings.tenantId, tenantId), eq(teaScreenings.instrument, "ata")))
+    .limit(1);
+  return montarEscalasSumario({
+    ataAnswers: ataRow?.answers,
+    ataEnviada: ataRow?.status === "enviado",
+    snap4: j.meta.g_pulado ? undefined : j.linhas.g?.payload,
   });
 }

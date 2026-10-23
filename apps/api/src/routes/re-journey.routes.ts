@@ -27,6 +27,7 @@ import { caseVisibleTo } from "./cases.routes";
 import {
   carregarJornada,
   codigoDoPasso,
+  escalasDaJornada,
   idadeAPartirDoNascimento,
   montarPayloadFogap,
   salvarMeta,
@@ -97,6 +98,7 @@ export async function reJourneyRoutes(app: FastifyInstance) {
       caseState: visible.caseItem.journeyState,
       meta: j.meta,
       situacao: j.situacao,
+      escalas: await escalasDaJornada(visible.caseItem.tenantId, caseId, j),
       ata: j.ata,
       forms,
       student: {

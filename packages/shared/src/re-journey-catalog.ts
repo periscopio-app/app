@@ -928,7 +928,18 @@ export interface Lacuna {
   /** Linha da matriz, quando for o caso. */
   linha?: string;
   rotulo: string;
+  /** Campo obrigatório: sem ele o envio ao médico não acontece (nem com "enviar assim mesmo"). */
+  bloqueante?: boolean;
 }
+
+/** Mínimos de caracteres dos textos livres do Formulário I (guardrail do produto, não critério clínico). */
+export const SUMARIO_MIN_CARACTERES = {
+  queixa_professor: 20,
+  hipotese_espectro: 15,
+  qual: 10,
+  tempo: 3,
+  resultado: 10,
+} as const;
 
 export interface JornadaSituacao {
   passos: PassoSituacao[];
@@ -1043,18 +1054,24 @@ function lacunasSnap4(snap4: unknown): { respondidos: number; total: number; fal
 export function lacunasDoSumario(sumario: unknown, serieDoAluno?: string | null): Lacuna[] {
   const s = (sumario && typeof sumario === "object" ? sumario : {}) as Record<string, any>;
   const out: Lacuna[] = [];
-  const push = (campo: string, rotulo: string) => out.push({ passo: "i", campo, rotulo: `Formulário I › ${rotulo}` });
+  const push = (campo: string, rotulo: string) => out.push({ passo: "i", campo, rotulo: `Formulário I › ${rotulo}`, bloqueante: true });
+  const texto = (campo: keyof typeof SUMARIO_MIN_CARACTERES, rotulo: string) => {
+    const min = SUMARIO_MIN_CARACTERES[campo];
+    const v = typeof s[campo] === "string" ? s[campo].trim() : "";
+    if (v === "") push(campo, rotulo);
+    else if (v.length < min) push(campo, `${rotulo} (escreva pelo menos ${min} caracteres)`);
+  };
   if (vazioTexto(serieDoAluno)) push("serie", "Série do aluno (edite os dados do aluno)");
-  if (vazioTexto(s.queixa_professor)) push("queixa_professor", "Queixa do professor");
-  if (vazioTexto(s.hipotese_espectro)) push("hipotese_espectro", "Hipótese do RE");
+  texto("queixa_professor", "Queixa do professor");
+  texto("hipotese_espectro", "Hipótese do RE");
   if (!Array.isArray(s.dificuldades_persistentes) || s.dificuldades_persistentes.length === 0) {
     push("dificuldades_persistentes", "Dificuldades persistentes");
   }
   if (s.conduta !== "sim" && s.conduta !== "nao") push("conduta", "Houve conduta do PpI?");
   else if (s.conduta === "sim") {
-    if (vazioTexto(s.qual)) push("qual", "Qual conduta");
-    if (vazioTexto(s.tempo)) push("tempo", "Por quanto tempo");
-    if (vazioTexto(s.resultado)) push("resultado", "Resultado da conduta");
+    texto("qual", "Qual conduta");
+    texto("tempo", "Por quanto tempo");
+    texto("resultado", "Resultado da conduta");
   }
   return out;
 }
@@ -1098,14 +1115,18 @@ export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
       });
     } else if (passo.tipo === "ata") {
       if (entrada.ata.enviada) passos.push({ ...base, estado: "completo", respondidos: 1, total: 1 });
-      else if (entrada.meta.h_aguardando) passos.push({ ...base, estado: "aguardando_responsavel", respondidos: 0, total: 1 });
-      else {
+      else if (entrada.meta.h_aguardando) {
+        // Aguardando o responsável não libera o envio: a ATA é obrigatória.
+        lacunas.push({ passo: "h", campo: "", rotulo: "Formulário H › ATA aguardando o responsável: o envio só é liberado com a ATA enviada", bloqueante: true });
+        passos.push({ ...base, estado: "aguardando_responsavel", respondidos: 0, total: 1 });
+      } else {
         lacunas.push({
           passo: "h",
           campo: "",
           rotulo: entrada.ata.existe
-            ? 'Formulário H › ATA em rascunho: envie ou marque "Aguardando o responsável"'
-            : 'Formulário H › ATA não registrada: envie ou marque "Aguardando o responsável"',
+            ? "Formulário H › ATA em rascunho: a ATA é obrigatória, finalize e envie"
+            : "Formulário H › ATA não registrada: a ATA é obrigatória",
+          bloqueante: true,
         });
         passos.push({ ...base, estado: entrada.ata.existe ? "parcial" : "vazio", respondidos: 0, total: 1 });
       }

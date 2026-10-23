@@ -8,6 +8,8 @@
  * Piloto ativo: somente G3 (6 a 9 anos e 11 meses).
  */
 
+import type { EscalasSumario } from "./escalas-sumario";
+
 export const FOGAP_FORM_CODE = "fogap" as const;
 export const FOGAP_VERSION = "0.1.0-rascunho" as const;
 
@@ -123,6 +125,8 @@ export interface FogapPayload {
   historico_insuficiente: FogapHistoricoInsuficiente;
   secao_sumario: FogapSecaoSumario;
   secao_encaminhamento: FogapSecaoEncaminhamento;
+  /** Retrato da ATA e do SNAP-IV gravado no envio (Bloco 4). Ausente em registros antigos. */
+  escalas?: EscalasSumario | null;
 }
 
 // ── Roteamento por idade ───────────────────────────────────────────────────
@@ -294,6 +298,7 @@ export function fogapSomenteSumario(payload: unknown): Partial<FogapPayload> {
     idade_meses: p.idade_meses ?? null,
     secao_sumario: p.secao_sumario,
     secao_encaminhamento: p.secao_encaminhamento,
+    escalas: p.escalas ?? null,
   };
 }
 

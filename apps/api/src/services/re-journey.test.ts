@@ -5,10 +5,12 @@ import {
   RE_PASSOS,
   camposDoForm,
   lacunasDoForm,
+  lacunasDoSumario,
   metaVazia,
   normalizarPayloadReForm,
   progressoReForm,
   situacaoDaJornada,
+  montarEscalasSumario,
   validarPayloadReForm,
   type JornadaEntradas,
 } from "@periscopio/shared";
@@ -152,12 +154,41 @@ describe("jornada do RE — formulário único (sem bloqueio entre blocos)", () 
     assert.equal(s.passos.find((p) => p.id === "a")?.estado, "vazio");
   });
 
-  test("G pulado conta como decisão e sai da lista; H aguardando também", () => {
+  test("G pulado conta como decisão e sai da lista; H aguardando NÃO libera o envio (ATA é obrigatória)", () => {
     const meta = { ...metaVazia(), g_pulado: true, h_aguardando: true };
     const s = situacaoDaJornada(entrada({ meta }));
     assert.equal(s.passos.find((p) => p.id === "g")?.estado, "pulado");
     assert.equal(s.passos.find((p) => p.id === "h")?.estado, "aguardando_responsavel");
-    assert.ok(!s.lacunas.some((l) => l.passo === "g" || l.passo === "h"));
+    assert.ok(!s.lacunas.some((l) => l.passo === "g"));
+    assert.ok(s.lacunas.some((l) => l.passo === "h" && l.bloqueante), "ATA ainda pendente bloqueia");
+  });
+
+  test("Formulário I: campos obrigatórios bloqueiam e o texto livre tem mínimo de caracteres", () => {
+    const vazio = lacunasDoSumario({}, "3º ano");
+    assert.ok(vazio.length >= 4 && vazio.every((l) => l.bloqueante));
+    const curto = lacunasDoSumario({ queixa_professor: "curta", hipotese_espectro: "x", dificuldades_persistentes: ["Fala"], conduta: "nao" }, "3º ano");
+    assert.ok(curto.some((l) => l.campo === "queixa_professor" && /20 caracteres/.test(l.rotulo)));
+    assert.ok(curto.some((l) => l.campo === "hipotese_espectro" && /15 caracteres/.test(l.rotulo)));
+    const ok = lacunasDoSumario({ queixa_professor: "Dificuldade para copiar da lousa.", hipotese_espectro: "Dimensão da comunicação.", dificuldades_persistentes: ["Fala"], conduta: "nao" }, "3º ano");
+    assert.equal(ok.length, 0);
+    const conduta = lacunasDoSumario({ queixa_professor: "Dificuldade para copiar da lousa.", hipotese_espectro: "Dimensão da comunicação.", dificuldades_persistentes: ["Fala"], conduta: "sim", qual: "x", tempo: "", resultado: "" }, "3º ano");
+    assert.deepEqual(conduta.map((l) => l.campo).sort(), ["qual", "resultado", "tempo"]);
+  });
+
+  test("retrato das escalas: ATA pontua pela regra da fonte; SNAP-IV só aparece se houver resposta e nunca conta os itens 10 a 18", () => {
+    const sem = montarEscalasSumario({});
+    assert.equal(sem.ata, null);
+    assert.equal(sem.snap4, null);
+    const ataRascunho = montarEscalasSumario({ ataAnswers: { marcados: { "1": [0] }, antes36meses: true }, ataEnviada: false });
+    assert.equal(ataRascunho.ata, null, "só a ATA enviada entra");
+    const e = montarEscalasSumario({
+      ataAnswers: { marcados: { "1": [0, 1], "2": [0] }, antes36meses: true },
+      ataEnviada: true,
+      snap4: { respostas: { "SNAP4-01": "bastante", "SNAP4-02": "demais", "SNAP4-03": "so_um_pouco" } },
+    });
+    assert.equal(e.ata?.total, 2 + 1 + 1, "grupo 1 = 2, grupo 2 = 1, +1 por início antes dos 36 meses");
+    assert.equal(e.snap4?.itens_1_a_9.marcados, 2);
+    assert.equal(e.snap4?.itens_10_a_18.calculavel, false);
   });
 
   test("ATA enviada conclui o H", () => {

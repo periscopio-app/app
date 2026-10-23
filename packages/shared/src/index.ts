@@ -6,6 +6,7 @@ export * from "./abc-catalog";
 export * from "./validation";
 export * from "./tea-catalog";
 export * from "./tea-scoring";
+export * from "./escalas-sumario";
 export * from "./re-journey-catalog";
 export * from "./medico-forms-catalog";
 export * from "./genograma";

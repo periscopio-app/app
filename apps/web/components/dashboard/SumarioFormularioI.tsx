@@ -4,6 +4,7 @@ import {
   FOGAP_DESTINOS,
   DIFICULDADES_PERSISTENTES_OPCOES,
   sumarioComPadroes,
+  type EscalasSumario,
   type FogapPayload,
 } from "@periscopio/shared";
 import { ClipboardList } from "lucide-react";
@@ -28,6 +29,8 @@ interface Props {
   professionalName?: string | null;
   /** "rascunho": prévia viva para o RE; "enviado": o que o médico recebe. */
   modo?: "rascunho" | "enviado";
+  /** Escalas ao vivo (prévia do RE). No envio, vale o retrato gravado em payload.escalas. */
+  escalas?: EscalasSumario | null;
 }
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
@@ -46,7 +49,7 @@ const vazio = <span className="italic text-neutral-600">não informado</span>;
  * O mesmo componente aparece para o RE (ao abrir o aluno, atualizando enquanto preenche)
  * e para o médico (após o encaminhamento), para que os dois vejam exatamente a mesma coisa.
  */
-export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolName, grade, payload, professionalName, modo = "rascunho" }: Props) {
+export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolName, grade, payload, professionalName, modo = "rascunho", escalas: escalasProp }: Props) {
   const p = (payload && typeof payload === "object" ? payload : {}) as Partial<FogapPayload>;
   const s = sumarioComPadroes(p.secao_sumario as any);
   const enc = (p.secao_encaminhamento ?? { observacoes: "", data: null }) as { observacoes?: string; data?: string | null };
@@ -55,6 +58,7 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
   const marcadas = new Set(s.dificuldades_persistentes);
   const extras = s.dificuldades_persistentes.filter((d) => !DIFICULDADES_PERSISTENTES_OPCOES.includes(d));
   const encaminhados = FOGAP_DESTINOS.filter((d) => s.encaminhado?.[d.key]);
+  const escalas = escalasProp ?? p.escalas ?? null;
   const outro = s.encaminhado?.outro || s.encaminhado?.outro_nome?.trim();
 
   return (
@@ -90,6 +94,26 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
               ))}
             </span>
           )}
+        </Linha>
+        <Linha rotulo="Escalas">
+          {!escalas?.ata && !escalas?.snap4 ? (
+            vazio
+          ) : (
+            <ul className="space-y-1">
+              {escalas?.ata ? (
+                <li>
+                  <strong>ATA</strong>: {escalas.ata.total} de {escalas.ata.max} pontos · {escalas.ata.grupos_com_marca} de {escalas.ata.grupos_total} grupos com comportamento marcado
+                  {escalas.ata.antes_36_meses ? " · sinais referidos antes dos 36 meses" : ""}
+                </li>
+              ) : null}
+              {escalas?.snap4 ? (
+                <li>
+                  <strong>SNAP-IV</strong> (opcional): {escalas.snap4.itens_1_a_9.marcados} de {escalas.snap4.itens_1_a_9.de} dos itens 1 a 9 marcados “Bastante” ou “Demais” · itens 10 a 18 ainda não contados (aguardando validação clínica)
+                </li>
+              ) : null}
+            </ul>
+          )}
+          <span className="mt-0.5 block text-[11px] text-neutral-700">Pontuação conforme o formulário-fonte; não é diagnóstico.</span>
         </Linha>
         <Linha rotulo="Intervenção do PpI">
           {s.conduta === "sim" ? (

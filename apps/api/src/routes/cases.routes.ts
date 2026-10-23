@@ -42,7 +42,7 @@ import {
   RE_FORMS,
   RE_JORNADA_FORM_CODE,
 } from "@periscopio/shared";
-import { carregarJornada, montarPayloadFogap } from "../services/re-journey.service";
+import { carregarJornada, escalasDaJornada, montarPayloadFogap } from "../services/re-journey.service";
 import {
   allSectionsDone,
   applyTransitionInTx,
@@ -776,6 +776,16 @@ export async function casesRoutes(app: FastifyInstance) {
     const confirmarLacunas = confirmou.success && confirmou.data.confirmarLacunas === true;
     const jornada = await carregarJornada(visible.caseItem.tenantId, caseId);
     const lacunas = jornada.situacao.lacunas;
+    // Campos obrigatórios (Formulário I completo, mínimo de caracteres, ATA enviada) não passam nem com "enviar assim mesmo".
+    const bloqueantes = lacunas.filter((l) => l.bloqueante);
+    if (bloqueantes.length > 0) {
+      return reply.status(422).send({
+        code: "LACUNAS_BLOQUEANTES",
+        error: `Faltam ${bloqueantes.length} campo(s) obrigatório(s). Preencha-os para enviar ao médico.`,
+        total: bloqueantes.length,
+        lacunas, // a lista completa; as obrigatórias vêm com bloqueante: true
+      });
+    }
     if (lacunas.length > 0 && !confirmarLacunas) {
       return reply.status(422).send({
         code: "LACUNAS",
@@ -791,6 +801,9 @@ export async function casesRoutes(app: FastifyInstance) {
 
     // Idade, grupo e série vêm do cadastro do aluno (recalculados no envio, caso o cadastro tenha sido corrigido).
     const fogapPayload = montarPayloadFogap({ student: visible.student, atual: existing?.payload });
+
+    // Retrato da ATA e do SNAP-IV (opcional) no momento do envio: o médico vê o mesmo número que o RE viu.
+    fogapPayload.escalas = await escalasDaJornada(visible.caseItem.tenantId, caseId, jornada);
     const dataError = validarPayloadFogap(fogapPayload);
     if (dataError) return reply.status(422).send({ error: dataError });
 

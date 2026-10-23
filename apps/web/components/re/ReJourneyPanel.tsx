@@ -25,6 +25,7 @@ import {
   type RePassoId,
   type ReJornadaMeta,
   type Snap4Payload,
+  type EscalasSumario,
 } from "@periscopio/shared";
 import { ApiError, api } from "@/lib/api";
 import { ConfirmDialog, Modal } from "@/components/ui";
@@ -54,6 +55,7 @@ interface Jornada {
   meta: ReJornadaMeta;
   situacao: JornadaSituacao;
   ata: { existe: boolean; enviada: boolean; status: string | null };
+  escalas?: EscalasSumario | null;
   forms: Partial<Record<RePassoId, Linha | null>>;
   student: AlunoJornada;
   professores: ProfessorOpcao[];
@@ -387,7 +389,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     } catch (e) {
       setConfirmSend(false);
       const corpo = e instanceof ApiError ? (e.body as { code?: string; lacunas?: Lacuna[] } | undefined) : undefined;
-      if (corpo?.code === "LACUNAS" && Array.isArray(corpo.lacunas)) {
+      if ((corpo?.code === "LACUNAS" || corpo?.code === "LACUNAS_BLOQUEANTES") && Array.isArray(corpo.lacunas)) {
         setLacunasServidor(corpo.lacunas);
         setMostrarFaltas(true);
         setLacunasAberto(true);
@@ -417,6 +419,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const aluno = j.student;
   const nasc = aluno.birthYear ? `${aluno.birthMonth ? `${MESES[aluno.birthMonth - 1]}/` : ""}${aluno.birthYear}` : "";
   const lacunasMostradas = lacunasServidor ?? situacao.lacunas;
+  const temBloqueante = lacunasMostradas.some((l) => l.bloqueante);
   const totalLacunas = situacao.lacunas.length;
   const respondidosForms = situacao.passos.reduce((acc, p) => acc + p.respondidos, 0);
   const totalForms = situacao.passos.reduce((acc, p) => acc + p.total, 0);
@@ -585,6 +588,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                       payload={{ ...((j.forms.i?.payload as object) ?? {}), secao_sumario: sum }}
                       professionalName={professionalName}
                       modo={readOnly ? "enviado" : "rascunho"}
+                      escalas={j.escalas}
                     />
                   }
                 />
@@ -628,13 +632,17 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       <Modal
         open={lacunasAberto}
         onClose={() => setLacunasAberto(false)}
-        title={`Faltam ${lacunasMostradas.length} campo(s) sem resposta`}
-        description="Confira a lista. Você pode voltar e preencher ou enviar assim mesmo: o que ficar em branco chega ao médico como “não informado”."
+        title={temBloqueante ? `Faltam ${lacunasMostradas.filter((l) => l.bloqueante).length} campo(s) obrigatório(s)` : `Faltam ${lacunasMostradas.length} campo(s) sem resposta`}
+        description={
+          temBloqueante
+            ? "Estes campos são obrigatórios para enviar ao médico: Formulário I completo (com o mínimo de caracteres nos textos) e a ATA enviada. Preencha e tente de novo."
+            : "Confira a lista. Você pode voltar e preencher ou enviar assim mesmo: o que ficar em branco chega ao médico como “não informado”."
+        }
         maxWidth="lg"
       >
         <div className="space-y-4">
           <ul className="max-h-72 space-y-1 overflow-y-auto rounded-xl border border-linha bg-fundo p-2 text-sm text-black" data-testid="lista-lacunas">
-            {lacunasMostradas.map((l, i) => (
+            {[...lacunasMostradas].sort((a, b) => Number(Boolean(b.bloqueante)) - Number(Boolean(a.bloqueante))).map((l, i) => (
               <li key={`${l.passo}-${l.campo}-${l.linha ?? ""}-${i}`}>
                 <button
                   type="button"
@@ -644,6 +652,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                   }}
                   className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-white"
                 >
+                  {l.bloqueante ? <span className="mr-1.5 rounded bg-erro/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-erro">obrigatório</span> : null}
                   {l.rotulo}
                 </button>
               </li>
@@ -653,9 +662,11 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
             <button type="button" className={btnSecundario} onClick={() => { setLacunasAberto(false); if (lacunasMostradas[0]) setTimeout(() => irParaLacuna(lacunasMostradas[0]), 150); }}>
               Voltar e preencher
             </button>
-            <button type="button" className={btnPrimario} disabled={sending} onClick={() => void enviarAoMedico(true)} data-testid="re-enviar-assim-mesmo">
-              <Send className="h-4 w-4" aria-hidden /> {sending ? "Enviando…" : "Enviar assim mesmo"}
-            </button>
+            {!temBloqueante && (
+              <button type="button" className={btnPrimario} disabled={sending} onClick={() => void enviarAoMedico(true)} data-testid="re-enviar-assim-mesmo">
+                <Send className="h-4 w-4" aria-hidden /> {sending ? "Enviando…" : "Enviar assim mesmo"}
+              </button>
+            )}
           </div>
         </div>
       </Modal>
