@@ -4,7 +4,10 @@ import { z } from "zod";
 import { db } from "../db/client";
 import {
   FOGAP_FORM_CODE,
+  faixaPadraoPorMeses,
   fogapSomenteSumario,
+  isFaixaFogap,
+  itensDaFaixa,
   RE_FORMS,
   RE_PASSOS,
   SNAP4_ITENS,
@@ -41,6 +44,10 @@ const payloadBody = z.object({ payload: z.record(z.unknown()) });
 const sumarioBody = z.object({
   secao_sumario: z.record(z.unknown()),
   secao_encaminhamento: z.record(z.unknown()).optional(),
+});
+const desenvolvimentoBody = z.object({
+  faixa: z.string(),
+  respostas: z.record(z.union([z.literal("adequada"), z.literal("inadequada"), z.null()])),
 });
 const timingBody = z.object({
   step: z.enum(["a", "b", "c", "d", "e", "f", "g", "h", "i"]),
@@ -233,6 +240,85 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     }
     const depois = await carregarJornada(tenantId, caseId);
     return { success: true, form: { status: row.status, payload: row.payload, updatedAt: row.updatedAt }, situacao: depois.situacao };
+  });
+
+
+  /**
+   * FOGAP — itens de desenvolvimento por faixa (4 a 5 anos ou 6 a 9 anos). A RE escolhe a faixa (a idade sugere uma) e
+   * responde Adequada/Inadequada/em branco. Fica no bloco de notas da RE: o médico recebe só o sumário.
+   * Respostas de uma faixa não somem ao trocar de faixa; só as da faixa em uso contam como respondidas.
+   */
+  app.put("/api/cases/:caseId/re-journey/fogap-desenvolvimento", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "fogap.fill");
+    if (!actor) return;
+    const { caseId } = request.params as { caseId: string };
+    const visible = await caseVisibleTo(actor, caseId);
+    if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+    if (visible.caseItem.journeyState !== "rascunho") return reply.status(409).send({ error: SOMENTE_LEITURA });
+
+    const parse = desenvolvimentoBody.safeParse(request.body);
+    if (!parse.success) return reply.status(400).send({ error: "Payload inválido", issues: parse.error.issues });
+    if (!isFaixaFogap(parse.data.faixa)) return reply.status(400).send({ error: "Faixa do FOGAP inválida — use 4a5 ou 6a9." });
+    const faixa = parse.data.faixa;
+
+    const tenantId = visible.caseItem.tenantId;
+    const j = await carregarJornada(tenantId, caseId);
+    const atual = j.linhas.i;
+    if (atual && atual.status !== "rascunho" && atual.status !== "devolvido") {
+      return reply.status(409).send({ error: "Sumário já enviado — somente leitura." });
+    }
+
+    const base = montarPayloadFogap({ student: visible.student, atual: atual?.payload });
+    if (base.fogap_state === "aguardando_idade") {
+      return reply.status(409).send({ error: "Informe o ano e o mês de nascimento do aluno para usar o FOGAP." });
+    }
+    if (faixaPadraoPorMeses(base.total_meses) === null) {
+      return reply.status(409).send({ error: "A idade do aluno está fora das faixas do piloto (4 a 9 anos)." });
+    }
+
+    const idsDaFaixa = new Set(itensDaFaixa(faixa).map((i) => i.id));
+    const fora = Object.keys(parse.data.respostas).find((id) => !idsDaFaixa.has(id));
+    if (fora) return reply.status(400).send({ error: `Item ${fora} não pertence à faixa escolhida.` });
+
+    const payload = {
+      ...base,
+      faixa_fogap: faixa,
+      respostas_desenvolvimento: { ...(base.respostas_desenvolvimento ?? {}), ...parse.data.respostas },
+    };
+    const erro = validarPayloadFogap(payload);
+    if (erro) return reply.status(400).send({ error: erro });
+
+    let row;
+    if (atual) {
+      [row] = await db.update(reAssessments).set({ payload, updatedAt: new Date() }).where(eq(reAssessments.id, atual.id)).returning();
+    } else {
+      [row] = await db
+        .insert(reAssessments)
+        .values({
+          tenantId,
+          caseId,
+          formCode: FOGAP_FORM_CODE,
+          formVersion: versaoDoCodigo(FOGAP_FORM_CODE),
+          status: "rascunho",
+          payload,
+          createdBy: actor.id,
+        })
+        .returning();
+    }
+    // Auditoria guarda só metadados (faixa e quantos itens), nunca o conteúdo das respostas.
+    await recordAudit(
+      {
+        tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "re_journey.fogap_desenvolvimento_saved",
+        entityType: "case",
+        entityId: caseId,
+        payload: { studentCode: visible.student.studentCode, faixa, itens: Object.keys(parse.data.respostas).length },
+      },
+      request
+    );
+    return { success: true, form: { status: row.status, payload: row.payload, updatedAt: row.updatedAt } };
   });
 
   /**

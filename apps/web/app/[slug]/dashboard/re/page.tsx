@@ -60,9 +60,9 @@ function calcularIdadePorNascimento(birthYear: number, birthMonth: number): { an
 function foraDaFaixaDoPiloto(birthYear: number, birthMonth: number): boolean {
   const hoje = new Date();
   const meses = hoje.getFullYear() * 12 + (hoje.getMonth() + 1) - (birthYear * 12 + birthMonth);
-  return !Number.isFinite(meses) || meses < 72 || meses > 119;
+  return !Number.isFinite(meses) || meses < 48 || meses > 119;
 }
-const MSG_FAIXA_PILOTO = "Fora da faixa do piloto: o cadastro aceita alunos de 6 anos a 9 anos e 11 meses.";
+const MSG_FAIXA_PILOTO = "Fora da faixa do piloto: o cadastro aceita alunos de 4 anos a 9 anos e 11 meses.";
 
 const MESES_NOMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -304,7 +304,7 @@ export default function REDashboardPage({
       <div>
         <h1 className="text-2xl font-bold text-black">Avaliação do RE — formulários A a I</h1>
         <p className="text-sm text-neutral-800 mt-0.5">
-          Um formulário único, de A a I, na mesma página: preencha na ordem que preferir e o sistema avisa o que ficou em branco antes de enviar ao médico. Piloto: alunos de 6 anos a 9 anos e 11 meses.
+          Um formulário único, de A a I, na mesma página: preencha na ordem que preferir e o sistema avisa o que ficou em branco antes de enviar ao médico. Piloto: alunos de 4 anos a 9 anos e 11 meses.
         </p>
       </div>
 

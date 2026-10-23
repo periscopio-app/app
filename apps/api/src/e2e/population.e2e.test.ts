@@ -161,7 +161,7 @@ describe("mapa populacional e cadastro de aluno (E2E)", { skip }, () => {
   });
 
   test("aluno: código gerado, validação de nascimento e importação em lote só com ano/mês", async () => {
-    // Datas relativas ao dia do teste: a trava do piloto aceita só 6 anos a 9 anos e 11 meses.
+    // Datas relativas ao dia do teste: a trava do piloto aceita só 4 anos a 9 anos e 11 meses.
     const Y = new Date().getFullYear();
     const ok = await call("POST", "/api/students", "re", { schoolId: schoolGL, birthYear: Y - 8, birthMonth: 1 });
     assert.equal(ok.status, 201, JSON.stringify(ok.body));
