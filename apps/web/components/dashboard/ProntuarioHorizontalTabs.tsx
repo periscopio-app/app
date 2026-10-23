@@ -36,7 +36,7 @@ interface ProntuarioHorizontalTabsProps {
   userSpecialty?: string;
   childrenOverview?: React.ReactNode;
   childrenActions?: React.ReactNode;
-  /** Formulários do médico (aba "Avaliação médica"). */
+  /** Ficha do médico, seções B a R (aba "Formulário do Médico"). */
   childrenMedical?: React.ReactNode;
   /** Aba controlada pela tela (ex.: o botão "Encaminhar a especialistas" abre a aba de ações). */
   activeTab?: ProntuarioTabKey;
@@ -72,13 +72,13 @@ export function ProntuarioHorizontalTabs({
   }> = [
     {
       id: "overview",
-      label: "Visão Geral & FOGAP",
+      label: "Visão Geral",
       icon: FileText,
       visible: true,
     },
     {
       id: "medical",
-      label: "Avaliação médica",
+      label: "Formulário do Médico",
       icon: Stethoscope,
       visible: Boolean(childrenMedical),
     },

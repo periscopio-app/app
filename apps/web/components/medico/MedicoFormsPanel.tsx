@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ClipboardList, Lock, Pencil, RotateCcw, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, MessageSquareText, Pencil, RotateCcw, Save, Send } from "lucide-react";
 import { MD_FORMS, MD_TEXTO_MAX, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
@@ -32,10 +32,10 @@ const COR: Record<Status, string> = {
 };
 
 /**
- * Formulários do médico: anamnese, exame, genograma, hipótese e conduta, encaminhamentos, seguimento e sumário.
+ * Formulário do Médico: ficha única, na sequência do papel (seções B a R).
  * Estrutura provisória (texto livre curto) até a validação clínica. O sistema não sugere nem preenche nada.
  */
-export function MedicoFormsPanel({ caseId }: { caseId: string }) {
+export function MedicoFormsPanel({ caseId, queixaEscola }: { caseId: string; queixaEscola?: string | null }) {
   const [d, setD] = useState<Resp | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [rascunhos, setRascunhos] = useState<Record<string, Record<string, string>>>({});
@@ -43,6 +43,9 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [motivo, setMotivo] = useState<Record<string, string>>({});
   const [reabrindo, setReabrindo] = useState<string | null>(null);
+  // Seções abertas na tela. Começa só na primeira: a ficha tem 17 seções e o médico escolhe onde ir pelo índice.
+  const [abertas, setAbertas] = useState<Set<string>>(new Set(["queixa_escola"]));
+  const refs = useRef<Record<string, HTMLDetailsElement | null>>({});
 
   const carregar = useCallback(async () => {
     try {
@@ -58,8 +61,21 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
   useEffect(() => {
     setD(null);
     setMsg({});
+    setAbertas(new Set(["queixa_escola"]));
     void carregar();
   }, [carregar]);
+
+  const alternar = (id: string, aberta: boolean) =>
+    setAbertas((a) => {
+      const n = new Set(a);
+      if (aberta) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  const irPara = (id: string) => {
+    alternar(id, true);
+    requestAnimationFrame(() => refs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const aviso = (id: string, tom: "ok" | "erro", texto: string) => setMsg((m) => ({ ...m, [id]: { tom, texto } }));
 
@@ -110,19 +126,61 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
 
   const concluidos = d.forms.filter((f) => f.status === "concluido").length;
 
+  const pct = Math.round((concluidos / d.forms.length) * 100);
+
   return (
-    <section aria-label="Formulários do médico" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-black">
-          <ClipboardList className="h-4 w-4 text-roxo" aria-hidden /> Avaliação médica
-        </h3>
-        <span className="text-xs text-neutral-800">{concluidos} de {d.forms.length} seções concluídas</span>
+    <section aria-label="Formulário do Médico" className="space-y-3">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-black">
+            <ClipboardList className="h-4 w-4 text-roxo" aria-hidden /> Formulário do Médico
+          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-neutral-800" data-testid="md-progresso">{concluidos} de {d.forms.length} seções concluídas</span>
+            <button
+              type="button"
+              onClick={() => setAbertas(new Set(d.forms.map((f) => f.id)))}
+              className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-fundo"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden /> Abrir todas
+            </button>
+            <button
+              type="button"
+              onClick={() => setAbertas(new Set())}
+              className="inline-flex items-center gap-1 rounded-lg border border-linha bg-white px-2 py-1 text-[11px] font-semibold text-black hover:bg-fundo"
+            >
+              <ChevronsDownUp className="h-3.5 w-3.5" aria-hidden /> Recolher todas
+            </button>
+          </div>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-linha" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Seções concluídas">
+          <div className="h-full bg-roxo transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        {/* Índice B–R: pula direto para a seção; a cor mostra a situação */}
+        <nav aria-label="Seções do formulário" className="flex flex-wrap gap-1.5">
+          {d.forms.map((f) => {
+            const def = MD_FORMS[f.id];
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => irPara(f.id)}
+                title={`${def.letra}. ${f.titulo}: ${ROTULO[f.status]}`}
+                aria-label={`${def.letra}. ${f.titulo}: ${ROTULO[f.status]}`}
+                className={`h-7 min-w-7 rounded-lg border px-1.5 text-[11px] font-bold ${
+                  f.status === "concluido" ? "border-sucesso/40 bg-sucesso/10 text-black" : f.status === "rascunho" ? "border-ouro-300 bg-ouro-100 text-black" : "border-linha bg-white text-black"
+                } hover:ring-2 hover:ring-roxo/30`}
+              >
+                {def.letra}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       <p className="rounded-xl border border-ceu-300 bg-ceu-50 px-3 py-2 text-xs text-black">
-        Estrutura provisória ({d.version}): cada seção é um registro em texto livre. As perguntas exatas do capítulo médico entram depois da validação clínica.
-        O sistema <strong>não sugere, não classifica e não preenche</strong> hipótese, conduta, prescrição ou alta: tudo é decisão do médico.
-        Não escreva nome, telefone ou endereço: use o código do aluno.
+        Estrutura provisória ({d.version}): cada seção é um registro em texto livre; as perguntas exatas entram depois da validação clínica.
+        O sistema <strong>não sugere, não classifica e não preenche</strong> hipótese, conduta, prescrição ou alta. Use o código do aluno, sem nome, telefone ou endereço.
       </p>
 
       {!d.editavel && (
@@ -138,13 +196,40 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
         const preenchido = def.campos.some((c) => (valores[c.id] ?? "").trim().length > 0);
         const m = msg[f.id];
         return (
-          <details key={f.id} open={f.status !== "concluido"} className="rounded-xl border border-linha bg-white">
+          <details
+            key={f.id}
+            id={`md-secao-${f.id}`}
+            ref={(el) => { refs.current[f.id] = el; }}
+            open={abertas.has(f.id)}
+            onToggle={(e) => alternar(f.id, (e.currentTarget as HTMLDetailsElement).open)}
+            className="scroll-mt-4 rounded-xl border border-linha bg-white"
+          >
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-black">
-              <span>{f.titulo}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${COR[f.status]}`}>{ROTULO[f.status]}</span>
+              <span className="flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-roxo-100 text-xs font-extrabold text-black" aria-hidden>{def.letra}</span>
+                <span>{f.titulo}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                {f.id === "sumario_medico" && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-roxo/30 bg-roxo-50 px-2 py-0.5 text-[10px] font-bold text-black">
+                    <Send className="h-3 w-3" aria-hidden /> Vai aos especialistas
+                  </span>
+                )}
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${COR[f.status]}`}>{ROTULO[f.status]}</span>
+              </span>
             </summary>
             <div className="space-y-2 border-t border-linha p-3">
               <p className="text-xs text-neutral-800">{def.descricao}</p>
+              {f.id === "queixa_escola" && (
+                <div className="rounded-xl border border-roxo-200/70 bg-roxo-50/60 px-3 py-2" data-testid="md-queixa-do-re">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-black">
+                    <MessageSquareText className="h-3.5 w-3.5 text-roxo" aria-hidden /> Queixa registrada pelo RE (só consulta)
+                  </span>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-xs text-black">
+                    {queixaEscola?.trim() ? queixaEscola.trim() : <span className="italic text-neutral-700">Não registrada pelo RE.</span>}
+                  </p>
+                </div>
+              )}
               {def.campos.map((campo) => {
                 const texto = valores[campo.id] ?? "";
                 const idCampo = `md-${f.id}-${campo.id}`;
@@ -157,11 +242,20 @@ export function MedicoFormsPanel({ caseId }: { caseId: string }) {
                     {campo.ajuda && <p className="text-[11px] text-neutral-700">{campo.ajuda}</p>}
                     {campo.tipo === "genograma" ? (
                       <GenogramaEditor idBase={idCampo} value={texto} onChange={mudar} disabled={travado} />
+                    ) : campo.tipo === "data" ? (
+                      <input
+                        id={idCampo}
+                        type="date"
+                        value={texto}
+                        disabled={travado}
+                        onChange={(e) => mudar(e.target.value)}
+                        className="rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+                      />
                     ) : (
                       <>
                         <textarea
                           id={idCampo}
-                          rows={6}
+                          rows={5}
                           maxLength={MD_TEXTO_MAX}
                           value={texto}
                           disabled={travado}

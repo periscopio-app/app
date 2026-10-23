@@ -132,8 +132,23 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const r = await call("GET", `/api/cases/${caso}/medical-forms`, "md");
     assert.equal(r.status, 200);
     assert.equal(r.body.editavel, true);
-    assert.equal(r.body.forms.length, 7);
-    assert.ok(r.body.forms.every((f: any) => f.status === "nao_iniciado" && f.payload.registro === ""));
+    assert.equal(r.body.forms.length, 17);
+    assert.ok(r.body.forms.every((f: any) => f.status === "nao_iniciado"));
+    assert.deepEqual(
+      r.body.forms.map((f: any) => f.id),
+      ["queixa_escola", "anamnese_biografica", "avaliacao_psiquiatrica", "outras_queixas", "exame_fisico", "genograma", "conclusao", "hipotese_diagnostica", "conduta",
+        "encaminhamentos", "retorno_reavaliacao", "testes_complementares", "tcle", "entrevista_seguimento", "entrevista_manutencao", "sumario_medico", "recomendacao_escola"],
+      "a ficha segue a sequência B a R do formulário em papel"
+    );
+    assert.deepEqual(r.body.forms.map((f: any) => (shared.MD_FORMS as Record<string, { letra: string }>)[f.id].letra).join(""), "BCDEFGHIJKLMNOPQR");
+  });
+
+  test("L: retorno para reavaliação guarda só data válida (AAAA-MM-DD)", async () => {
+    const ok = await call("PUT", `/api/cases/${caso}/medical-forms/retorno_reavaliacao`, "md", { payload: { data: "2026-12-15" } });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body.form.payload, { data: "2026-12-15" });
+    const ruim = await call("PUT", `/api/cases/${caso}/medical-forms/retorno_reavaliacao`, "md", { payload: { data: "depois do natal" } });
+    assert.deepEqual(ruim.body.form.payload, { data: "" }, "texto que não é data vira campo em branco");
   });
 
   test("genograma: o desenho por parentesco é guardado normalizado e conclui a seção sem texto", async () => {
@@ -146,7 +161,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.equal(salvo.body.form.payload.registro, "");
     assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/genograma/complete`, "md")).status, 200);
     // lixo no lugar do desenho vira campo em branco, e em branco não conclui
-    const lixo = await call("PUT", `/api/cases/${caso}/medical-forms/seguimento`, "md", { payload: { registro: "", estrutura: "lixo" } });
+    const lixo = await call("PUT", `/api/cases/${caso}/medical-forms/entrevista_seguimento`, "md", { payload: { registro: "", estrutura: "lixo" } });
     assert.deepEqual(lixo.body.form.payload, { registro: "" });
   });
 
@@ -154,39 +169,39 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const ruim = await call("PUT", `/api/cases/${caso}/medical-forms/nao_existe`, "md", { payload: { registro: "x" } });
     assert.equal(ruim.status, 404);
 
-    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_conduta`, "md", { payload: { registro: TEXTO, campo_estranho: "ignorado" } });
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_diagnostica`, "md", { payload: { registro: TEXTO, campo_estranho: "ignorado" } });
     assert.equal(salvo.status, 200);
     assert.deepEqual(salvo.body.form.payload, { registro: TEXTO });
     assert.equal(salvo.body.form.status, "rascunho");
 
     // em branco não conclui
-    await call("PUT", `/api/cases/${caso}/medical-forms/seguimento`, "md", { payload: { registro: "   " } });
-    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/seguimento/complete`, "md")).status, 400);
+    await call("PUT", `/api/cases/${caso}/medical-forms/entrevista_seguimento`, "md", { payload: { registro: "   " } });
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/entrevista_seguimento/complete`, "md")).status, 400);
     // sem rascunho salvo não conclui
-    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/exame_psiquiatrico_fisico/complete`, "md")).status, 409);
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/exame_fisico/complete`, "md")).status, 409);
 
-    const concl = await call("POST", `/api/cases/${caso}/medical-forms/hipotese_conduta/complete`, "md");
+    const concl = await call("POST", `/api/cases/${caso}/medical-forms/hipotese_diagnostica/complete`, "md");
     assert.equal(concl.status, 200);
     assert.equal(concl.body.form.status, "concluido");
 
     // concluída: não edita, não conclui de novo
-    assert.equal((await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_conduta`, "md", { payload: { registro: "outra" } })).status, 409);
-    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/hipotese_conduta/complete`, "md")).status, 409);
+    assert.equal((await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_diagnostica`, "md", { payload: { registro: "outra" } })).status, 409);
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/hipotese_diagnostica/complete`, "md")).status, 409);
 
     // reabrir exige motivo
-    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/hipotese_conduta/reopen`, "md", { reason: "" })).status, 400);
-    const reab = await call("POST", `/api/cases/${caso}/medical-forms/hipotese_conduta/reopen`, "md", { reason: "Retificação após devolutiva da fono" });
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/hipotese_diagnostica/reopen`, "md", { reason: "" })).status, 400);
+    const reab = await call("POST", `/api/cases/${caso}/medical-forms/hipotese_diagnostica/reopen`, "md", { reason: "Retificação após devolutiva da fono" });
     assert.equal(reab.status, 200);
     assert.equal(reab.body.form.status, "rascunho");
 
     const [linha] = await dbx.select().from(shared.caseMedicalForms);
-    const hist = (await dbx.select().from(shared.caseMedicalForms)).find((l) => l.formId === "hipotese_conduta")!.history as any[];
+    const hist = (await dbx.select().from(shared.caseMedicalForms)).find((l) => l.formId === "hipotese_diagnostica")!.history as any[];
     assert.ok(linha);
     assert.equal(hist.length, 1);
     assert.equal(hist[0].payload.registro, TEXTO, "a versão original continua guardada");
     assert.equal(hist[0].reason, "Retificação após devolutiva da fono");
 
-    const edit = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_conduta`, "md", { payload: { registro: "versão retificada" } });
+    const edit = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_diagnostica`, "md", { payload: { registro: "versão retificada" } });
     assert.equal(edit.status, 200);
   });
 

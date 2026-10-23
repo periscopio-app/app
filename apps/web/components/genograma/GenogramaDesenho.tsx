@@ -35,7 +35,7 @@ export function GenogramaDesenho({ genograma }: { genograma: Genograma }) {
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <figcaption className="mt-1 text-[11px] text-neutral-700">
-        Figura do aluno com seta. Quadrado = masculino, círculo = feminino, X = falecido(a), figura amarela = com anotação.
+        Legenda: 1. Mãe / 2. Pai. Figura do aluno com seta. Quadrado = masculino, círculo = feminino, X = falecido(a), figura amarela = com anotação.
       </figcaption>
     </figure>
   );
