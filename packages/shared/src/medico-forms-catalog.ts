@@ -131,7 +131,7 @@ const COLUNA_NS = "Não / Sim (coluna da direita do papel)";
 
 const camposBiografia = (): MdCampo[] => {
   const c: MdCampo[] = [
-    sn("planejamento_familiar", "Fez Planejamento Familiar", { grupo: "Planejamento familiar" }),
+    sn("planejamento_familiar", "Fez Planejamento Familiar"),
     multi("gestacao", "Gestação", [
       { valor: "0", rotulo: "0. Sem intercorrências" },
       { valor: "1", rotulo: "1. Com intercorrências" },

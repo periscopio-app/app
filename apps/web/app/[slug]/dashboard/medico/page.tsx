@@ -165,7 +165,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   async function carregarFogap(caseId: string) {
     setReLoading(true);
     try {
-      const data = await api.get<{ assessment: ReAssessment | null }>(`/api/cases/${caseId}/re-assessment`);
+      const data = await api.get<{ assessment: ReAssessment | null }>(`/api/cases/${caseId}/re-assessment?completo=1`);
       setReAssessment(data.assessment);
     } catch (err: unknown) {
       setActionMsg(err instanceof Error ? err.message : "Erro ao carregar a avaliação do RE.");
@@ -215,7 +215,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
     setReLoading(true);
     try {
       const data = await api.get<{ assessment: ReAssessment | null }>(
-        `/api/cases/${activeCase.id}/re-assessment`
+        `/api/cases/${activeCase.id}/re-assessment?completo=1`
       );
       setReAssessment(data.assessment);
     } catch (err: unknown) {
@@ -683,7 +683,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         schoolName={activeCase.schoolName}
                       />
                     )}
-                    <p className="text-[11px] text-neutral-700">Você lê o sumário do RE (Formulário I). As entrevistas e observações A a H ficam com o RE, que as leva para a discussão do caso.</p>
+                    <p className="text-[11px] text-neutral-700">Você lê o sumário do RE (Formulário I) e as respostas do FOGAP item a item. Os formulários A a H estão em “Tudo o que a escola registrou”.</p>
                   </div>
                 )}
 
