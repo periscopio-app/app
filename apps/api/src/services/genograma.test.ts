@@ -129,10 +129,11 @@ test("serialização: sem figuras é campo em branco; texto inválido é ignorad
 
 test("formulário do médico: estrutura do genograma é normalizada e conta como conteúdo", () => {
   const vazio = normalizarPayloadMedico("genograma", {});
-  assert.deepEqual(vazio, { estrutura: "", registro: "" });
+  assert.equal(vazio.estrutura, "");
+  assert.equal(vazio.legenda_mae, "");
   assert.equal(medicoTemConteudo(vazio), false);
   const sujo = JSON.stringify({ membros: [{ id: "a", parentesco: "mae" }, { id: "b", parentesco: "xyz" }], extra: 1 });
-  const ok = normalizarPayloadMedico("genograma", { estrutura: sujo, registro: "texto" });
+  const ok = normalizarPayloadMedico("genograma", { estrutura: sujo, legenda_pai: "1,3" });
   assert.deepEqual(parentescos(lerGenograma(ok.estrutura)!), ["mae"]);
   assert.equal(medicoTemConteudo(normalizarPayloadMedico("genograma", { estrutura: sujo })), true);
 });

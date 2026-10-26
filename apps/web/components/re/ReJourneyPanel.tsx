@@ -9,6 +9,9 @@ import {
   RE_PASSOS,
   SNAP4_FORM_CODE,
   SNAP4_ITENS,
+  SNAP4_CRITERIOS_TEXTO,
+  SNAP4_FONTE_VERSAO,
+  calcularContagem,
   SNAP4_OPCOES,
   SUMARIO_TEXTO_MAX,
   encaminhadosVazio,
@@ -777,6 +780,7 @@ function Snap4Passo({
 }) {
   const opcoes = SNAP4_OPCOES.map((o) => ({ value: o.valor as string, label: o.rotulo }));
   const rodape = snap.rodape ?? {};
+  const contagem = calcularContagem(snap);
   const setRodape = (patch: Record<string, string | null>) => onChange({ ...snap, rodape: { ...rodape, ...patch } });
 
   if (pulado) {
@@ -794,12 +798,6 @@ function Snap4Passo({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-xs text-black">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden />
-        <span>
-          <strong>Instrumento incompleto (11 de 18 itens).</strong> Os itens 12 a 18 não constam na fonte e aguardam validação clínica. O sistema só registra as respostas; não calcula nem classifica.
-        </span>
-      </div>
       <p className="text-sm text-black">Marque a opção que melhor descreve o aluno.</p>
       <ul className="space-y-3">
         {SNAP4_ITENS.map((item) => (
@@ -815,6 +813,17 @@ function Snap4Passo({
           </li>
         ))}
       </ul>
+      <div className="rounded-2xl border border-linha bg-fundo p-4 text-xs text-black" data-testid="snap4-contagem">
+        <p className="font-semibold">Contagem de “Bastante” ou “Demais” (só números, sem classificação)</p>
+        <p className="mt-1">Itens 1 a 9: {contagem.c1.contagem} de {contagem.c1.total} · Itens 10 a 18: {contagem.c2.contagem} de {contagem.c2.total}</p>
+        <p className="mt-2 font-semibold">Critérios do formulário-fonte (lembrete para o profissional)</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          {SNAP4_CRITERIOS_TEXTO.map((c) => (
+            <li key={c.id}><strong>{c.id}:</strong> {c.texto}</li>
+          ))}
+        </ul>
+        <p className="mt-2 text-neutral-800">{SNAP4_FONTE_VERSAO}</p>
+      </div>
       <fieldset disabled={readOnly} className="space-y-4 rounded-2xl border border-linha bg-white p-4 shadow-suave">
         <legend className="px-1 text-sm font-bold text-black">Rodapé</legend>
         <div>

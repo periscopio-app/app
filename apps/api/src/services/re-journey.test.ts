@@ -188,7 +188,7 @@ describe("jornada do RE — formulário único (sem bloqueio entre blocos)", () 
     });
     assert.equal(e.ata?.total, 2 + 1 + 1, "grupo 1 = 2, grupo 2 = 1, +1 por início antes dos 36 meses");
     assert.equal(e.snap4?.itens_1_a_9.marcados, 2);
-    assert.equal(e.snap4?.itens_10_a_18.calculavel, false);
+    assert.deepEqual(e.snap4?.itens_10_a_18, { marcados: 0, de: 9 });
   });
 
   test("ATA enviada conclui o H", () => {

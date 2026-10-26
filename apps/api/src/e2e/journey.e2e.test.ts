@@ -576,7 +576,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
 
   test("especialista só vê o sumário do médico depois de concluído; parecer do colega nunca; sem seção → 403", async () => {
     // O médico escreve o sumário: em rascunho ele não sai do perfil dele
-    const rasc = await call("PUT", `/api/cases/${caseId}/medical-forms/sumario_medico`, "md", { payload: { registro: "sumário executivo sintético do médico" } });
+    const rasc = await call("PUT", `/api/cases/${caseId}/medical-forms/sumario_medico`, "md", { payload: { queixa_professor: "sumário executivo sintético do médico" } });
     assert.equal(rasc.status, 200, JSON.stringify(rasc.body));
     const antes = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(antes.body.sumarioExecutivoMedico.status, "pendente");
@@ -587,7 +587,8 @@ describe("jornada clínica (E2E)", { skip }, () => {
     const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(v.status, 200, JSON.stringify(v.body));
     assert.equal(v.body.sumarioExecutivoMedico.status, "concluido");
-    assert.equal(v.body.sumarioExecutivoMedico.registro, "sumário executivo sintético do médico");
+    assert.ok(v.body.sumarioExecutivoMedico.registro.includes("sumário executivo sintético do médico"));
+    assert.ok(v.body.sumarioExecutivoMedico.registro.includes("Queixa do professor"));
     assert.ok(!("peerSections" in v.body), "parecer do colega não aparece, nem concluído");
     assert.ok(!("fogap" in v.body), "FOGAP não aparece");
 

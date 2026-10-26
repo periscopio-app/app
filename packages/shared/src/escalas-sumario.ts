@@ -25,9 +25,9 @@ export interface EscalaSnap4Resumo {
   respondidos: number;
   itens_disponiveis: number;
   /** Itens 1 a 9 marcados Bastante ou Demais. */
-  itens_1_a_9: { marcados: number; de: number; limiar_da_fonte: number };
-  /** Itens 10 a 18: não contados até a validação clínica. */
-  itens_10_a_18: { calculavel: false; motivo: string };
+  itens_1_a_9: { marcados: number; de: number };
+  /** Itens 10 a 18 marcados Bastante ou Demais. */
+  itens_10_a_18: { marcados: number; de: number };
 }
 
 export interface EscalasSumario {
@@ -63,8 +63,8 @@ export function montarEscalasSumario(entrada: { ataAnswers?: unknown; ataEnviada
       snap4 = {
         respondidos,
         itens_disponiveis: SNAP4_ITENS.length,
-        itens_1_a_9: { marcados: c.c1.contagem, de: c.c1.total, limiar_da_fonte: c.c1.limiar },
-        itens_10_a_18: { calculavel: false, motivo: c.c2.motivo },
+        itens_1_a_9: { marcados: c.c1.contagem, de: c.c1.total },
+        itens_10_a_18: { marcados: c.c2.contagem, de: c.c2.total },
       };
     }
   }

@@ -314,7 +314,7 @@ export const reAssessments = pgTable("re_assessments", {
 /**
  * Formulários do médico (anamnese, exame, hipótese e conduta, encaminhamentos, seguimento, sumário).
  * Uma linha por (caso, formulário). `concluido` trava a edição; reabrir exige motivo e guarda a versão anterior em `history`.
- * Estrutura provisória (md-0.1): texto livre curto até a validação clínica das perguntas.
+ * Campos do capítulo médico (md-1.0), um texto curto por campo.
  */
 export const caseMedicalForms = pgTable(
   "case_medical_forms",
