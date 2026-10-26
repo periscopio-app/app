@@ -109,7 +109,7 @@ describe("Validação de rotas por perfil (E2E)", { skip }, () => {
     // Rascunhos reais pela API: formulário do especialista e formulário do médico.
     const f = await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_plano_terapeutico`, "fono", { payload: { principais_achados: FONO_RASCUNHO } });
     assert.equal(f.status, 200, f.texto);
-    const m = await call("PUT", `/api/cases/${caso}/medical-forms/anamnese_biografica`, "md", { payload: { registro: MD_RASCUNHO } });
+    const m = await call("PUT", `/api/cases/${caso}/medical-forms/anamnese_biografica`, "md", { payload: { adotado_idade: MD_RASCUNHO } });
     assert.equal(m.status, 200, m.texto);
   });
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, MessageSquareText, Pencil, RotateCcw, Save, School, Send } from "lucide-react";
-import { MD_FORMS, MD_TEXTO_MAX, type MdFormId } from "@periscopio/shared";
+import { MD_FORMS, MD_TEXTO_MAX, type MdCampo, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { Button } from "@/components/ui";
@@ -34,7 +34,7 @@ const COR: Record<Status, string> = {
 
 /**
  * Formulário do Médico: ficha única, na sequência do papel (seções B a R).
- * Estrutura provisória (texto livre curto) até a validação clínica. O sistema não sugere nem preenche nada.
+ * Campos do capítulo médico, com as mesmas perguntas do papel. O sistema não sugere nem preenche nada.
  */
 export function MedicoFormsPanel({
   caseId,
@@ -201,8 +201,8 @@ export function MedicoFormsPanel({
       </div>
 
       <p className="rounded-xl border border-ceu-300 bg-ceu-50 px-3 py-2 text-xs text-black">
-        Estrutura provisória ({d.version}): cada seção é um registro em texto livre; as perguntas exatas entram depois da validação clínica.
-        O sistema <strong>não sugere, não classifica e não preenche</strong> hipótese, conduta, prescrição ou alta. Use o código do aluno, sem nome, telefone ou endereço.
+        Campos do capítulo médico ({d.version}). O sistema <strong>não sugere, não classifica e não preenche</strong> hipótese, conduta, prescrição ou alta, e não calcula escore.
+        Use o código do aluno, sem nome, telefone ou endereço.
       </p>
 
       {!d.editavel && (
@@ -252,41 +252,17 @@ export function MedicoFormsPanel({
                   </p>
                 </div>
               )}
-              {def.campos.map((campo) => {
+              {def.aviso && <p className="rounded-lg bg-ceu-50 px-2 py-1 text-[11px] text-black">{def.aviso}</p>}
+              {def.campos.map((campo, idx) => {
                 const texto = valores[campo.id] ?? "";
                 const idCampo = `md-${f.id}-${campo.id}`;
                 const mudar = (v: string) => setRascunhos((r) => ({ ...r, [f.id]: { ...(r[f.id] ?? {}), [campo.id]: v } }));
+                const novoGrupo = campo.grupo && campo.grupo !== def.campos[idx - 1]?.grupo;
                 return (
                   <div key={campo.id} className="space-y-1">
-                    <label className="block text-xs font-semibold text-black" htmlFor={campo.tipo === "genograma" ? undefined : idCampo}>
-                      {campo.rotulo}
-                    </label>
-                    {campo.ajuda && <p className="text-[11px] text-neutral-700">{campo.ajuda}</p>}
-                    {campo.tipo === "genograma" ? (
-                      <GenogramaEditor idBase={idCampo} value={texto} onChange={mudar} disabled={travado} />
-                    ) : campo.tipo === "data" ? (
-                      <input
-                        id={idCampo}
-                        type="date"
-                        value={texto}
-                        disabled={travado}
-                        onChange={(e) => mudar(e.target.value)}
-                        className="rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
-                      />
-                    ) : (
-                      <>
-                        <textarea
-                          id={idCampo}
-                          rows={5}
-                          maxLength={MD_TEXTO_MAX}
-                          value={texto}
-                          disabled={travado}
-                          onChange={(e) => mudar(e.target.value)}
-                          className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
-                        />
-                        <span className="block text-[11px] text-neutral-700">{texto.length}/{MD_TEXTO_MAX}</span>
-                      </>
-                    )}
+                    {novoGrupo && <p className="border-t border-linha pt-2 text-xs font-extrabold text-black">{campo.grupo}</p>}
+                    {campo.nota && <p className="rounded-lg bg-fundo px-2 py-1 text-[11px] text-black">{campo.nota}</p>}
+                    <CampoMd campo={campo} idCampo={idCampo} valor={texto} travado={travado} mudar={mudar} />
                   </div>
                 );
               })}
@@ -375,5 +351,100 @@ export function MedicoFormsPanel({
         </ul>
       </div>
     </section>
+  );
+}
+
+const ENTRADA = "rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo";
+
+/** Um campo do formulário do médico, no formato do papel (marcação, número, data ou texto). */
+function CampoMd({ campo, idCampo, valor, travado, mudar }: { campo: MdCampo; idCampo: string; valor: string; travado: boolean; mudar: (v: string) => void }) {
+  const rotulo = (
+    <>
+      <span className="block text-xs font-semibold text-black">{campo.rotulo}</span>
+      {campo.ajuda && <span className="block text-[11px] font-normal text-neutral-700">{campo.ajuda}</span>}
+    </>
+  );
+  if (campo.tipo === "genograma") {
+    return (
+      <div className="space-y-1">
+        <span className="block text-xs font-semibold text-black">{campo.rotulo}</span>
+        {campo.ajuda && <p className="text-[11px] text-neutral-700">{campo.ajuda}</p>}
+        <GenogramaEditor idBase={idCampo} value={valor} onChange={mudar} disabled={travado} />
+      </div>
+    );
+  }
+  if (campo.tipo === "escolha") {
+    return (
+      <fieldset className="space-y-1">
+        <legend className="mb-1">{rotulo}</legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {campo.opcoes?.map((o) => (
+            <label key={o.valor} className="flex items-center gap-1.5 text-xs text-black">
+              <input
+                type="radio"
+                name={idCampo}
+                checked={valor === o.valor}
+                disabled={travado}
+                onChange={() => mudar(o.valor)}
+                className="h-4 w-4 accent-roxo"
+              />
+              {o.rotulo}
+            </label>
+          ))}
+          {valor && !travado && (
+            <button type="button" onClick={() => mudar("")} className="text-[11px] text-neutral-700 underline">limpar</button>
+          )}
+        </div>
+      </fieldset>
+    );
+  }
+  if (campo.tipo === "multi") {
+    const marcados = new Set(valor ? valor.split(",") : []);
+    const alternar = (v: string) => {
+      const n = new Set(marcados);
+      if (n.has(v)) n.delete(v);
+      else {
+        if (campo.exclusivo && v === campo.exclusivo) n.clear();
+        else if (campo.exclusivo) n.delete(campo.exclusivo);
+        n.add(v);
+      }
+      mudar((campo.opcoes ?? []).map((o) => o.valor).filter((x) => n.has(x)).join(","));
+    };
+    return (
+      <fieldset className="space-y-1">
+        <legend className="mb-1">{rotulo}</legend>
+        <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+          {campo.opcoes?.map((o) => (
+            <label key={o.valor} className="flex items-start gap-1.5 text-xs text-black">
+              <input
+                type="checkbox"
+                checked={marcados.has(o.valor)}
+                disabled={travado}
+                onChange={() => alternar(o.valor)}
+                className="mt-0.5 h-4 w-4 accent-roxo"
+              />
+              <span>{o.rotulo}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <label className="block" htmlFor={idCampo}>{rotulo}</label>
+      {campo.tipo === "data" ? (
+        <input id={idCampo} type="date" value={valor} disabled={travado} onChange={(e) => mudar(e.target.value)} className={ENTRADA} />
+      ) : campo.tipo === "numero" ? (
+        <input id={idCampo} type="text" inputMode="decimal" maxLength={8} value={valor} disabled={travado} onChange={(e) => mudar(e.target.value.replace(/[^\d.,]/g, ""))} className={`w-32 ${ENTRADA}`} />
+      ) : campo.tipo === "texto_curto" ? (
+        <input id={idCampo} type="text" maxLength={campo.max} value={valor} disabled={travado} onChange={(e) => mudar(e.target.value)} className={`w-full ${ENTRADA}`} />
+      ) : (
+        <>
+          <textarea id={idCampo} rows={4} maxLength={MD_TEXTO_MAX} value={valor} disabled={travado} onChange={(e) => mudar(e.target.value)} className={`w-full ${ENTRADA}`} />
+          <span className="block text-[11px] text-neutral-700">{valor.length}/{MD_TEXTO_MAX}</span>
+        </>
+      )}
+    </div>
   );
 }
