@@ -98,6 +98,8 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const pl = fogap.body.assessment.payload;
     assert.ok(pl.secao_sumario && pl.secao_encaminhamento, "sumário e encaminhamento vêm");
     assert.ok("respostas_desenvolvimento" in pl, "o médico lê as respostas item a item (regra da Dra., 23/out)");
+    const resumido = await call("GET", `/api/cases/${caso}/re-assessment`, "md");
+    assert.ok(!("respostas_desenvolvimento" in resumido.body.assessment.payload), "sem completo=1 só vem o sumário: a tela do médico precisa pedir completo=1");
     assert.equal(fogap.body.somenteSumario, false);
     const cons = await call("GET", `/api/cases/${caso}/consolidated`, "md");
     assert.equal(cons.status, 200);

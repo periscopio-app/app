@@ -1,8 +1,9 @@
 "use client";
 
-import { type FogapPayload } from "@periscopio/shared";
+import { faixaEmUso, type FogapPayload } from "@periscopio/shared";
 import { CheckCircle2 } from "lucide-react";
 import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
+import { FogapDesenvolvimento, type RespostasDesenvolvimento } from "@/components/re/FogapDesenvolvimento";
 
 interface FogapViewerProps {
   payload: unknown;
@@ -34,6 +35,10 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       ? `${p.idade_anos} ano(s)${p.idade_meses != null ? ` e ${p.idade_meses} mês(es)` : ""}`
       : (p.idade as string) || "Idade não informada";
 
+  const faixa = faixaEmUso({ faixa_fogap: p.faixa_fogap, total_meses: p.total_meses });
+  const respostas = (p.respostas_desenvolvimento ?? {}) as RespostasDesenvolvimento;
+  const temItens = faixa !== null && p.respostas_desenvolvimento !== undefined;
+
   const grupo = p.grupo ? String(p.grupo).toUpperCase() : "Grupo não definido";
 
   return (
@@ -49,6 +54,11 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
         professionalName={professionalName}
         modo="enviado"
       />
+
+      {/* Respostas item a item do RE (o médico recebe o registro integral, somente leitura) */}
+      {temItens && (
+        <FogapDesenvolvimento faixa={faixa} faixaSugerida={null} respostas={respostas} readOnly onFaixa={() => {}} onResponder={() => {}} />
+      )}
 
       {/* Resumo do Cabeçalho FOGAP */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -72,7 +82,7 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       </div>
 
       <p className="text-[11px] text-neutral-700">
-        Aqui está só o sumário (Formulário I). As respostas item a item do FOGAP e os formulários A a H ficam no bloco de notas do RE, que as leva para a discussão do caso.
+        Sumário (Formulário I) e as respostas item a item do FOGAP, como o RE enviou. Os formulários A a H estão em “Tudo o que a escola registrou”.
       </p>
     </div>
   );
