@@ -16,6 +16,8 @@ interface FormRow {
   updatedAt: string | null;
   completedAt: string | null;
   reaberturas: number;
+  /** Concluída com um catálogo anterior: a API devolve como rascunho para o médico rever. */
+  desatualizado?: boolean;
 }
 interface Resp {
   version: string;
@@ -253,6 +255,51 @@ export function MedicoFormsPanel({
                 </div>
               )}
               {def.aviso && <p className="rounded-lg bg-ceu-50 px-2 py-1 text-[11px] text-black">{def.aviso}</p>}
+              {f.status === "concluido" && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sucesso/40 bg-sucesso/10 px-3 py-2 text-xs text-black" data-testid={`md-concluida-${f.id}`}>
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Seção concluída{f.completedAt ? ` em ${new Date(f.completedAt).toLocaleDateString("pt-BR")}` : ""}: os campos ficam travados. {d.editavel ? "Para alterar, reabra com o motivo." : ""}
+                  </span>
+                  {d.editavel && reabrindo !== f.id && (
+                    <Button type="button" onClick={() => setReabrindo(f.id)} variant="warning" size="sm">
+                      <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir para retificar
+                    </Button>
+                  )}
+                </div>
+              )}
+              {f.desatualizado && (
+                <p role="status" className="rounded-lg border border-ouro-300 bg-ouro-50 px-3 py-2 text-xs text-black" data-testid={`md-desatualizada-${f.id}`}>
+                  Formulário atualizado: esta seção estava concluída com a versão anterior. Reveja, salve e conclua de novo. O texto antigo ficou guardado no histórico.
+                </p>
+              )}
+              {f.status === "concluido" && reabrindo === f.id && (
+                <div className="space-y-2 rounded-xl border border-ouro-300 bg-ouro-50 p-3">
+                  <label htmlFor={`md-motivo-${f.id}`} className="block text-xs font-semibold text-black">
+                    Motivo da reabertura (fica na trilha do caso)
+                  </label>
+                  <input
+                    id={`md-motivo-${f.id}`}
+                    value={motivo[f.id] ?? ""}
+                    onChange={(e) => setMotivo((x) => ({ ...x, [f.id]: e.target.value }))}
+                    maxLength={500}
+                    className="w-full rounded-lg border border-linha bg-white px-3 py-2 text-sm text-black"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => void reabrir(f.id)}
+                      disabled={ocupado === f.id || (motivo[f.id] ?? "").trim().length < 3}
+                      variant="warning" size="sm"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Confirmar reabertura
+                    </Button>
+                    <Button type="button" onClick={() => setReabrindo(null)} variant="ghost" size="sm">
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
               {def.campos.map((campo, idx) => {
                 const texto = valores[campo.id] ?? "";
                 const idCampo = `md-${f.id}-${campo.id}`;
@@ -292,44 +339,8 @@ export function MedicoFormsPanel({
                       </Button>
                     </>
                   )}
-                  {d.editavel && f.status === "concluido" && reabrindo !== f.id && (
-                    <Button
-                      type="button"
-                      onClick={() => setReabrindo(f.id)}
-                      variant="warning" size="sm"
-                    >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir para retificar
-                    </Button>
-                  )}
                 </div>
               </div>
-              {reabrindo === f.id && (
-                <div className="space-y-2 rounded-xl border border-ouro-300 bg-ouro-50 p-3">
-                  <label htmlFor={`md-motivo-${f.id}`} className="block text-xs font-semibold text-black">
-                    Motivo da reabertura (fica na trilha do caso)
-                  </label>
-                  <input
-                    id={`md-motivo-${f.id}`}
-                    value={motivo[f.id] ?? ""}
-                    onChange={(e) => setMotivo((x) => ({ ...x, [f.id]: e.target.value }))}
-                    maxLength={500}
-                    className="w-full rounded-lg border border-linha bg-white px-3 py-2 text-sm text-black"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => void reabrir(f.id)}
-                      disabled={ocupado === f.id || (motivo[f.id] ?? "").trim().length < 3}
-                      variant="warning" size="sm"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Confirmar reabertura
-                    </Button>
-                    <Button type="button" onClick={() => setReabrindo(null)} variant="ghost" size="sm">
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              )}
               {m && (
                 <p role={m.tom === "erro" ? "alert" : "status"} className={`text-xs ${m.tom === "erro" ? "text-erro" : "text-black"}`}>
                   {m.texto}
