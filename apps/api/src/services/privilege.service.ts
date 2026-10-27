@@ -77,6 +77,15 @@ export async function can(subject: PrivilegeSubject, key: string): Promise<boole
   return (await decideCapability(subject, key)).allowed;
 }
 
+/**
+ * Leitura integral do que a escola registrou (FOGAP item a item, formulários A a I, escalas e ATA): quem preenche
+ * (RE) ou quem recebeu o caso com a permissão "Ver tudo da escola" (médico). Os demais recebem só o sumário.
+ * Fonte única para `GET /re-assessment` e `GET /re-journey`: as duas rotas nunca podem divergir.
+ */
+export async function leituraIntegralEscola(subject: PrivilegeSubject): Promise<boolean> {
+  return (await can(subject, "fogap.fill")) || (await can(subject, "school.read_full"));
+}
+
 /** Lista efetiva (o que a pessoa realmente pode): usada pelo menu e pelos botões da interface. */
 export async function effectiveCapabilities(subject: PrivilegeSubject): Promise<string[]> {
   const grants = await loadGrants(subject);

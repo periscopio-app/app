@@ -56,9 +56,13 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       />
 
       {/* Respostas item a item do RE (o médico recebe o registro integral, somente leitura) */}
-      {temItens && (
+      {temItens && faixa ? (
         <FogapDesenvolvimento faixa={faixa} faixaSugerida={null} respostas={respostas} readOnly onFaixa={() => {}} onResponder={() => {}} />
-      )}
+      ) : p.respostas_desenvolvimento === undefined ? (
+        <p className="rounded-xl border border-ouro-300 bg-ouro-50 p-3 text-xs text-black" role="status" data-testid="fogap-itens-indisponiveis">
+          As respostas do FOGAP item a item não vieram neste registro. Se o RE já enviou o caso, peça ao administrador a permissão &ldquo;Ver tudo da escola&rdquo; para o seu perfil.
+        </p>
+      ) : null}
 
       {/* Resumo do Cabeçalho FOGAP */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">

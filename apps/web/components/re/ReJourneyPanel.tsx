@@ -68,6 +68,8 @@ interface Jornada {
   student: AlunoJornada;
   professores: ProfessorOpcao[];
   professorSugerido: ProfessorOpcao | null;
+  /** A API devolveu só o Formulário I (Sumário): o perfil não tem "Ver tudo da escola". Sem as marcas do FOGAP. */
+  somenteSumario?: boolean;
 }
 
 interface Props {
@@ -599,7 +601,11 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
               {passo.id === "i" && (
                 <div className="mb-4">
-                  {faixaAtual ? (
+                  {j.somenteSumario ? (
+                    <p className="rounded-xl border border-ouro-300 bg-ouro-50 p-3 text-xs text-black" role="status" data-testid="fogap-somente-sumario">
+                      Seu perfil vê só o sumário do RE. As respostas do FOGAP item a item não aparecem aqui: peça ao administrador a permissão &ldquo;Ver tudo da escola&rdquo;.
+                    </p>
+                  ) : faixaAtual ? (
                     <FogapDesenvolvimento
                       faixa={faixaAtual}
                       faixaSugerida={faixaSugerida}

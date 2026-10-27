@@ -18,7 +18,7 @@ import {
 } from "@periscopio/shared";
 import { requireActor, requireCapability, type Actor } from "../security/actor";
 import { canonicalRole } from "../security/capabilities";
-import { can } from "../services/privilege.service";
+import { can, leituraIntegralEscola } from "../services/privilege.service";
 import { encryptText } from "../services/identity-crypto.service";
 import { auditarLeituraDoNome, auditarLeituraNaFila, carregarNomes, podeVerNomes } from "../services/student-name.service";
 import { canAccessSchool } from "../security/tenancy";
@@ -581,7 +581,7 @@ export async function casesRoutes(app: FastifyInstance) {
     // Bloco de notas do RE: quem não preenche (médico, especialista...) só recebe o sumário.
     // As respostas item a item e os demais formulários (ex.: SNAP-IV do RE) só saem para quem preenche.
     // Médico com o caso encaminhado: leitura integral (somente leitura). Especialista: só o sumário.
-    const dono = (await can(actor, "fogap.fill")) || (await can(actor, "school.read_full"));
+    const dono = await leituraIntegralEscola(actor);
     if (formCode && formCode !== FOGAP_FORM_CODE && !dono) {
       return reply.status(404).send({ error: "Formulário não encontrado" });
     }
