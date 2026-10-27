@@ -15,9 +15,11 @@
 
 import { GENOGRAMA_JSON_MAX, normalizarGenogramaTexto } from "./genograma";
 
-export const MD_FORMS_VERSION = "md-1.0-capitulo-1809" as const;
+export const MD_FORMS_VERSION = "md-1.1-hipotese-cid" as const;
 export const MD_TEXTO_MAX = 4000;
 const CURTO = 300;
+/** Hipótese diagnóstica (seção I): um campo para CID 10 e um para CID 11; cabe mais de um código, separados por vírgula. */
+const CID_MAX = 120;
 
 export const MD_FORM_IDS = [
   "queixa_escola",
@@ -342,8 +344,8 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
     "hipotese_diagnostica", "I", "Hipótese diagnóstica",
     "Campo exclusivo do médico responsável. O sistema não sugere, não classifica e não preenche.",
     [
-      ...Array.from({ length: 6 }, (_, i) => curto(`cid10_${i + 1}`, `CID 10 · ${i + 1}`, { grupo: "CID 10", max: 20 })),
-      ...Array.from({ length: 6 }, (_, i) => curto(`cid11_${i + 1}`, `CID 11 · ${i + 1}`, { grupo: "CID 11", max: 20 })),
+      curto("cid10", "CID 10", { max: CID_MAX }),
+      curto("cid11", "CID 11", { max: CID_MAX }),
     ]
   ),
 
@@ -526,10 +528,30 @@ function normalizarCampo(c: MdCampo, v: unknown): string {
   }
 }
 
+/**
+ * Registros salvos com um catálogo anterior. A seção I já teve 6 células de CID 10 e 6 de CID 11
+ * (`cid10_1..6`, `cid11_1..6`); hoje são dois campos. O texto antigo é dobrado nos campos novos
+ * (valores não vazios, separados por "; ") para o médico não perder o que digitou.
+ */
+function dobrarChavesLegadas(id: MdFormId, origem: Record<string, unknown>): Record<string, unknown> {
+  if (id !== "hipotese_diagnostica") return origem;
+  const saida = { ...origem };
+  for (const base of ["cid10", "cid11"] as const) {
+    const atual = typeof saida[base] === "string" ? (saida[base] as string).trim() : "";
+    if (atual) continue;
+    const partes = [1, 2, 3, 4, 5, 6]
+      .map((n) => origem[`${base}_${n}`])
+      .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+      .map((v) => v.trim());
+    if (partes.length > 0) saida[base] = partes.join("; ").slice(0, CID_MAX);
+  }
+  return saida;
+}
+
 /** Limpa o payload recebido: só campos conhecidos, cada um no seu formato. Em branco fica em branco. */
 export function normalizarPayloadMedico(id: MdFormId, bruto: unknown): Record<string, string> {
   const form = MD_FORMS[id];
-  const origem = bruto && typeof bruto === "object" ? (bruto as Record<string, unknown>) : {};
+  const origem = dobrarChavesLegadas(id, bruto && typeof bruto === "object" ? (bruto as Record<string, unknown>) : {});
   const saida: Record<string, string> = {};
   for (const c of form.campos) saida[c.id] = normalizarCampo(c, origem[c.id]);
   return saida;

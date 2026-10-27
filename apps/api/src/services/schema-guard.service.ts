@@ -22,6 +22,7 @@ function migrationSql(): string[] {
     "0023_formularios_do_medico.sql",
     "0024_formularios_das_especialidades.sql",
     "0025_tenant_demo_flag.sql",
+    "0026_formularios_medico_versao_catalogo.sql",
   ];
   const allSql: string[] = [];
 

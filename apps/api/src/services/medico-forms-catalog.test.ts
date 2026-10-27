@@ -19,7 +19,7 @@ describe("formulários do médico: reproduzem o capítulo em papel", () => {
     assert.equal(MD_FORMS.avaliacao_psiquiatrica.campos.filter((c) => c.tipo === "escolha").length, 12, "D: 12 itens Normal/Alterada");
     assert.equal(MD_FORMS.outras_queixas.campos.filter((c) => c.tipo === "escolha").length, 10, "E: 10 sistemas");
     assert.equal(MD_FORMS.genograma.campos.find((c) => c.id === "legenda_mae")?.opcoes?.length, 32, "G: legenda 1 a 32");
-    assert.equal(MD_FORMS.hipotese_diagnostica.campos.length, 12, "I: 6 células CID-10 e 6 CID-11");
+    assert.deepEqual(MD_FORMS.hipotese_diagnostica.campos.map((c) => c.id), ["cid10", "cid11"], "I: só CID 10 e CID 11");
     assert.equal(MD_FORMS.encaminhamentos.campos.length, 7, "K: 7 encaminhamentos");
     assert.equal(MD_FORMS.sumario_medico.campos.find((c) => c.id === "conduta")?.opcoes?.length, 10, "Q: itens 5 a 14");
     assert.equal(MD_FORMS.recomendacao_escola.campos.find((c) => c.id === "recomendacoes")?.opcoes?.length, 4, "R: itens 15 a 18");
@@ -35,6 +35,16 @@ describe("formulários do médico: reproduzem o capítulo em papel", () => {
     const q = normalizarPayloadMedico("queixa_escola", { queixas: "5,2,99", outra_queixa: "x" });
     assert.equal(q.queixas, "2,5", "só opções válidas, na ordem do papel");
     assert.equal(normalizarPayloadMedico("queixa_escola", { queixas: "0,3" }).queixas, "0", "'0. nenhuma' exclui as demais");
+  });
+
+  test("hipótese diagnóstica: texto antigo das 6+6 células é dobrado em CID 10 e CID 11", () => {
+    const antigo = normalizarPayloadMedico("hipotese_diagnostica", { cid10_1: "F90.0", cid10_2: " ", cid10_3: "F84.0", cid11_1: "6A05" });
+    assert.equal(antigo.cid10, "F90.0; F84.0");
+    assert.equal(antigo.cid11, "6A05");
+    assert.ok(!("cid10_1" in antigo), "as chaves antigas não voltam");
+    const novo = normalizarPayloadMedico("hipotese_diagnostica", { cid10: "F32", cid10_1: "ignorado" });
+    assert.equal(novo.cid10, "F32", "o campo novo vence o antigo");
+    assert.equal(normalizarPayloadMedico("hipotese_diagnostica", {}).cid10, "");
   });
 
   test("não há escore: nenhum campo calcula, soma ou classifica; Σ FR é digitado", () => {
