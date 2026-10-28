@@ -40,11 +40,14 @@ const COR: Record<Status, string> = {
 export function MedicoFormsPanel({
   caseId,
   queixaEscola,
+  dificuldadesPersistentes,
   schoolName,
   studentCode,
 }: {
   caseId: string;
   queixaEscola?: string | null;
+  /** Dificuldades assinaladas pelo RE no Formulário I (FOGAP · secao_sumario.dificuldades_persistentes). */
+  dificuldadesPersistentes?: string[] | null;
   schoolName?: string | null;
   studentCode?: string | null;
 }) {
@@ -259,13 +262,26 @@ export function MedicoFormsPanel({
             <div className="space-y-2 border-t border-linha p-3">
               <p className="text-xs text-neutral-800">{def.descricao}</p>
               {f.id === "queixa_escola" && (
-                <div className="rounded-xl border border-roxo-200/70 bg-roxo-50/60 px-3 py-2" data-testid="md-queixa-do-re">
+                <div className="rounded-xl border border-roxo-200/70 bg-roxo-50/60 px-3 py-2 space-y-2" data-testid="md-queixa-do-re">
                   <span className="flex items-center gap-1.5 text-[11px] font-bold text-black">
-                    <MessageSquareText className="h-3.5 w-3.5 text-roxo" aria-hidden /> Queixa registrada pelo RE (só consulta)
+                    <MessageSquareText className="h-3.5 w-3.5 text-roxo" aria-hidden /> Registros do RE (só consulta)
                   </span>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-xs text-black">
-                    {queixaEscola?.trim() ? queixaEscola.trim() : <span className="italic text-neutral-700">Não registrada pelo RE.</span>}
-                  </p>
+                  {dificuldadesPersistentes && dificuldadesPersistentes.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-[11px] font-semibold text-neutral-800">Dificuldades persistentes assinaladas:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {dificuldadesPersistentes.map((d) => (
+                          <span key={d} className="rounded-full border border-roxo-200 bg-white px-2 py-0.5 text-[11px] font-medium text-roxo">{d}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="mb-0.5 text-[11px] font-semibold text-neutral-800">Queixa do professor:</p>
+                    <p className="whitespace-pre-wrap break-words text-xs text-black">
+                      {queixaEscola?.trim() ? queixaEscola.trim() : <span className="italic text-neutral-700">Não registrada.</span>}
+                    </p>
+                  </div>
                 </div>
               )}
               {def.aviso && <p className="rounded-lg bg-ceu-50 px-2 py-1 text-[11px] text-black">{def.aviso}</p>}

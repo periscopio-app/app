@@ -96,6 +96,7 @@ export async function carregarJornada(tenantId: string, caseId: string): Promise
       payloads,
       snap4: linhas.g?.payload,
       sumario: fogap?.secao_sumario,
+      fogapPayload: fogap,
       ata: { existe: ataInfo.existe, enviada: ataInfo.enviada },
       serieDoAluno: aluno?.grade ?? null,
     }),

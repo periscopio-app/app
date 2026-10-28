@@ -6,11 +6,23 @@ import { api, type CaseSection, type Me } from "@/lib/api";
 import { ProfileHero } from "@/components/ui/ProfileHero";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
-import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText, ChevronDown } from "lucide-react";
+import { Stethoscope, AlertCircle, Lock, CheckCircle, ChevronDown, RefreshCw } from "lucide-react";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { EspecialidadeFormsPanel } from "@/components/especialista/EspecialidadeFormsPanel";
-import { Button } from "@/components/ui";
+import { Alert, Badge, Button } from "@/components/ui";
+
+const STATUS_LABELS: Record<string, string> = {
+  pendente: "Aguardando",
+  em_andamento: "Em andamento",
+  concluido: "Concluído",
+};
+
+const STATUS_VARIANT = {
+  pendente: "warning",
+  em_andamento: "default",
+  concluido: "success",
+} as const;
 
 const SPECIALTY_NAMES: Record<string, string> = {
   servico_social: "Assistente Social (AS)",
@@ -200,8 +212,9 @@ export default function EspecialistaDashboardPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-neutral-800 text-sm">
-        Carregando seções delegadas...
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-roxo border-t-transparent" aria-hidden="true" />
+        <p className="text-sm text-neutral-800">Carregando seções delegadas…</p>
       </div>
     );
   }
@@ -211,10 +224,22 @@ export default function EspecialistaDashboardPage({
       {me && <ProfileHero me={me} slug={slug} />}
 
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-erro/20 bg-erro/5 px-4 py-3 text-sm text-black">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
-        </div>
+        <Alert tom="erro">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-erro/20 bg-white px-2.5 py-1 text-xs font-medium text-black transition hover:bg-erro/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-erro/40"
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden="true" />
+              Tentar novamente
+            </button>
+          </div>
+        </Alert>
       )}
 
       <div>
@@ -225,13 +250,16 @@ export default function EspecialistaDashboardPage({
       </div>
 
       {sections.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
-          <Stethoscope className="h-10 w-10 text-neutral-800/40 mb-3" />
-          <p className="text-sm font-semibold text-black">
-            Nenhuma seção delegada no momento
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white px-8 py-20 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-roxo-50">
+            <Stethoscope className="h-7 w-7 text-roxo" aria-hidden="true" />
+          </div>
+          <p className="text-base font-semibold text-black">Nenhuma seção delegada</p>
+          <p className="mt-2 max-w-sm text-sm text-neutral-800">
+            O médico responsável delegará uma seção desta avaliação para sua especialidade. Você receberá uma notificação quando isso acontecer.
           </p>
-          <p className="text-xs text-neutral-800 mt-1">
-            O médico responsável pelo caso irá delegar seções para sua especialidade.
+          <p className="mt-5 rounded-xl border border-linha bg-fundo px-4 py-2.5 text-xs text-neutral-800">
+            Enquanto aguarda, não há nenhuma ação necessária aqui.
           </p>
         </div>
       ) : (
@@ -253,23 +281,19 @@ export default function EspecialistaDashboardPage({
                       : "border-linha hover:bg-fundo"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-black">{sec.studentCode}</span>
-                    <span
-                      className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                        sec.status === "concluido"
-                          ? "bg-sucesso/10 text-black"
-                          : sec.status === "em_andamento"
-                          ? "bg-ceu-100 text-black"
-                          : "bg-ouro-100 text-black"
-                      }`}
-                    >
-                      {sec.status}
-                    </span>
+                    <Badge variant={STATUS_VARIANT[sec.status as keyof typeof STATUS_VARIANT] ?? "secondary"}>
+                      {STATUS_LABELS[sec.status] ?? sec.status}
+                    </Badge>
                   </div>
-                  <div className="text-[11px] text-neutral-800 mt-0.5">
-                    <strong>Especialidade:</strong> {SPECIALTY_NAMES[sec.specialty] ?? sec.specialty}
-                    {sec.birthYear ? ` · nasc. ${sec.birthYear}` : ""}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline">
+                      {SPECIALTY_NAMES[sec.specialty] ?? sec.specialty}
+                    </Badge>
+                    {sec.birthYear && (
+                      <span className="text-[11px] text-neutral-800">nasc. {sec.birthYear}</span>
+                    )}
                   </div>
                 </button>
               ))}

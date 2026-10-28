@@ -252,7 +252,7 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
     "avaliacao_psiquiatrica", "D", "Avaliação Psiquiátrica",
     "Exame psiquiátrico feito pelo médico na consulta, item a item, com anotações.",
     EXAME_PSIQ.flatMap((r, i): MdCampo[] => [
-      esc(`exame${i + 1}`, `${i + 1}. ${r}`, NA, { grupo: `${i + 1}. ${r}` }),
+      esc(`exame${i + 1}`, "Avaliação", NA, { grupo: `${i + 1}. ${r}` }),
       curto(`exame${i + 1}_nota`, "Anotações", { grupo: `${i + 1}. ${r}` }),
     ])
   ),
@@ -261,7 +261,7 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
     "outras_queixas", "E", "Outras Queixas",
     "Queixas por sistema: marque Não ou Sim e descreva os sintomas.",
     OUTRAS_QUEIXAS.flatMap((r, i): MdCampo[] => [
-      sn(`queixa${i + 1}`, `${i + 1}. ${r}`, { grupo: `${i + 1}. ${r}` }),
+      sn(`queixa${i + 1}`, "Resultado", { grupo: `${i + 1}. ${r}` }),
       curto(`queixa${i + 1}_sintomas`, "Sintomas", { grupo: `${i + 1}. ${r}` }),
     ])
   ),
