@@ -15,7 +15,7 @@
 
 import { GENOGRAMA_JSON_MAX, normalizarGenogramaTexto } from "./genograma";
 
-export const MD_FORMS_VERSION = "md-1.0-capitulo-1809" as const;
+export const MD_FORMS_VERSION = "md-1.1-hipotese-cid" as const;
 export const MD_TEXTO_MAX = 4000;
 const CURTO = 300;
 
@@ -341,10 +341,7 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
   hipotese_diagnostica: secao(
     "hipotese_diagnostica", "I", "Hipótese diagnóstica",
     "Campo exclusivo do médico responsável. O sistema não sugere, não classifica e não preenche.",
-    [
-      ...Array.from({ length: 6 }, (_, i) => curto(`cid10_${i + 1}`, `CID 10 · ${i + 1}`, { grupo: "CID 10", max: 20 })),
-      ...Array.from({ length: 6 }, (_, i) => curto(`cid11_${i + 1}`, `CID 11 · ${i + 1}`, { grupo: "CID 11", max: 20 })),
-    ]
+    [curto("cid10", "CID 10", { max: 120 }), curto("cid11", "CID 11", { max: 120 })]
   ),
 
   conduta: secao(
@@ -529,7 +526,19 @@ function normalizarCampo(c: MdCampo, v: unknown): string {
 /** Limpa o payload recebido: só campos conhecidos, cada um no seu formato. Em branco fica em branco. */
 export function normalizarPayloadMedico(id: MdFormId, bruto: unknown): Record<string, string> {
   const form = MD_FORMS[id];
-  const origem = bruto && typeof bruto === "object" ? (bruto as Record<string, unknown>) : {};
+  const origem = bruto && typeof bruto === "object" ? { ...(bruto as Record<string, unknown>) } : {};
+  if (id === "hipotese_diagnostica") {
+    for (const prefix of ["cid10", "cid11"] as const) {
+      const atual = origem[prefix];
+      if (typeof atual === "string" && atual.trim()) continue;
+      const legado = Array.from({ length: 6 }, (_, i) => origem[`${prefix}_${i + 1}`])
+        .filter((valor): valor is string => typeof valor === "string")
+        .map((valor) => valor.trim())
+        .filter(Boolean)
+        .join("; ");
+      if (legado) origem[prefix] = legado.slice(0, 120);
+    }
+  }
   const saida: Record<string, string> = {};
   for (const c of form.campos) saida[c.id] = normalizarCampo(c, origem[c.id]);
   return saida;

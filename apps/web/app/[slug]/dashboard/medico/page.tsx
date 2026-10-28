@@ -165,8 +165,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   async function carregarFogap(caseId: string) {
     setReLoading(true);
     try {
-      const data = await api.get<{ assessment: ReAssessment | null }>(`/api/cases/${caseId}/re-assessment?completo=1`);
-      setReAssessment(data.assessment);
+      const data = await api.get<{ assessment: ReAssessment | null; somenteSumario: boolean }>(`/api/cases/${caseId}/re-assessment?completo=1`);
+      setReAssessment(data.assessment ? { ...data.assessment, somenteSumario: data.somenteSumario } : null);
     } catch (err: unknown) {
       setActionMsg(err instanceof Error ? err.message : "Erro ao carregar a avaliação do RE.");
     } finally {
@@ -214,10 +214,10 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
     setActionMsg(null);
     setReLoading(true);
     try {
-      const data = await api.get<{ assessment: ReAssessment | null }>(
+      const data = await api.get<{ assessment: ReAssessment | null; somenteSumario: boolean }>(
         `/api/cases/${activeCase.id}/re-assessment?completo=1`
       );
-      setReAssessment(data.assessment);
+      setReAssessment(data.assessment ? { ...data.assessment, somenteSumario: data.somenteSumario } : null);
     } catch (err: unknown) {
       setActionMsg(err instanceof Error ? err.message : "Erro ao carregar avaliação.");
     } finally {
@@ -588,6 +588,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             payload={reAssessment.payload}
                             status={reAssessment.status}
                             submittedAt={reAssessment.submittedAt}
+                            somenteSumario={reAssessment.somenteSumario}
                             studentCode={activeCase.studentCode}
                             birthYear={activeCase.birthYear}
                             birthMonth={activeCase.birthMonth}
@@ -676,6 +677,7 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                         payload={reAssessment.payload}
                         status={reAssessment.status}
                         submittedAt={reAssessment.submittedAt}
+                        somenteSumario={reAssessment.somenteSumario}
                         studentCode={activeCase.studentCode}
                         birthYear={activeCase.birthYear}
                         birthMonth={activeCase.birthMonth}

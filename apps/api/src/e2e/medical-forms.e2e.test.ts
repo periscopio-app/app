@@ -16,6 +16,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
   let shared: typeof import("@periscopio/shared");
   let ids: Record<string, string> = {};
   let caso = "";
+  let casoObsoleto = "";
   let casoRascunho = "";
   let casoEncerrado = "";
 
@@ -52,6 +53,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const pessoas = [
       { key: "re", role: "ppi", tenant: t.id, school: e.id, specialty: "psicopedagogia" },
       { key: "md", role: "md1", tenant: t.id, school: null, specialty: "medicina" },
+      { key: "mdResumo", role: "md1", tenant: t.id, school: null, specialty: "medicina" },
       { key: "mdOutro", role: "md1", tenant: t2.id, school: null, specialty: "medicina" },
       { key: "fono", role: "specialist", tenant: t.id, school: null, specialty: "fonoaudiologia" },
       { key: "psico", role: "specialist", tenant: t.id, school: null, specialty: "psicologia" },
@@ -63,6 +65,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
       }).returning();
       ids[p.key] = u.id;
     }
+    await dbx.insert(shared.privilegeUserGrants).values({ userId: ids.mdResumo, capability: "school.read_full", allowed: false });
 
     const mk = async (code: string, estado: string) => {
       const [st] = await dbx.insert(shared.students).values({ tenantId: t.id, schoolId: e.id, studentCode: code, birthYear: 2018, birthMonth: 3, ageBracket: "06-09", grade: "3º ano" }).returning();
@@ -70,6 +73,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
       return c.id;
     };
     caso = await mk("T-MD-0001", "revisao_medica");
+    casoObsoleto = await mk("T-MD-0004", "revisao_medica");
     casoRascunho = await mk("T-MD-0002", "rascunho");
     casoEncerrado = await mk("T-MD-0003", "encerrado");
 
@@ -80,7 +84,12 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     });
     await dbx.insert(shared.reAssessments).values({
       tenantId: t.id, caseId: caso, formCode: shared.FOGAP_FORM_CODE, formVersion: shared.FOGAP_VERSION, status: "enviado",
-      payload: shared.makeFogapPayloadVazio(), createdBy: ids.re, submittedAt: new Date(), submittedBy: ids.re,
+      payload: { ...shared.makeFogapPayloadVazio(), faixa_fogap: "6a9", respostas_desenvolvimento: { d1: "adequada" } }, createdBy: ids.re, submittedAt: new Date(), submittedBy: ids.re,
+    });
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: t.id, caseId: casoObsoleto, formId: "conduta", formVersion: "md-0.2", status: "concluido",
+      payload: { farmacoterapia_previa_qual: "Registro legado sintético" }, history: [], authorId: ids.md,
+      completedBy: ids.md, completedAt: new Date("2026-10-01T12:00:00Z"),
     });
   });
 
@@ -110,7 +119,19 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.ok(j.body.forms.i, "Formulário I (FOGAP/sumário) deve vir");
     for (const id of ["a", "b", "c", "d", "e", "f", "i"]) assert.ok(id in j.body.forms, `formulário ${id} visível ao médico`);
     assert.notEqual(j.body.somenteSumario, true);
+    assert.equal(j.body.forms.i.payload.faixa_fogap, "6a9");
+    assert.deepEqual(j.body.forms.i.payload.respostas_desenvolvimento, { d1: "adequada" });
     assert.equal(j.body.caseState, "revisao_medica");
+
+    const jornadaResumo = await call("GET", `/api/cases/${caso}/re-journey`, "mdResumo");
+    assert.equal(jornadaResumo.status, 200);
+    assert.equal(jornadaResumo.body.somenteSumario, true);
+    assert.ok(!("faixa_fogap" in jornadaResumo.body.forms.i.payload));
+    assert.ok(!("respostas_desenvolvimento" in jornadaResumo.body.forms.i.payload));
+    const reAssessmentResumido = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "mdResumo");
+    assert.equal(reAssessmentResumido.body.somenteSumario, true);
+    assert.ok(!("faixa_fogap" in reAssessmentResumido.body.assessment.payload));
+    assert.ok(!("respostas_desenvolvimento" in reAssessmentResumido.body.assessment.payload));
 
     // médico lê, mas não escreve na escola
     assert.equal((await call("PUT", `/api/cases/${caso}/re-journey/fogap-desenvolvimento`, "md", { faixa: "6a9", respostas: {} })).status >= 400, true, "o médico lê, não escreve na escola");
@@ -136,6 +157,26 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
       "a ficha segue a sequência B a R do formulário em papel"
     );
     assert.deepEqual(r.body.forms.map((f: any) => (shared.MD_FORMS as Record<string, { letra: string }>)[f.id].letra).join(""), "BCDEFGHIJKLMNOPQR");
+  });
+
+  test("seção concluída de catálogo antigo reabre preservando histórico e aceita nova versão", async () => {
+    const leitura = await call("GET", `/api/cases/${casoObsoleto}/medical-forms`, "md");
+    assert.equal(leitura.status, 200);
+    const condutaAntiga = leitura.body.forms.find((f: any) => f.id === "conduta");
+    assert.equal(condutaAntiga.status, "rascunho");
+    assert.equal(condutaAntiga.desatualizado, true);
+
+    const [linhaMigrada] = await dbx.select().from(shared.caseMedicalForms).where((await import("drizzle-orm")).eq(shared.caseMedicalForms.caseId, casoObsoleto));
+    assert.equal(linhaMigrada.status, "rascunho");
+    assert.equal((linhaMigrada.history as any[])[0].payload.farmacoterapia_previa_qual, "Registro legado sintético");
+    assert.equal((linhaMigrada.history as any[])[0].reason, "Catálogo atualizado");
+
+    const salvo = await call("PUT", `/api/cases/${casoObsoleto}/medical-forms/conduta`, "md", { payload: { farmacoterapia_previa_qual: "Registro atualizado sintético" } });
+    assert.equal(salvo.status, 200);
+    assert.equal((await call("POST", `/api/cases/${casoObsoleto}/medical-forms/conduta/complete`, "md")).status, 200);
+    const [linhaAtualizada] = await dbx.select().from(shared.caseMedicalForms).where((await import("drizzle-orm")).eq(shared.caseMedicalForms.caseId, casoObsoleto));
+    assert.equal(linhaAtualizada.formVersion, shared.MD_FORMS_VERSION);
+    assert.equal(linhaAtualizada.status, "concluido");
   });
 
   test("L: retorno para reavaliação guarda só data válida (AAAA-MM-DD)", async () => {
@@ -191,8 +232,9 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.equal(reab.status, 200);
     assert.equal(reab.body.form.status, "rascunho");
 
-    const [linha] = await dbx.select().from(shared.caseMedicalForms);
-    const hist = (await dbx.select().from(shared.caseMedicalForms)).find((l) => l.formId === "conduta")!.history as any[];
+    const linhas = await dbx.select().from(shared.caseMedicalForms);
+    const linha = linhas.find((l) => l.caseId === caso && l.formId === "conduta");
+    const hist = linha!.history as any[];
     assert.ok(linha);
     assert.equal(hist.length, 1);
     assert.equal(hist[0].payload.farmacoterapia_previa_qual, TEXTO, "a versão original continua guardada");
@@ -252,5 +294,79 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
   test("com o caso delegado os formulários do médico continuam editáveis", async () => {
     const r = await call("PUT", `/api/cases/${caso}/medical-forms/sumario_medico`, "md", { payload: { queixa_professor: "sumário em andamento" } });
     assert.equal(r.status, 200);
+  });
+
+  test("catálogo novo: seção concluída com versão antiga volta como rascunho, sem perder o texto", async () => {
+    const { eq, and } = await import("drizzle-orm");
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: (await dbx.select().from(shared.cases).where(eq(shared.cases.id, caso)))[0].tenantId, caseId: caso, formId: "queixa_escola",
+      formVersion: "md-0.2-provisorio", status: "concluido", payload: { registro: "texto da versão antiga" }, authorId: ids.md,
+      completedBy: ids.md, completedAt: new Date(),
+    });
+
+    const antes = await call("GET", `/api/cases/${caso}/medical-forms`, "md");
+    const b = antes.body.forms.find((f: any) => f.id === "queixa_escola");
+    assert.equal(b.status, "rascunho", "nunca aparece 'concluída e vazia': volta editável");
+    assert.equal(b.desatualizado, true);
+    assert.equal(b.completedAt, null);
+    assert.equal(b.payload.queixas, "");
+
+    // o médico marca as opções e salva: a linha vira rascunho e o conteúdo antigo fica no histórico
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/queixa_escola`, "md", { payload: { queixas: "5,2" } });
+    assert.equal(salvo.status, 200);
+    assert.equal(salvo.body.form.status, "rascunho");
+    assert.equal(salvo.body.form.payload.queixas, "2,5");
+    const [linha] = await dbx.select().from(shared.caseMedicalForms).where(and(eq(shared.caseMedicalForms.caseId, caso), eq(shared.caseMedicalForms.formId, "queixa_escola")));
+    assert.equal(linha.formVersion, shared.MD_FORMS_VERSION);
+    assert.equal((linha.history as any[]).length, 1);
+    assert.equal((linha.history as any[])[0].payload.registro, "texto da versão antiga", "nada do que estava salvo é apagado");
+
+    // conclui de novo: grava a versão atual e a trava volta a valer
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/queixa_escola/complete`, "md")).status, 200);
+    const depois = (await call("GET", `/api/cases/${caso}/medical-forms`, "md")).body.forms.find((f: any) => f.id === "queixa_escola");
+    assert.equal(depois.status, "concluido");
+    assert.equal(depois.desatualizado, false);
+    assert.equal((await call("PUT", `/api/cases/${caso}/medical-forms/queixa_escola`, "md", { payload: { queixas: "3" } })).status, 409);
+  });
+
+  test("hipótese diagnóstica: só CID 10 e CID 11; o texto das células antigas não se perde", async () => {
+    const { eq } = await import("drizzle-orm");
+    const r = await call("GET", `/api/cases/${caso}/medical-forms`, "md");
+    const campos = (shared.MD_FORMS as Record<string, { campos: { id: string }[] }>).hipotese_diagnostica.campos.map((c) => c.id);
+    assert.deepEqual(campos, ["cid10", "cid11"]);
+    assert.deepEqual(Object.keys(r.body.forms.find((f: any) => f.id === "hipotese_diagnostica").payload), ["cid10", "cid11"]);
+
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: (await dbx.select().from(shared.cases).where(eq(shared.cases.id, caso)))[0].tenantId, caseId: caso, formId: "hipotese_diagnostica",
+      formVersion: "md-1.0-capitulo-1809", status: "rascunho", payload: { cid10_1: "F90.0", cid10_2: "F84.0", cid11_1: "6A05" }, authorId: ids.md,
+    });
+    const g = (await call("GET", `/api/cases/${caso}/medical-forms`, "md")).body.forms.find((f: any) => f.id === "hipotese_diagnostica");
+    assert.deepEqual(g.payload, { cid10: "F90.0; F84.0", cid11: "6A05" });
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_diagnostica`, "md", { payload: g.payload });
+    assert.deepEqual(salvo.body.form.payload, { cid10: "F90.0; F84.0", cid11: "6A05" });
+  });
+
+  test("médico sem 'Ver tudo da escola': a API avisa (somenteSumario) e não manda as respostas do FOGAP", async () => {
+    const { eq, and } = await import("drizzle-orm");
+    const { invalidatePrivilegeCache } = await import("../services/privilege.service");
+    await dbx.insert(shared.privilegeUserGrants).values({ userId: ids.md, capability: "school.read_full", allowed: false });
+    invalidatePrivilegeCache();
+    try {
+      const j = await call("GET", `/api/cases/${caso}/re-journey`, "md");
+      assert.equal(j.status, 200);
+      assert.equal(j.body.somenteSumario, true);
+      assert.ok(!("respostas_desenvolvimento" in j.body.forms.i.payload));
+      assert.ok(!("faixa_fogap" in j.body.forms.i.payload));
+      assert.ok(!("a" in j.body.forms), "formulários A a H também não vêm");
+      const a = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "md");
+      assert.equal(a.body.somenteSumario, true);
+      assert.ok(!("respostas_desenvolvimento" in a.body.assessment.payload));
+    } finally {
+      await dbx.delete(shared.privilegeUserGrants).where(and(eq(shared.privilegeUserGrants.userId, ids.md), eq(shared.privilegeUserGrants.capability, "school.read_full")));
+      invalidatePrivilegeCache();
+    }
+    const volta = await call("GET", `/api/cases/${caso}/re-journey`, "md");
+    assert.notEqual(volta.body.somenteSumario, true);
+    assert.ok("respostas_desenvolvimento" in volta.body.forms.i.payload, "com a permissão de volta, o médico lê as respostas item a item");
   });
 });

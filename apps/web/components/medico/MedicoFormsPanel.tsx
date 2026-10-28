@@ -16,6 +16,7 @@ interface FormRow {
   updatedAt: string | null;
   completedAt: string | null;
   reaberturas: number;
+  desatualizado: boolean;
 }
 interface Resp {
   version: string;
@@ -240,6 +241,21 @@ export function MedicoFormsPanel({
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${COR[f.status]}`}>{ROTULO[f.status]}</span>
               </span>
             </summary>
+            {f.desatualizado && (
+              <p className="border-t border-ouro-300 bg-ouro-50 px-3 py-2 text-xs font-semibold text-black" role="status">
+                Formulário atualizado: reveja e conclua de novo.
+              </p>
+            )}
+            {f.status === "concluido" && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-sucesso/20 bg-sucesso/5 px-3 py-2 text-xs text-black" role="status">
+                <span>Seção concluída em {f.completedAt ? new Date(f.completedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "—"} — para alterar, reabra.</span>
+                {d.editavel && reabrindo !== f.id && (
+                  <Button type="button" onClick={() => setReabrindo(f.id)} variant="warning" size="sm">
+                    <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="space-y-2 border-t border-linha p-3">
               <p className="text-xs text-neutral-800">{def.descricao}</p>
               {f.id === "queixa_escola" && (

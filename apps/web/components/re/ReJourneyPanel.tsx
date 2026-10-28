@@ -60,14 +60,15 @@ interface AlunoJornada {
 }
 interface Jornada {
   caseState: string;
-  meta: ReJornadaMeta;
-  situacao: JornadaSituacao;
-  ata: { existe: boolean; enviada: boolean; status: string | null };
+  somenteSumario?: boolean;
+  meta?: ReJornadaMeta;
+  situacao?: JornadaSituacao;
+  ata?: { existe: boolean; enviada: boolean; status: string | null };
   escalas?: EscalasSumario | null;
   forms: Partial<Record<RePassoId, Linha | null>>;
   student: AlunoJornada;
-  professores: ProfessorOpcao[];
-  professorSugerido: ProfessorOpcao | null;
+  professores?: ProfessorOpcao[];
+  professorSugerido?: ProfessorOpcao | null;
 }
 
 interface Props {
@@ -238,9 +239,11 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       const p = d.forms.i?.payload as { secao_sumario?: unknown } | undefined;
       setSum(sumarioComPadroes((p?.secao_sumario as Partial<FogapSecaoSumario>) ?? null));
     }
-    if (!devAlterado.current) {
+    if (!d.somenteSumario && !devAlterado.current) {
       const p = d.forms.i?.payload as { faixa_fogap?: FaixaFogap | null; respostas_desenvolvimento?: RespostasDesenvolvimento } | undefined;
-      setDev({ faixa: p?.faixa_fogap ?? null, respostas: p?.respostas_desenvolvimento ?? {} });
+      if (p && ("faixa_fogap" in p || "respostas_desenvolvimento" in p)) {
+        setDev({ faixa: p.faixa_fogap ?? null, respostas: p.respostas_desenvolvimento ?? {} });
+      }
     }
   }, []);
 
@@ -273,13 +276,13 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
   // Situação ao vivo (mesma regra do servidor): atualiza a cada tecla, sem esperar o salvamento.
   const situacao = useMemo<JornadaSituacao | null>(() => {
-    if (!j) return null;
+    if (!j || j.somenteSumario) return null;
     return situacaoDaJornada({
-      meta: j.meta,
+      meta: j.meta!,
       payloads: drafts,
       snap4: snap,
       sumario: sum,
-      ata: { existe: j.ata.existe, enviada: j.ata.enviada },
+      ata: { existe: j.ata!.existe, enviada: j.ata!.enviada },
       serieDoAluno: j.student.grade,
     });
   }, [j, drafts, snap, sum]);
@@ -431,7 +434,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   if (loading) {
     return <div className="rounded-2xl border border-linha bg-white p-8 text-center text-sm text-neutral-800">Carregando a avaliação do RE…</div>;
   }
-  if (loadErr || !j || !situacao) {
+  if (loadErr || !j || (!situacao && !j.somenteSumario)) {
     return (
       <div role="alert" className="flex items-center gap-2 rounded-2xl border border-erro/30 bg-erro/5 p-4 text-sm text-black">
         <AlertCircle className="h-4 w-4 shrink-0" /> {loadErr ?? "Não foi possível abrir a avaliação."}
@@ -442,12 +445,12 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
   const aluno = j.student;
   const nasc = aluno.birthYear ? `${aluno.birthMonth ? `${MESES[aluno.birthMonth - 1]}/` : ""}${aluno.birthYear}` : "";
-  const lacunasMostradas = lacunasServidor ?? situacao.lacunas;
+  const lacunasMostradas = lacunasServidor ?? situacao?.lacunas ?? [];
   const temBloqueante = lacunasMostradas.some((l) => l.bloqueante);
-  const totalLacunas = situacao.lacunas.length;
-  const respondidosForms = situacao.passos.reduce((acc, p) => acc + p.respondidos, 0);
-  const totalForms = situacao.passos.reduce((acc, p) => acc + p.total, 0);
-  const porPasso = (id: RePassoId) => situacao.lacunas.filter((l) => l.passo === id).length;
+  const totalLacunas = situacao?.lacunas.length ?? 0;
+  const respondidosForms = situacao?.passos.reduce((acc, p) => acc + p.respondidos, 0) ?? 0;
+  const totalForms = situacao?.passos.reduce((acc, p) => acc + p.total, 0) ?? 0;
+  const porPasso = (id: RePassoId) => situacao?.lacunas.filter((l) => l.passo === id).length ?? 0;
   const idadeMeses = aluno.birthYear
     ? new Date().getFullYear() * 12 + new Date().getMonth() + 1 - (aluno.birthYear * 12 + (aluno.birthMonth ?? 1))
     : null;
@@ -495,7 +498,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       )}
 
       {/* Barra fixa: progresso e atalhos para cada parte (nada fica travado) */}
-      <nav aria-label="Partes da avaliação" className="sticky top-0 z-20 rounded-2xl border border-linha bg-white/95 p-3 shadow-suave backdrop-blur">
+      {!j.somenteSumario && situacao && <nav aria-label="Partes da avaliação" className="sticky top-0 z-20 rounded-2xl border border-linha bg-white/95 p-3 shadow-suave backdrop-blur">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-bold text-black">Formulário único A a I</p>
           <p className="text-xs text-neutral-800" aria-live="polite">
@@ -530,7 +533,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
             );
           })}
         </ol>
-      </nav>
+      </nav>}
 
       {msg && (
         <div role={msg.ok ? "status" : "alert"} className={`rounded-xl px-4 py-3 text-sm ${msg.ok ? "bg-sucesso/10 text-black" : "bg-erro/10 text-black"}`}>
@@ -540,7 +543,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
       {/* Formulário único, contínuo: A → I na mesma página, sem trava entre as partes */}
       <div className="space-y-10 rounded-2xl border border-linha bg-white p-4 shadow-suave sm:p-6">
-        {RE_PASSOS.map((passo) => {
+        {RE_PASSOS.filter((passo) => !j.somenteSumario || passo.id === "i").map((passo) => {
           const e = estadoDe(passo.id);
           const emEdicao = !readOnly;
           return (
@@ -563,7 +566,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                     value={(drafts[passo.id] ?? {}) as Payload}
                     onChange={(n) => editarForm(passo.id as ReFormId, n)}
                     contexto={{
-                      professores: j.professores,
+                      professores: j.professores ?? [],
                       destacar: destacarPorForm[passo.id as ReFormId],
                       sugerirObservacoes: (fid, payload) =>
                         api.post(`/api/cases/${caseId}/re-journey/forms/${fid}/observacoes-sugestao`, { payload }),
@@ -575,7 +578,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                 <Snap4Passo
                   snap={snap}
                   readOnly={!emEdicao}
-                  pulado={j.meta.g_pulado}
+                  pulado={j.meta!.g_pulado}
                   onChange={(n) => {
                     marcarAlterado("g");
                     setSnap(n);
@@ -588,7 +591,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
               {passo.id === "h" && (
                 <AtaPasso
                   estado={e}
-                  ataEnviada={j.ata.enviada}
+                  ataEnviada={j.ata!.enviada}
                   caseId={caseId}
                   readOnly={readOnly}
                   busy={busy}
@@ -599,7 +602,11 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
               {passo.id === "i" && (
                 <div className="mb-4">
-                  {faixaAtual ? (
+                  {j.somenteSumario ? (
+                    <p className="mb-3 rounded-xl border border-ceu-300 bg-ceu-50 p-3 text-sm text-black" role="status">
+                      Seu perfil vê só o sumário do RE. Peça a permissão &apos;Ver tudo da escola&apos; ao administrador.
+                    </p>
+                  ) : faixaAtual ? (
                     <FogapDesenvolvimento
                       faixa={faixaAtual}
                       faixaSugerida={faixaSugerida}
