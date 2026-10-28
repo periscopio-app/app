@@ -5,6 +5,7 @@ import {
   CBO_REFERENCE,
   type RelInput,
 } from "../services/rnds.service";
+import { requireActor } from "../security/actor";
 
 export async function rndsRoutes(app: FastifyInstance) {
   // 1. Informações e status do conector RNDS / SUS
@@ -34,7 +35,9 @@ export async function rndsRoutes(app: FastifyInstance) {
         },
       },
     },
-    async () => {
+    async (request, reply) => {
+      const actor = await requireActor(request, reply, ["md1", "medico"]);
+      if (!actor) return;
       return {
         status: "prototype",
         protocol: "HL7 FHIR R4 (RNDS - REL v1.0)",
@@ -81,6 +84,8 @@ export async function rndsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      const actor = await requireActor(request, reply, ["md1", "medico"]);
+      if (!actor) return;
       const result = validateRndsPayload(request.body || {});
       return reply.send(result);
     }
@@ -194,6 +199,8 @@ export async function rndsRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      const actor = await requireActor(request, reply, ["md1", "medico"]);
+      if (!actor) return;
       const validation = validateRndsPayload(request.body || {});
       if (!validation.valid) {
         return reply.status(400).send({

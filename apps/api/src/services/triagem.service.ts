@@ -27,6 +27,7 @@ export async function canProceedToMedical(
   isCrisisBypass: boolean
 ): Promise<void> {
   if (isCrisisBypass) return;
+  if (process.env.DISABLE_THERAPEUTIC_WINDOW === "true") return;
 
   const [caso] = await db
     .select()

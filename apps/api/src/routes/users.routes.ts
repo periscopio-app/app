@@ -348,9 +348,9 @@ export async function usersRoutes(app: FastifyInstance) {
 
       return {
         user: newUser,
-        temporaryPassword: initialPassword,
-        message:
-          "Usuário criado com sucesso. Comunique a senha inicial por canal seguro fora do sistema.",
+        message: body.password
+          ? "Usuário criado. Senha definida pelo administrador — comunique por canal seguro fora do sistema."
+          : "Usuário criado. Peça ao usuário que acesse /primeiro-acesso para definir a própria senha.",
       };
     } catch (err: any) {
       request.log.error(err, "Erro ao criar usuário");
