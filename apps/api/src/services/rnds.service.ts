@@ -94,8 +94,22 @@ export const CBO_REFERENCE: Record<string, { titulo: string; area: string }> = {
 };
 
 /**
- * Gera um Bundle FHIR R4 em total conformidade com o modelo REL (Registro Eletrônico em Saúde) da RNDS
+ * Constrói um Bundle FHIR R4 REL experimental para testes locais.
+ * Não certifica conformidade com perfis RNDS e não transmite dados.
  */
+function escapeXhtmlText(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      case "'": return "&#39;";
+      default: return character;
+    }
+  });
+}
+
 export function generateRelBundle(input: RelInput): FhirBundle {
   const timestamp = new Date().toISOString();
   const bundleId = `rnds-bundle-${input.caseId}-${Date.now()}`;
@@ -148,7 +162,7 @@ export function generateRelBundle(input: RelInput): FhirBundle {
         },
         text: {
           status: "generated",
-          div: `<div xmlns="http://www.w3.org/1999/xhtml"><p>${input.clinicalFindings.descricaoQueixa}</p></div>`,
+          div: `<div xmlns="http://www.w3.org/1999/xhtml"><p>${escapeXhtmlText(input.clinicalFindings.descricaoQueixa)}</p></div>`,
         },
         entry: [{ reference: `Condition/${conditionId}` }],
       },
@@ -169,7 +183,7 @@ export function generateRelBundle(input: RelInput): FhirBundle {
       },
       text: {
         status: "generated",
-        div: `<div xmlns="http://www.w3.org/1999/xhtml"><p>Encaminhado para ${input.referral?.destinoTipo}. Prazo máximo legal de acolhimento: ${input.referral?.prazoAcolhimentoDias || 90} dias.</p></div>`,
+        div: `<div xmlns="http://www.w3.org/1999/xhtml"><p>Encaminhado para ${escapeXhtmlText(input.referral?.destinoTipo ?? "")}. Prazo máximo legal de acolhimento: ${input.referral?.prazoAcolhimentoDias || 90} dias.</p></div>`,
       },
       entry: [{ reference: `ServiceRequest/${serviceRequestId}` }],
     });
