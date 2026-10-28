@@ -46,7 +46,7 @@ export default function IntersectoralNetworkWidget() {
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    fetch(`${apiUrl}/api/intersectoral/monitoring/sla-90d`)
+    fetch(`${apiUrl}/api/intersectoral/monitoring/sla-90d`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json) setData(json);

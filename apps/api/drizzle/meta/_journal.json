@@ -176,6 +176,20 @@
       "when": 1792543200000,
       "tag": "0024_formularios_das_especialidades",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792629600000,
+      "tag": "0025_tenant_demo_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792716000000,
+      "tag": "0026_reabrir_formularios_medicos_obsoletos",
+      "breakpoints": true
     }
   ]
 }
