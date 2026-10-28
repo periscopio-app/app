@@ -99,7 +99,7 @@ export const professionalSchema = z.object({
     .min(2, "Registro / Conselho de Classe é obrigatório (ex: CRP, CRM, CBO, etc.)")
     .max(50, "Registro de classe muito longo"),
   specialty: z.enum(ALLOWED_SPECIALTIES, {
-    errorMap: () => ({ message: "Especialidade inválida" }),
+    error: "Especialidade inválida",
   }),
   lgpdConsentAccepted: z.boolean().refine((val) => val === true, {
     message: "É obrigatório aceitar o Termo de Responsabilidade Clínica e Proteção de Dados (LGPD).",
@@ -118,7 +118,7 @@ export type ProfessionalFormData = z.infer<typeof professionalSchema>;
  * Exige um mínimo de 100 caracteres para garantir embasamento técnico, descritivo e rastreabilidade conforme LGPD e diretrizes clínicas do NEMT.
  */
 export const clinicalOpinionTextSchema = z
-  .string({ required_error: "O parecer clínico é obrigatório" })
+  .string({ error: "O parecer clínico é obrigatório" })
   .trim()
   .min(100, "O parecer ou descrição clínica deve conter no mínimo 100 caracteres para fundamentação técnica adequada.");
 
@@ -149,12 +149,12 @@ export const CONSENT_SIGNER_ROLES = ["mae", "pai", "responsavel_legal", "outro"]
 
 export const consentAcceptSchema = z.object({
   signerName: z
-    .string({ required_error: "Informe o nome completo do responsável." })
+    .string({ error: "Informe o nome completo do responsável." })
     .trim()
     .min(5, "Informe o nome completo do responsável (nome e sobrenome).")
     .max(200, "Nome muito longo."),
   signerRole: z.enum(CONSENT_SIGNER_ROLES, {
-    errorMap: () => ({ message: "Escolha o grau de parentesco na lista." }),
+    error: "Escolha o grau de parentesco na lista.",
   }),
   signerDocument: optionalCpfSchema,
 });

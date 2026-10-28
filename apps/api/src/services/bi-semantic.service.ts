@@ -192,7 +192,7 @@ export const planSchema = z
       .strict()
       .default({}),
     viz: z.enum(["table", "bar", "line"]).optional(),
-    capacity: z.record(z.number().min(1).max(1000)).optional(),
+    capacity: z.record(z.string(), z.number().min(1).max(1000)).optional(),
   })
   .strict();
 export type QueryPlan = z.infer<typeof planSchema>;

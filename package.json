@@ -14,7 +14,6 @@
     "seed:journey": "pnpm --filter @periscopio/api seed:journey"
   },
   "dependencies": {
-    "next": "^15.0.0"
-  },
-  "devDependencies": {}
+    "next": "^15.5.28"
+  }
 }

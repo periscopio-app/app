@@ -154,7 +154,10 @@ describe("Triagem TEA (E2E)", { skip }, () => {
     // a trava vale também no banco, mesmo por fora da API
     const { db } = await import("../db/client");
     const { sql } = await import("drizzle-orm");
-    await assert.rejects(() => db.execute(sql`UPDATE tea_screenings SET answers = '{"marcados":{},"antes36meses":null}'::jsonb WHERE case_id = ${caseId} AND instrument = 'ata'`), /não podem ser alteradas|já enviada/);
+    await assert.rejects(
+      () => db.execute(sql`UPDATE tea_screenings SET answers = '{"marcados":{},"antes36meses":null}'::jsonb WHERE case_id = ${caseId} AND instrument = 'ata'`),
+      (error: any) => /não podem ser alteradas|já enviada/.test(String(error?.cause?.message ?? error?.message)),
+    );
   });
 
   test("escopo: RE de outra escola, médico de outra rede e diretor não entram", async () => {

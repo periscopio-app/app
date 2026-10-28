@@ -37,7 +37,7 @@ export const manifestSchema = z
         rowCount: int.min(0),
         columns: z.array(z.string().min(1).max(120)).min(1),
         transformedColumns: z.array(z.string()),
-        columnNonNull: z.record(int.min(0)),
+        columnNonNull: z.record(z.string(), int.min(0)),
         geocoder: z.string().max(40).nullable(),
         warnings: z.array(z.string()).optional(),
         /** Colunas revisadas por humano cujo NOME parece identificador mas o conteúdo não é (ex.: CELULAR = "usa celular", 0/1). */
@@ -74,7 +74,7 @@ const patientFields = z
     religion: z.string().max(80).nullable(),
     parentsOccupation: z.string().max(2000).nullable(),
     economicClass: z.string().max(60).nullable(),
-    extra: z.record(z.unknown()).nullable(),
+    extra: z.record(z.string(), z.unknown()).nullable(),
   })
   .partial()
   .strict();
@@ -120,7 +120,7 @@ export const patientLineSchema = z
         .strict(),
     ),
     /** Todas as colunas da planilha, por nome, exceto nome e endereço. */
-    raw: z.record(z.unknown()),
+    raw: z.record(z.string(), z.unknown()),
   })
   .strict();
 

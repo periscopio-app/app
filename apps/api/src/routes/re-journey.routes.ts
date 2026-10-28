@@ -40,14 +40,14 @@ import { recordAudit } from "../services/audit.service";
 
 export { idadeAPartirDoNascimento };
 
-const payloadBody = z.object({ payload: z.record(z.unknown()) });
+const payloadBody = z.object({ payload: z.record(z.string(), z.unknown()) });
 const sumarioBody = z.object({
-  secao_sumario: z.record(z.unknown()),
-  secao_encaminhamento: z.record(z.unknown()).optional(),
+  secao_sumario: z.record(z.string(), z.unknown()),
+  secao_encaminhamento: z.record(z.string(), z.unknown()).optional(),
 });
 const desenvolvimentoBody = z.object({
   faixa: z.string(),
-  respostas: z.record(z.union([z.literal("adequada"), z.literal("inadequada"), z.null()])),
+  respostas: z.record(z.string(), z.union([z.literal("adequada"), z.literal("inadequada"), z.null()])),
 });
 const timingBody = z.object({
   step: z.enum(["a", "b", "c", "d", "e", "f", "g", "h", "i"]),

@@ -400,8 +400,14 @@ describe("jornada clínica (E2E)", { skip }, () => {
     await call("POST", `${base}/steps/g/skip`, "re", { valor: true });
     const usos = await db.select().from(reOptionalStepUsage).where(eq(reOptionalStepUsage.caseId, cid));
     assert.deepEqual(usos.map((u: any) => u.action).sort(), ["pulado", "pulado", "retomado"]);
-    await assert.rejects(() => db.execute(sql`UPDATE re_optional_step_usage SET action = 'pulado' WHERE case_id = ${cid}`), /somente inserção|inserção/);
-    await assert.rejects(() => db.execute(sql`DELETE FROM re_optional_step_usage WHERE case_id = ${cid}`), /somente inserção|inserção/);
+    await assert.rejects(
+      () => db.execute(sql`UPDATE re_optional_step_usage SET action = 'pulado' WHERE case_id = ${cid}`),
+      (error: any) => /somente inserção|inserção/.test(String(error?.cause?.message ?? error?.message)),
+    );
+    await assert.rejects(
+      () => db.execute(sql`DELETE FROM re_optional_step_usage WHERE case_id = ${cid}`),
+      (error: any) => /somente inserção|inserção/.test(String(error?.cause?.message ?? error?.message)),
+    );
 
     // H: "aguardando o responsável" NÃO libera o envio (a ATA é obrigatória)
     const aguardando = await call("POST", `${base}/steps/h/await`, "re", { valor: true });
