@@ -15,7 +15,7 @@
 
 import { GENOGRAMA_JSON_MAX, normalizarGenogramaTexto } from "./genograma";
 
-export const MD_FORMS_VERSION = "md-1.0-capitulo-1809" as const;
+export const MD_FORMS_VERSION = "md-1.1-hipotese-cid" as const;
 export const MD_TEXTO_MAX = 4000;
 const CURTO = 300;
 

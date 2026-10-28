@@ -16,6 +16,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
   let shared: typeof import("@periscopio/shared");
   let ids: Record<string, string> = {};
   let caso = "";
+  let casoObsoleto = "";
   let casoRascunho = "";
   let casoEncerrado = "";
 
@@ -72,6 +73,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
       return c.id;
     };
     caso = await mk("T-MD-0001", "revisao_medica");
+    casoObsoleto = await mk("T-MD-0004", "revisao_medica");
     casoRascunho = await mk("T-MD-0002", "rascunho");
     casoEncerrado = await mk("T-MD-0003", "encerrado");
 
@@ -83,6 +85,11 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     await dbx.insert(shared.reAssessments).values({
       tenantId: t.id, caseId: caso, formCode: shared.FOGAP_FORM_CODE, formVersion: shared.FOGAP_VERSION, status: "enviado",
       payload: { ...shared.makeFogapPayloadVazio(), faixa_fogap: "6a9", respostas_desenvolvimento: { d1: "adequada" } }, createdBy: ids.re, submittedAt: new Date(), submittedBy: ids.re,
+    });
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: t.id, caseId: casoObsoleto, formId: "conduta", formVersion: "md-0.2", status: "concluido",
+      payload: { farmacoterapia_previa_qual: "Registro legado sintético" }, history: [], authorId: ids.md,
+      completedBy: ids.md, completedAt: new Date("2026-10-01T12:00:00Z"),
     });
   });
 
@@ -152,6 +159,26 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.deepEqual(r.body.forms.map((f: any) => (shared.MD_FORMS as Record<string, { letra: string }>)[f.id].letra).join(""), "BCDEFGHIJKLMNOPQR");
   });
 
+  test("seção concluída de catálogo antigo reabre preservando histórico e aceita nova versão", async () => {
+    const leitura = await call("GET", `/api/cases/${casoObsoleto}/medical-forms`, "md");
+    assert.equal(leitura.status, 200);
+    const condutaAntiga = leitura.body.forms.find((f: any) => f.id === "conduta");
+    assert.equal(condutaAntiga.status, "rascunho");
+    assert.equal(condutaAntiga.desatualizado, true);
+
+    const [linhaMigrada] = await dbx.select().from(shared.caseMedicalForms).where((await import("drizzle-orm")).eq(shared.caseMedicalForms.caseId, casoObsoleto));
+    assert.equal(linhaMigrada.status, "rascunho");
+    assert.equal((linhaMigrada.history as any[])[0].payload.farmacoterapia_previa_qual, "Registro legado sintético");
+    assert.equal((linhaMigrada.history as any[])[0].reason, "Catálogo atualizado");
+
+    const salvo = await call("PUT", `/api/cases/${casoObsoleto}/medical-forms/conduta`, "md", { payload: { farmacoterapia_previa_qual: "Registro atualizado sintético" } });
+    assert.equal(salvo.status, 200);
+    assert.equal((await call("POST", `/api/cases/${casoObsoleto}/medical-forms/conduta/complete`, "md")).status, 200);
+    const [linhaAtualizada] = await dbx.select().from(shared.caseMedicalForms).where((await import("drizzle-orm")).eq(shared.caseMedicalForms.caseId, casoObsoleto));
+    assert.equal(linhaAtualizada.formVersion, shared.MD_FORMS_VERSION);
+    assert.equal(linhaAtualizada.status, "concluido");
+  });
+
   test("L: retorno para reavaliação guarda só data válida (AAAA-MM-DD)", async () => {
     const ok = await call("PUT", `/api/cases/${caso}/medical-forms/retorno_reavaliacao`, "md", { payload: { data: "2026-12-15" } });
     assert.equal(ok.status, 200);
@@ -205,8 +232,9 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.equal(reab.status, 200);
     assert.equal(reab.body.form.status, "rascunho");
 
-    const [linha] = await dbx.select().from(shared.caseMedicalForms);
-    const hist = (await dbx.select().from(shared.caseMedicalForms)).find((l) => l.formId === "conduta")!.history as any[];
+    const linhas = await dbx.select().from(shared.caseMedicalForms);
+    const linha = linhas.find((l) => l.caseId === caso && l.formId === "conduta");
+    const hist = linha!.history as any[];
     assert.ok(linha);
     assert.equal(hist.length, 1);
     assert.equal(hist[0].payload.farmacoterapia_previa_qual, TEXTO, "a versão original continua guardada");

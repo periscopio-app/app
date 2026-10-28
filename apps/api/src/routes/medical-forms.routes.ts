@@ -24,7 +24,7 @@ const salvarBody = z.object({ payload: z.record(z.unknown()) });
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 /**
- * Formulários do médico. Só texto livre curto (md-0.2, estrutura provisória até a validação clínica).
+ * Formulários do médico. Só campos curtos de texto livre definidos no catálogo md-1.1.
  * O conteúdo clínico nunca vai para a trilha nem para o log de auditoria: só quem fez, quando e qual seção.
  */
 export async function medicalFormsRoutes(app: FastifyInstance) {
@@ -48,10 +48,12 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
       instrumentosExternos: MD_INSTRUMENTOS_EXTERNOS,
       forms: MD_FORM_IDS.map((id) => {
         const r = porId.get(id);
+        const desatualizado = Boolean(r && r.formVersion !== MD_FORMS_VERSION);
         return {
           id,
           titulo: MD_FORMS[id].titulo,
-          status: r?.status ?? "nao_iniciado",
+          status: desatualizado ? "rascunho" : r?.status ?? "nao_iniciado",
+          desatualizado,
           payload: r ? normalizarPayloadMedico(id, r.payload) : normalizarPayloadMedico(id, {}),
           updatedAt: r?.updatedAt ?? null,
           completedAt: r?.completedAt ?? null,
@@ -81,10 +83,11 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     const [atual] = await db
       .select()
       .from(caseMedicalForms)
-      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId)))
+      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId), eq(caseMedicalForms.tenantId, visible.caseItem.tenantId)))
       .limit(1);
 
-    if (atual?.status === "concluido") {
+    const desatualizado = Boolean(atual && atual.status === "concluido" && atual.formVersion !== MD_FORMS_VERSION);
+    if (atual?.status === "concluido" && !desatualizado) {
       return reply.status(409).send({ error: "Seção concluída. Para alterar, reabra com o motivo." });
     }
 
@@ -92,8 +95,13 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     if (atual) {
       [saved] = await db
         .update(caseMedicalForms)
-        .set({ payload, formVersion: MD_FORMS_VERSION, updatedAt: new Date() })
-        .where(eq(caseMedicalForms.id, atual.id))
+        .set({
+          payload,
+          formVersion: MD_FORMS_VERSION,
+          updatedAt: new Date(),
+          ...(desatualizado ? { status: "rascunho", completedAt: null, completedBy: null } : {}),
+        })
+        .where(and(eq(caseMedicalForms.id, atual.id), eq(caseMedicalForms.tenantId, tenantId)))
         .returning();
     } else {
       [saved] = await db
@@ -133,10 +141,10 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     const [atual] = await db
       .select()
       .from(caseMedicalForms)
-      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId)))
+      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId), eq(caseMedicalForms.tenantId, visible.caseItem.tenantId)))
       .limit(1);
     if (!atual) return reply.status(409).send({ error: "Salve o rascunho antes de concluir." });
-    if (atual.status === "concluido") return reply.status(409).send({ error: "Seção já concluída." });
+    if (atual.status === "concluido" && atual.formVersion === MD_FORMS_VERSION) return reply.status(409).send({ error: "Seção já concluída." });
     if (!medicoTemConteudo(normalizarPayloadMedico(formId, atual.payload))) {
       return reply.status(400).send({ error: "A seção está em branco. Escreva o registro antes de concluir." });
     }
@@ -146,8 +154,8 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     await db.transaction(async (tx) => {
       await tx
         .update(caseMedicalForms)
-        .set({ status: "concluido", completedAt: agora, completedBy: actor.id, updatedAt: agora })
-        .where(eq(caseMedicalForms.id, atual.id));
+        .set({ status: "concluido", formVersion: MD_FORMS_VERSION, completedAt: agora, completedBy: actor.id, updatedAt: agora })
+        .where(and(eq(caseMedicalForms.id, atual.id), eq(caseMedicalForms.tenantId, tenantId)));
       await tx.insert(caseTimeline).values({
         tenantId,
         caseId,
@@ -181,9 +189,9 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     const [atual] = await db
       .select()
       .from(caseMedicalForms)
-      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId)))
+      .where(and(eq(caseMedicalForms.caseId, caseId), eq(caseMedicalForms.formId, formId), eq(caseMedicalForms.tenantId, visible.caseItem.tenantId)))
       .limit(1);
-    if (!atual || atual.status !== "concluido") return reply.status(409).send({ error: "Só é possível reabrir uma seção concluída." });
+    if (!atual || atual.status !== "concluido" || atual.formVersion !== MD_FORMS_VERSION) return reply.status(409).send({ error: "Só é possível reabrir uma seção concluída." });
 
     const tenantId = visible.caseItem.tenantId;
     const agora = new Date();
@@ -205,7 +213,7 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
       await tx
         .update(caseMedicalForms)
         .set({ status: "rascunho", completedAt: null, completedBy: null, history: novoHistorico, updatedAt: agora })
-        .where(eq(caseMedicalForms.id, atual.id));
+        .where(and(eq(caseMedicalForms.id, atual.id), eq(caseMedicalForms.tenantId, tenantId)));
       await tx.insert(caseTimeline).values({
         tenantId,
         caseId,
