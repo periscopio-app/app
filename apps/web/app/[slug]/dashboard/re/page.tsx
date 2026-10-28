@@ -24,7 +24,6 @@ import {
   Upload,
   ChevronDown,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { Button } from "@/components/ui";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -104,7 +103,7 @@ export default function REDashboardPage({
   const [caseMsg, setCaseMsg] = useState<string | null>(null);
   const [schoolName, setSchoolName] = useState<string>("");
 
-  // ── Upload de arquivo (.csv, .xlsx, .txt) ──────────────────────────────────
+  // ── Upload de arquivo (.csv, .txt) ───────────────────────────────────────
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,35 +113,26 @@ export default function REDashboardPage({
       const parsedLines: string[] = [];
 
       if (fileName.endsWith(".xlsx")) {
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: "array" });
-        const firstSheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[firstSheetName];
-        const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+        setStudentMsgOk(false);
+        setStudentMsg("Por segurança, o envio aceita arquivos CSV ou TXT. Salve a planilha como CSV e tente novamente.");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        setStudentMsgOk(false);
+        setStudentMsg("O arquivo deve ter até 2 MB. Divida a lista ou cole os dados diretamente.");
+        return;
+      }
 
-        for (const row of rows) {
-          if (!row || !Array.isArray(row)) continue;
-          const nums = row
-            .map((c) => Number(c))
-            .filter((n) => !isNaN(n) && n > 0);
-          const year = nums.find((n) => n >= 2000 && n <= 2026);
-          const month = nums.find((n) => n >= 1 && n <= 12 && n !== year);
-          if (year && month) {
-            parsedLines.push(`${year};${month}`);
-          }
-        }
-      } else {
-        // .csv ou .txt
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-        for (const line of lines) {
-          if (/[a-zA-Z]/.test(line) && !line.includes(";")) continue;
-          const parts = line.split(/[;,\t ]+/).map((p) => p.trim());
-          const year = Number(parts[0]);
-          const month = Number(parts[1]);
-          if (!isNaN(year) && year >= 2000 && year <= 2026 && !isNaN(month) && month >= 1 && month <= 12) {
-            parsedLines.push(`${year};${month}`);
-          }
+      // .csv ou .txt
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (/[a-zA-Z]/.test(line) && !line.includes(";")) continue;
+        const parts = line.split(/[;,\t ]+/).map((p) => p.trim());
+        const year = Number(parts[0]);
+        const month = Number(parts[1]);
+        if (!isNaN(year) && year >= 2000 && year <= 2026 && !isNaN(month) && month >= 1 && month <= 12) {
+          parsedLines.push(`${year};${month}`);
         }
       }
 
@@ -157,7 +147,7 @@ export default function REDashboardPage({
       setStudentMsg(`Arquivo ${file.name} carregado: ${parsedLines.length} alunos identificados. Clique em "Importar lista" para confirmar.`);
     } catch {
       setStudentMsgOk(false);
-      setStudentMsg("Erro ao processar arquivo. Verifique se é um arquivo .csv, .xlsx ou .txt válido.");
+      setStudentMsg("Erro ao processar arquivo. Verifique se é um arquivo .csv ou .txt válido.");
     } finally {
       e.target.value = "";
     }
@@ -415,22 +405,22 @@ export default function REDashboardPage({
                 Importar vários alunos (Upload de arquivo ou colar lista)
               </summary>
 
-              {/* Receptor de upload de arquivo .csv, .xlsx, .txt */}
+              {/* Receptor de upload de arquivo .csv ou .txt */}
               <div className="mt-2.5 p-3.5 border-2 border-dashed border-roxo/40 rounded-xl bg-roxo-50/60 hover:bg-roxo-50 transition text-center">
                 <label className="cursor-pointer block">
                   <input
                     type="file"
-                    accept=".csv,.xlsx,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    accept=".csv,.txt,text/csv,text/plain"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
                   <div className="flex flex-col items-center gap-1.5">
                     <Upload className="h-5 w-5 text-roxo" />
                     <span className="text-xs font-bold text-black">
-                      Carregar arquivo (.csv, .xlsx ou .txt)
+                      Carregar arquivo (.csv ou .txt)
                     </span>
                     <span className="text-[11px] text-neutral-600">
-                      Clique para selecionar ou arraste sua planilha de alunos
+                      Selecione um arquivo de texto ou cole os dados em ano;mês
                     </span>
                   </div>
                 </label>
