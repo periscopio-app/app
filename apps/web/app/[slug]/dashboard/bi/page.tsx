@@ -113,10 +113,6 @@ interface SummaryData {
   totalComplaints: number;
   totalServices: number;
   totalSchools: number;
-  totalItems?: number;
-  totalHypotheses?: number;
-  totalFamilyHistory?: number;
-  totalMedications?: number;
   schools: {
     schoolId: string | null;
     name: string;
@@ -124,8 +120,6 @@ interface SummaryData {
     patients: number;
   }[];
   topComplaints: { complaint: string; count: number }[];
-  topHypotheses?: { hypothesis: string; count: number }[];
-  topFamilyHistory?: { antecedent: string; count: number }[];
   serviceDemand: { service: string; count: number }[];
   ageDistribution: { age: number | null; count: number }[];
   lastUpdated: string;
@@ -544,7 +538,7 @@ export default function BiPage() {
       <div className="inline-flex w-full items-start gap-2 rounded-xl border border-linha bg-roxo-50/70 p-3 text-xs text-black">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-roxo" />
         <span>
-          <strong>Proteção de Dados & LGPD:</strong> Alunos aparecem apenas como contagem anônima. Grupos com menos de 5 casos são ocultados para garantir sigilo estatístico. O assistente nunca acessa nem processa nomes próprios ou documentos de crianças.
+          <strong>Proteção de Dados:</strong> Este painel apresenta indicadores agregados, sem nomes, códigos de aluno ou documentos. Grupos com menos de 5 casos são ocultados para reduzir o risco de identificação. O assistente consulta métricas autorizadas e não recebe registros individuais.
         </span>
       </div>
 
@@ -832,7 +826,7 @@ export default function BiPage() {
             </div>
           </div>
 
-          {/* Sumário Clínico e Demográfico por Paciente */}
+          {/* Informações clínicas individuais ficam fora deste painel executivo. */}
           <div className="grid gap-4 md:grid-cols-2">
             {/* Top Queixas Clínicas */}
             <div className="rounded-2xl bg-white border border-linha p-5 shadow-sm space-y-3">
@@ -863,62 +857,8 @@ export default function BiPage() {
               </div>
             </div>
 
-            {/* Hipóteses Diagnósticas Clínicas */}
-            <div className="rounded-2xl bg-white border border-linha p-5 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-black flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-roxo" /> Hipóteses Diagnósticas (722 Registros)
-              </h3>
-              <p className="text-xs text-neutral-600">
-                Diagnósticos e hipóteses mapeados na avaliação multiprofissional e médica.
-              </p>
-              <div className="space-y-2 pt-2">
-                {(summary?.topHypotheses ?? []).map((h, i) => {
-                  const maxH = summary?.topHypotheses?.[0]?.count ?? 1;
-                  return (
-                    <div key={i} className="space-y-1 text-xs">
-                      <div className="flex justify-between font-medium">
-                        <span className="truncate pr-2" title={h.hypothesis}>{h.hypothesis}</span>
-                        <span className="font-bold shrink-0">{h.count} casos</span>
-                      </div>
-                      <div className="h-2 rounded bg-neutral-100 overflow-hidden border border-linha">
-                        <div
-                          className="h-full bg-indigo-200 border-r border-indigo-600"
-                          style={{ width: `${(h.count / maxH) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Antecedentes Familiares */}
-            <div className="rounded-2xl bg-white border border-linha p-5 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-black flex items-center gap-2">
-                <Users className="h-4 w-4 text-roxo" /> Antecedentes Familiares (896 Registros)
-              </h3>
-              <p className="text-xs text-neutral-600">
-                Histórico familiar de saúde mental, vulnerabilidades sociais e fatores contextuais.
-              </p>
-              <div className="space-y-2 pt-2">
-                {(summary?.topFamilyHistory ?? []).map((f, i) => {
-                  const maxF = summary?.topFamilyHistory?.[0]?.count ?? 1;
-                  return (
-                    <div key={i} className="space-y-1 text-xs">
-                      <div className="flex justify-between font-medium">
-                        <span className="truncate pr-2" title={f.antecedent}>{f.antecedent}</span>
-                        <span className="font-bold shrink-0">{f.count} relatos</span>
-                      </div>
-                      <div className="h-2 rounded bg-neutral-100 overflow-hidden border border-linha">
-                        <div
-                          className="h-full bg-rose-200 border-r border-rose-500"
-                          style={{ width: `${(f.count / maxF) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="rounded-2xl border border-linha bg-neutral-50 p-5 text-sm text-neutral-800">
+              Informações diagnósticas e familiares em texto livre não são exibidas neste painel executivo.
             </div>
 
             {/* Demanda Multiprofissional por Serviço */}

@@ -5,6 +5,7 @@
  */
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -101,6 +102,33 @@ describe("BI do gestor (E2E)", { skip }, () => {
       },
     });
 
+    const [legacyBatch] = await db.insert(shared.legacyImportBatches).values({
+      tenantId: tA.id,
+      source: "fixture-sintetico",
+      referenceYear: 2025,
+      fileSha256: "a".repeat(64),
+      mappingSha256: "b".repeat(64),
+      rowCount: 1,
+      columns: [],
+      transformedColumns: [],
+      columnNonNull: {},
+      legalBasis: "fixture de teste",
+      authorizedBy: "fixture de teste",
+    }).returning();
+    const legacyPatientId = randomUUID();
+    await db.insert(shared.legacyPatients).values({
+      id: legacyPatientId,
+      tenantId: tA.id,
+      batchId: legacyBatch.id,
+      schoolId: sGL.id,
+      schoolCode: "2",
+      sourceRow: 1,
+    });
+    await db.insert(shared.legacyPatientItems).values([
+      { patientId: legacyPatientId, tenantId: tA.id, kind: "hypothesis", position: 1, text: "SINTETICO-RESTRINGIDO-HIPOTESE-7391" },
+      { patientId: legacyPatientId, tenantId: tA.id, kind: "family_history", position: 1, text: "SINTETICO-RESTRINGIDO-FAMILIA-2846" },
+    ]);
+
     const people = [
       { key: "admin", email: "admin@teste.local", role: "admin_platform", tenant: tA.id, school: null },
       { key: "municipal", email: "municipal@teste.local", role: "municipal_manager", tenant: tA.id, school: null },
@@ -195,6 +223,16 @@ describe("BI do gestor (E2E)", { skip }, () => {
       assert.equal(p.status, 200);
       for (const code of studentCodes) assert.ok(!p.raw.includes(code), `vazou ${code}`);
     }
+  });
+
+  test("sumário executivo não expõe textos clínicos individuais", async () => {
+    const summary = await call("GET", "/api/bi/summary", "municipal");
+    assert.equal(summary.status, 200);
+    const serialized = JSON.stringify(summary.body);
+    assert.ok(!serialized.includes("SINTETICO-RESTRINGIDO-HIPOTESE-7391"));
+    assert.ok(!serialized.includes("SINTETICO-RESTRINGIDO-FAMILIA-2846"));
+    assert.ok(!("topHypotheses" in summary.body));
+    assert.ok(!("topFamilyHistory" in summary.body));
   });
 
   test("base populacional: valor oculto na origem continua oculto e profissionais usam capacidade", async () => {
