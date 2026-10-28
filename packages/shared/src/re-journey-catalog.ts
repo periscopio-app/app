@@ -20,6 +20,7 @@
 
 import { SNAP4_ITENS } from "./snap4-catalog";
 import { GENOGRAMA_JSON_MAX, lerGenograma, normalizarGenogramaTexto } from "./genograma";
+import { FOGAP_COMPORTAMENTOS, faixaEmUso, itensDaFaixa } from "./fogap-catalog";
 
 export const RE_JORNADA_FORM_CODE = "re_jornada" as const;
 export const RE_JORNADA_VERSION = "1.0.0-rascunho" as const;
@@ -954,6 +955,8 @@ export interface JornadaEntradas {
   snap4?: unknown;
   /** `secao_sumario` do Formulário I, se algo foi salvo. */
   sumario?: unknown;
+  /** Payload completo do FOGAP (Formulário I), para validar itens de desenvolvimento e comportamentos. */
+  fogapPayload?: unknown;
   /** ATA (H): existe rascunho / já foi enviada. */
   ata: { existe: boolean; enviada: boolean };
   /** Série cadastrada no aluno (o Sumário I a carrega automaticamente). */
@@ -1077,10 +1080,45 @@ export function lacunasDoSumario(sumario: unknown, serieDoAluno?: string | null)
 }
 
 /**
- * Situação de cada formulário e lista do que está em branco. Não bloqueia nada: quem decide enviar assim mesmo é o RE.
+ * Itens de desenvolvimento e comportamentos do FOGAP (Formulário I) sem resposta.
+ * Cada item em branco vira lacuna bloqueante: o RE precisa clicar em Adequada/Inadequada (desenvolvimento)
+ * ou Sim/Não (comportamentos) antes de enviar. Regra alterada por decisão do produto (28/out/2026) —
+ * regra anterior (Dra. 07/out/2026) permitia itens em branco; valide com ela se necessário.
+ */
+export function lacunasFogapItens(fogapPayload: unknown): Lacuna[] {
+  if (!fogapPayload || typeof fogapPayload !== "object") return [];
+  const p = fogapPayload as Record<string, unknown>;
+  const out: Lacuna[] = [];
+
+  const faixa = faixaEmUso(p);
+  if (faixa) {
+    const itens = itensDaFaixa(faixa);
+    const dev = (p.respostas_desenvolvimento && typeof p.respostas_desenvolvimento === "object" ? p.respostas_desenvolvimento : {}) as Record<string, unknown>;
+    for (const item of itens) {
+      if (dev[item.id] !== "adequada" && dev[item.id] !== "inadequada") {
+        out.push({ passo: "i", campo: `respostas_desenvolvimento.${item.id}`, rotulo: `Formulário I › ${item.n}. ${item.texto}`, bloqueante: true });
+      }
+    }
+  }
+
+  const hiInsuf = (p.historico_insuficiente && typeof p.historico_insuficiente === "object" ? p.historico_insuficiente : {}) as Record<string, unknown>;
+  if (!hiInsuf.marcado) {
+    const comp = (p.respostas_comportamentos && typeof p.respostas_comportamentos === "object" ? p.respostas_comportamentos : {}) as Record<string, unknown>;
+    for (const c of FOGAP_COMPORTAMENTOS) {
+      if (comp[c.id] !== "sim" && comp[c.id] !== "nao") {
+        out.push({ passo: "i", campo: `respostas_comportamentos.${c.id}`, rotulo: `Formulário I › Comportamento ${c.n}: ${c.texto}`, bloqueante: true });
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Situação de cada formulário e lista do que está em branco.
  *  - G: "pulado" (botão "Não vou aplicar") ou itens do SNAP-IV; sem nenhuma das duas coisas, vira lacuna de decisão;
  *  - H: ATA enviada, "aguardando o responsável" ou lacuna de decisão;
- *  - I: campos do Sumário; a série vem do cadastro do aluno.
+ *  - I: campos do Sumário + todos os itens de desenvolvimento e comportamentos (todos bloqueantes).
  */
 export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
   const passos: PassoSituacao[] = [];
@@ -1132,12 +1170,14 @@ export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
       }
     } else {
       const falt = lacunasDoSumario(entrada.sumario, entrada.serieDoAluno);
+      const faltItens = lacunasFogapItens(entrada.fogapPayload);
       lacunas.push(...falt);
+      lacunas.push(...faltItens);
       const total = 5;
       const respondidos = Math.max(0, total - falt.filter((l) => l.campo !== "serie").length);
       passos.push({
         ...base,
-        estado: falt.length === 0 ? "completo" : entrada.sumario ? "parcial" : "vazio",
+        estado: falt.length === 0 && faltItens.length === 0 ? "completo" : entrada.sumario || entrada.fogapPayload ? "parcial" : "vazio",
         respondidos,
         total,
       });
