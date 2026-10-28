@@ -37,8 +37,10 @@ import { newsletterRoutes } from "./routes/newsletter.routes";
 import { supportRoutes } from "./routes/support.routes";
 import { factoryResetRoutes } from "./routes/factory-reset.routes";
 import { profileRoutes } from "./routes/profile.routes";
+import { assertIdentityVaultKeyConfigured } from "./services/identity-crypto.service";
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
+  if (process.env.NODE_ENV === "production") assertIdentityVaultKeyConfigured();
   const app = Fastify({
     logger: (opts.logger ?? true) ? loggerOptions() : false,
     genReqId: genRequestId,
