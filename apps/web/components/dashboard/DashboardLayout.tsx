@@ -148,9 +148,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     .map(({ show: _s, ...rest }) => ({ badge: undefined as string | undefined, ...rest, exact: false }));
   const isSuper =
     userRole === "admin_platform" ||
-    userRole === "adm_master" ||
-    session?.user?.email === "bruno@oceanoazul.dev.br" ||
-    (session?.user?.email ? session.user.email.endsWith("@oceanoazul.dev.br") : false);
+    userRole === "adm_master";
 
   const visibleAdmin = [
     { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal },
