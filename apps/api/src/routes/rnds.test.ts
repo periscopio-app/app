@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../app";
 
-test("RNDS Route: GET /api/rnds/status retorna protocolo FHIR R4 e status ready", async () => {
+test("RNDS Route: GET /api/rnds/status identifica o gerador como protótipo sem integração configurada", async () => {
   const app = await buildApp({ logger: false });
   const response = await app.inject({
     method: "GET",
@@ -11,13 +11,14 @@ test("RNDS Route: GET /api/rnds/status retorna protocolo FHIR R4 e status ready"
 
   assert.equal(response.statusCode, 200);
   const body = JSON.parse(response.body);
-  assert.equal(body.status, "ready");
+  assert.equal(body.status, "prototype");
+  assert.equal(body.environment, "not-configured");
   assert.ok(body.protocol.includes("HL7 FHIR R4"));
   assert.ok(body.activeCbos["225125"]); // Médico clínico
   assert.ok(body.activeCbos["251510"]); // Psicólogo clínico
 });
 
-test("RNDS Route: POST /api/rnds/rel/bundle gera Bundle FHIR REL válido com encaminhamento", async () => {
+test("RNDS Route: POST /api/rnds/rel/bundle gera Bundle FHIR experimental com encaminhamento", async () => {
   const app = await buildApp({ logger: false });
   const payload = {
     caseId: "caso-taruma-001",
@@ -81,4 +82,26 @@ test("RNDS Route: POST /api/rnds/rel/bundle gera Bundle FHIR REL válido com enc
   assert.ok(resources.includes("Encounter"));
   assert.ok(resources.includes("Condition"));
   assert.ok(resources.includes("ServiceRequest"));
+});
+
+test("RNDS Bundle: narrativa XHTML escapa conteúdo fornecido pelo cliente", async () => {
+  const app = await buildApp({ logger: false });
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/rnds/rel/bundle",
+    payload: {
+      caseId: "synthetic-case-1",
+      patient: {},
+      practitioner: { nome: "Profissional Sintético", cbo: "225125" },
+      organization: { nome: "Unidade Sintética" },
+      encounter: { motivoConsulta: "Motivo sintético" },
+      clinicalFindings: { descricaoQueixa: "<img src=x onerror=alert(1)> & texto" },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  const composition = body.bundle.entry.find((e: any) => e.resource.resourceType === "Composition").resource;
+  assert.match(composition.section[0].text.div, /&lt;img src=x onerror=alert\(1\)&gt; &amp; texto/);
+  assert.doesNotMatch(composition.section[0].text.div, /<img/);
 });

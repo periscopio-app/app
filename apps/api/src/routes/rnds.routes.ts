@@ -12,25 +12,21 @@ export async function rndsRoutes(app: FastifyInstance) {
     "/api/rnds/status",
     {
       schema: {
-        description: "Status do conector RNDS (Rede Nacional de Dados em Saúde / Ministério da Saúde - Padrão HL7 FHIR R4)",
+        description: "Disponibilidade do gerador experimental de Bundle FHIR R4; não representa conexão ou homologação RNDS.",
         tags: ["RNDS / SUS"],
         response: {
           200: {
             description: "Informações de conectividade e conformidade técnica do conector RNDS",
             type: "object",
             properties: {
-              status: { type: "string", example: "ready" },
+              status: { type: "string", example: "prototype" },
               protocol: { type: "string", example: "HL7 FHIR R4 (RNDS - REL v1.0)" },
               version: { type: "string", example: "2.0.0" },
-              environment: { type: "string", example: "sandbox" },
+              environment: { type: "string", example: "not-configured" },
               supportedDocTypes: {
                 type: "array",
                 items: { type: "string" },
-                example: [
-                  "REL (Registro Eletrônico de Atendimento Clínico e Encaminhamento)",
-                  "RAC (Registro de Atendimento Clínico)",
-                  "SUM_ALTA (Sumário de Alta)",
-                ],
+                example: ["REL (gerador experimental; ainda sem validação oficial)"],
               },
               activeCbos: { type: "object", additionalProperties: true },
             },
@@ -39,17 +35,12 @@ export async function rndsRoutes(app: FastifyInstance) {
       },
     },
     async () => {
-      const isProduction = process.env.NODE_ENV === "production";
       return {
-        status: "ready",
+        status: "prototype",
         protocol: "HL7 FHIR R4 (RNDS - REL v1.0)",
         version: "2.0.0",
-        environment: isProduction ? "homologacao" : "sandbox",
-        supportedDocTypes: [
-          "REL (Registro Eletrônico de Atendimento Clínico e Encaminhamento)",
-          "RAC (Registro de Atendimento Clínico)",
-          "SUM_ALTA (Sumário de Alta)",
-        ],
+        environment: "not-configured",
+        supportedDocTypes: ["REL (gerador experimental; ainda sem validação oficial)"],
         activeCbos: CBO_REFERENCE,
       };
     }
@@ -60,7 +51,7 @@ export async function rndsRoutes(app: FastifyInstance) {
     "/api/rnds/rel/validate",
     {
       schema: {
-        description: "Valida se um caso clínico possui todos os campos e requisitos obrigatórios para transmissão à RNDS",
+        description: "Checagens preliminares do payload; não substituem validação oficial de perfis RNDS.",
         tags: ["RNDS / SUS"],
         body: {
           type: "object",
@@ -95,12 +86,12 @@ export async function rndsRoutes(app: FastifyInstance) {
     }
   );
 
-  // 3. Geração do Bundle FHIR R4 REL para envio ou integração
+  // 3. Geração local de Bundle experimental. Nenhum dado é transmitido à RNDS.
   app.post<{ Body: RelInput }>(
     "/api/rnds/rel/bundle",
     {
       schema: {
-        description: "Gera o Bundle FHIR R4 oficial (Documento REL) para envio à RNDS do Ministério da Saúde",
+        description: "Gera um Bundle FHIR R4 experimental para validação local; não transmite dados nem atesta conformidade RNDS.",
         tags: ["RNDS / SUS"],
         body: {
           type: "object",
