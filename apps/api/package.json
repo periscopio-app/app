@@ -16,6 +16,7 @@
     "seed:masters": "tsx scripts/seed-masters.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "hash:password": "tsx scripts/hash-password.ts",
+    "db:security-audit": "tsx scripts/audit-db-security.ts",
     "taruma:load": "tsx scripts/taruma/load-aggregates.ts",
     "taruma:seed-bi": "tsx scripts/taruma/seed-bi-examples.ts",
     "seed:journey": "tsx scripts/seed-journey.ts"
