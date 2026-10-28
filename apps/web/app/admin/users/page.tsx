@@ -188,9 +188,7 @@ export default function AdminUsersPage() {
         throw new Error(data.error || "Erro ao criar usuário.");
       }
 
-      const msg = data.temporaryPassword
-        ? `Usuário ${novoEmail} criado com sucesso com perfil ${novoRole}! Senha inicial gerada: ${data.temporaryPassword} (copie e envie por canal seguro).`
-        : `Usuário ${novoEmail} criado com sucesso com perfil ${novoRole}!`;
+      const msg = `Usuário ${novoEmail} criado com sucesso com perfil ${novoRole}. ${data.message ?? ""}`;
       setFeedbackSuccess(msg);
       setModalOpen(false);
       setNovoNome("");
