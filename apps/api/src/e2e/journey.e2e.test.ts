@@ -553,7 +553,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
   test("especialista vê só o sumário executivo do médico (pendente) e nada do RE nem dos colegas", async () => {
     const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(v.status, 200, JSON.stringify(v.body));
-    assert.deepEqual(v.body.sumarioExecutivoMedico, { status: "pendente", registro: null, completedAt: null });
+    assert.deepEqual(v.body.sumarioExecutivoMedico, { status: "pendente", registro: null, completedAt: null, campos: [] });
     for (const chave of ["fogap", "peerSections", "medicalFinalSummary"]) {
       assert.ok(!(chave in v.body), `a visão do especialista não devolve ${chave}`);
     }
@@ -576,7 +576,15 @@ describe("jornada clínica (E2E)", { skip }, () => {
 
   test("especialista só vê o sumário do médico depois de concluído; parecer do colega nunca; sem seção → 403", async () => {
     // O médico escreve o sumário: em rascunho ele não sai do perfil dele
-    const rasc = await call("PUT", `/api/cases/${caseId}/medical-forms/sumario_medico`, "md", { payload: { queixa_professor: "sumário executivo sintético do médico" } });
+    const rasc = await call("PUT", `/api/cases/${caseId}/medical-forms/sumario_medico`, "md", {
+      payload: {
+        queixa_professor: "sumário executivo sintético do médico",
+        avaliacao_re: "avaliação sintética do RE",
+        hipotese: "hipótese sintética registrada pelo médico",
+        conduta: "8,6",
+        data: "2026-10-27",
+      },
+    });
     assert.equal(rasc.status, 200, JSON.stringify(rasc.body));
     const antes = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(antes.body.sumarioExecutivoMedico.status, "pendente");
@@ -587,6 +595,14 @@ describe("jornada clínica (E2E)", { skip }, () => {
     const v = await call("GET", `/api/cases/${caseId}/specialist-view`, "esp");
     assert.equal(v.status, 200, JSON.stringify(v.body));
     assert.equal(v.body.sumarioExecutivoMedico.status, "concluido");
+    assert.equal(v.body.sumarioExecutivoMedico.campos.length, 5);
+    assert.deepEqual(v.body.sumarioExecutivoMedico.campos.find((c: any) => c.id === "conduta")?.itens, [
+      "6. sim, está sob farmacoterapia",
+      "8. Fez avaliação neuropsicológica",
+    ]);
+    assert.deepEqual(v.body.sumarioExecutivoMedico.campos.find((c: any) => c.id === "data"), {
+      id: "data", rotulo: "Data", tipo: "data", valor: "2026-10-27",
+    });
     assert.ok(v.body.sumarioExecutivoMedico.registro.includes("sumário executivo sintético do médico"));
     assert.ok(v.body.sumarioExecutivoMedico.registro.includes("Queixa do professor"));
     assert.ok(!("peerSections" in v.body), "parecer do colega não aparece, nem concluído");

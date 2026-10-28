@@ -11,7 +11,7 @@
  * "Sumário executivo" = a própria seção/formulário concluído do profissional. Para o médico, é o
  * formulário "Sumário médico" (sumario_medico). Rascunho nunca sai do perfil de quem escreve.
  */
-import { sumarioMedicoComoTexto } from "@periscopio/shared";
+import { MD_FORMS, normalizarPayloadMedico, sumarioMedicoComoTexto } from "@periscopio/shared";
 
 export const SUMARIO_MEDICO_FORM_ID = "sumario_medico" as const;
 
@@ -26,11 +26,28 @@ export interface SumarioExecutivoMedico {
   status: "concluido" | "pendente";
   registro: string | null;
   completedAt: Date | null;
+  campos: { id: string; rotulo: string; tipo: "texto" | "lista" | "data"; valor: string | null; itens?: string[] }[];
 }
 
 export function sumarioExecutivoMedico(row: SumarioMedicoRow | undefined | null): SumarioExecutivoMedico {
-  if (!row || row.status !== "concluido") return { status: "pendente", registro: null, completedAt: null };
+  if (!row || row.status !== "concluido") return { status: "pendente", registro: null, completedAt: null, campos: [] };
   const p = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
-  const registro = sumarioMedicoComoTexto(p);
-  return { status: "concluido", registro, completedAt: row.completedAt };
+  const payload = normalizarPayloadMedico(SUMARIO_MEDICO_FORM_ID, p);
+  const campos = MD_FORMS.sumario_medico.campos.map((campo) => {
+    const valor = payload[campo.id]?.trim() || null;
+    if (campo.tipo === "multi") {
+      const marcados = new Set((payload[campo.id] ?? "").split(",").filter(Boolean));
+      const itens = (campo.opcoes ?? []).filter((opcao) => marcados.has(opcao.valor)).map((opcao) => opcao.rotulo);
+      return {
+        id: campo.id,
+        rotulo: campo.rotulo.replace(/\s*\([^)]*\)\s*$/, ""),
+        tipo: "lista" as const,
+        valor: null,
+        itens,
+      };
+    }
+    if (campo.tipo === "data") return { id: campo.id, rotulo: campo.rotulo, tipo: "data" as const, valor };
+    return { id: campo.id, rotulo: campo.rotulo, tipo: "texto" as const, valor };
+  });
+  return { status: "concluido", registro: sumarioMedicoComoTexto(p), completedAt: row.completedAt, campos };
 }

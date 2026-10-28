@@ -108,7 +108,7 @@ export function ProntuarioHeaderCard({
             <ShieldCheck className="h-4 w-4" />
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-700">
               Prontuário de Saúde Escolar e Acompanhamento
             </span>
           </div>
@@ -122,7 +122,7 @@ export function ProntuarioHeaderCard({
       <div className={`grid grid-cols-2 gap-3.5 text-xs ${onVerNome ? "sm:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-5"}`}>
         {/* Coluna 1: Nº Prontuário */}
         <div className="space-y-1">
-          <span className="flex items-center gap-1 font-semibold text-neutral-500">
+          <span className="flex items-center gap-1 font-semibold text-neutral-700">
             <FileText className="h-3.5 w-3.5 text-neutral-400" />
             Nº Prontuário
           </span>
@@ -131,7 +131,7 @@ export function ProntuarioHeaderCard({
 
         {/* Coluna 2: Nome */}
         <div className="space-y-1">
-          <span className="flex items-center gap-1 font-semibold text-neutral-500">
+          <span className="flex items-center gap-1 font-semibold text-neutral-700">
             <User className="h-3.5 w-3.5 text-neutral-400" />
             Nome
           </span>
@@ -142,7 +142,7 @@ export function ProntuarioHeaderCard({
           ) : onVerNome ? (
             <>
               <p className="flex items-center gap-1 font-semibold text-black text-sm">
-                <Lock className="h-3.5 w-3.5 text-neutral-500" aria-hidden /> Protegido
+                <Lock className="h-3.5 w-3.5 text-neutral-700" aria-hidden /> Protegido
               </p>
               <button type="button" onClick={onVerNome} className="text-[11px] font-bold text-roxo underline underline-offset-2 hover:text-roxo-800" data-testid="ver-nome-aluno">
                 Ver nome (Cofre, auditado)
@@ -157,7 +157,7 @@ export function ProntuarioHeaderCard({
 
         {/* Coluna 3: Escola */}
         <div className="space-y-1">
-          <span className="flex items-center gap-1 font-semibold text-neutral-500">
+          <span className="flex items-center gap-1 font-semibold text-neutral-700">
             <School className="h-3.5 w-3.5 text-neutral-400" />
             Escola
           </span>
@@ -168,7 +168,7 @@ export function ProntuarioHeaderCard({
 
         {onVerNome && (
           <div className="space-y-1">
-            <span className="flex items-center gap-1 font-semibold text-neutral-500">
+            <span className="flex items-center gap-1 font-semibold text-neutral-700">
               <GraduationCap className="h-3.5 w-3.5 text-neutral-400" />
               Série
             </span>
@@ -180,26 +180,26 @@ export function ProntuarioHeaderCard({
 
         {/* Coluna 4: Idade */}
         <div className="space-y-1">
-          <span className="flex items-center gap-1 font-semibold text-neutral-500">
+          <span className="flex items-center gap-1 font-semibold text-neutral-700">
             <Calendar className="h-3.5 w-3.5 text-neutral-400" />
             Idade
           </span>
           <p className="font-medium text-black">
             {ageText || "7–9 anos"}
           </p>
-          {birthText && <span className="block text-[10px] text-neutral-500">nasc. {birthText}</span>}
+          {birthText && <span className="block text-[10px] text-neutral-700">nasc. {birthText}</span>}
         </div>
 
         {/* Coluna 5: Profissional */}
         <div className="space-y-1">
-          <span className="flex items-center gap-1 font-semibold text-neutral-500">
+          <span className="flex items-center gap-1 font-semibold text-neutral-700">
             <ShieldCheck className="h-3.5 w-3.5 text-neutral-400" />
             Profissional
           </span>
           <p className="font-medium text-black truncate" title={`${professionalName} (${roleLabel})`}>
             {professionalName}
           </p>
-          <span className="block text-[10px] text-neutral-500 truncate">{roleLabel}</span>
+          <span className="block text-[10px] text-neutral-700 truncate">{roleLabel}</span>
         </div>
       </div>
       {queixaEscola !== undefined && <QueixaDaEscola texto={queixaEscola ?? ""} />}

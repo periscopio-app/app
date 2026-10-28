@@ -144,7 +144,7 @@ function SugestaoObservacao({ formId, value, onUsar, sugerir }: { formId: string
   }
   return (
     <div className="mt-2 space-y-2">
-      <Button type="button" onClick={pedir} disabled={busy} variant="outline" size="sm">
+      <Button type="button" onClick={pedir} disabled={busy} variant="outline" size="sm" className="min-h-[44px]">
         <Sparkles className="h-3.5 w-3.5" aria-hidden /> {busy ? "Preparando…" : "Sugerir texto com base no que preenchi"}
       </Button>
       {erro && <p role="alert" className="text-xs font-semibold text-erro">{erro}</p>}
@@ -153,13 +153,13 @@ function SugestaoObservacao({ formId, value, onUsar, sugerir }: { formId: string
           <p className="text-[11px] font-semibold text-neutral-800">
             {sug.source === "ia" ? "Sugestão do assistente (conferida pelo sistema)" : "Sugestão montada pelas regras do sistema"}
           </p>
-          <p className="whitespace-pre-wrap">{sug.texto}</p>
+          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{sug.texto}</p>
           <p className="text-[11px] text-neutral-800">{sug.aviso}</p>
           <div className="flex gap-2">
-            <Button type="button" variant="primary" size="sm" onClick={() => { onUsar(sug.texto); setSug(null); }}>
+            <Button type="button" variant="primary" size="sm" className="min-h-[44px]" onClick={() => { onUsar(sug.texto); setSug(null); }}>
               Usar este texto
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setSug(null)}>
+            <Button type="button" variant="outline" size="sm" className="min-h-[44px]" onClick={() => setSug(null)}>
               Descartar
             </Button>
           </div>
@@ -445,7 +445,7 @@ export function ReFormLeitura({ form, value }: { form: FormDef; value: Payload }
             {s.campos.map((c) => {
               let conteudo: React.ReactNode = vazio;
               if (c.tipo === "texto" || c.tipo === "texto_longo") {
-                conteudo = value[c.key] ? <span className="whitespace-pre-wrap">{String(value[c.key])}</span> : vazio;
+                conteudo = value[c.key] ? <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{String(value[c.key])}</span> : vazio;
               } else if (c.tipo === "genograma") {
                 const g = lerGenograma(value[c.key]);
                 conteudo = g ? <GenogramaDesenho genograma={g} /> : vazio;

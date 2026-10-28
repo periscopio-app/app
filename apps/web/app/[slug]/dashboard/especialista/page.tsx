@@ -6,7 +6,7 @@ import { api, type CaseSection, type Me } from "@/lib/api";
 import { ProfileHero } from "@/components/ui/ProfileHero";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
-import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText } from "lucide-react";
+import { Stethoscope, AlertCircle, Lock, CheckCircle, FileText, ChevronDown } from "lucide-react";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { EspecialidadeFormsPanel } from "@/components/especialista/EspecialidadeFormsPanel";
@@ -35,23 +35,60 @@ interface AssignedSection extends CaseSection {
 }
 
 interface CaseContext {
-  sumarioExecutivoMedico: { status: "concluido" | "pendente"; registro: string | null; completedAt: string | null };
+  sumarioExecutivoMedico: {
+    status: "concluido" | "pendente";
+    registro: string | null;
+    completedAt: string | null;
+    campos: { id: string; rotulo: string; tipo: "texto" | "lista" | "data"; valor: string | null; itens?: string[] }[];
+  };
 }
 
-function CaseContextPanel({ ctx }: { ctx: CaseContext }) {
+function dataPuraPtBr(valor: string): string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : valor;
+}
+
+function CaseContextPanel({ ctx, isReadOnly }: { ctx: CaseContext; isReadOnly: boolean }) {
   const s = ctx.sumarioExecutivoMedico;
   return (
-    <div className="rounded-xl border border-linha bg-fundo p-4 space-y-2 text-xs text-black">
-      <h3 className="text-sm font-bold text-black">Sumário executivo do médico (somente leitura)</h3>
+    <details open={!isReadOnly} className="group min-w-0 overflow-hidden rounded-xl border border-linha bg-fundo p-4 text-sm text-black">
+      <summary className="flex min-h-[44px] cursor-pointer list-none flex-wrap items-center justify-between gap-2 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-roxo/50">
+        <span className="flex min-h-[44px] items-center">Sumário executivo do médico</span>
+        <span className="flex min-h-[44px] items-center gap-2">
+          <span className="rounded-full border border-linha bg-white px-2.5 py-1 text-xs font-semibold text-neutral-800">Somente leitura</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-700 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </span>
+      </summary>
       {s.status === "concluido" ? (
-        <p className="whitespace-pre-wrap">{s.registro?.trim() ? s.registro : "O médico concluiu o sumário sem texto."}</p>
+        <dl className="mt-3 min-w-0 space-y-3">
+          {s.campos.map((campo) => (
+            <div key={campo.id} className="min-w-0">
+              <dt className="break-words font-bold [overflow-wrap:anywhere]">{campo.rotulo}</dt>
+              <dd className="mt-1 min-w-0 break-words [overflow-wrap:anywhere]">
+                {campo.tipo === "lista" ? (
+                  campo.itens?.length ? (
+                    <ul className="list-disc space-y-1 pl-5">
+                      {campo.itens.map((item, index) => <li key={`${campo.id}:${index}`} className="break-words [overflow-wrap:anywhere]">{item}</li>)}
+                    </ul>
+                  ) : <span className="italic text-neutral-700">Nenhuma opção marcada</span>
+                ) : campo.valor?.trim() ? (
+                  <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                    {campo.tipo === "data" ? dataPuraPtBr(campo.valor) : campo.valor}
+                  </span>
+                ) : <span className="italic text-neutral-700">Não preenchido</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
       ) : (
-        <p className="text-neutral-800">O médico ainda não concluiu o sumário executivo deste caso.</p>
+        <p role="status" className="mt-3 rounded-lg border border-linha bg-white px-3 py-2 text-sm text-neutral-800">
+          O médico ainda não concluiu o sumário executivo deste caso. Você já pode salvar rascunho do seu parecer.
+        </p>
       )}
-      <p className="text-neutral-700">
+      <p className="mt-3 break-words text-neutral-800 [overflow-wrap:anywhere]">
         Você vê apenas este sumário e a sua própria seção. O FOGAP, as seções dos colegas e a decisão final ficam com o médico.
       </p>
-    </div>
+    </details>
   );
 }
 
@@ -126,7 +163,7 @@ export default function EspecialistaDashboardPage({
     if (activeSection.status === "concluido") return;
 
     if (markAsCompleted && notes.trim().length < 100) {
-      setSaveMsg("O parecer clínico deve conter no mínimo 100 caracteres para fundamentação técnica adequada (exigência Zod).");
+      setSaveMsg("O parecer precisa ter pelo menos 100 caracteres para ser concluído.");
       return;
     }
 
@@ -198,7 +235,7 @@ export default function EspecialistaDashboardPage({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Section list */}
           <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
             <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
@@ -210,7 +247,7 @@ export default function EspecialistaDashboardPage({
                 <button
                   key={sec.id}
                   onClick={() => selectSection(sec)}
-                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
+                  className={`min-h-[44px] w-full text-left rounded-xl border px-3 py-2.5 transition ${
                     activeSection?.id === sec.id
                       ? "border-roxo bg-roxo-100"
                       : "border-linha hover:bg-fundo"
@@ -240,21 +277,21 @@ export default function EspecialistaDashboardPage({
           </div>
 
           {/* Editor panel */}
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             {!activeSection ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
                 <Stethoscope className="h-10 w-10 text-neutral-800/40 mb-3" />
                 <p className="text-sm text-black">Selecione uma seção para redigir o parecer</p>
               </div>
             ) : (
-              <div className="rounded-2xl bg-white border border-linha p-6 shadow-suave space-y-5">
+              <div className="min-w-0 rounded-2xl bg-white border border-linha p-4 shadow-suave space-y-5 sm:p-6">
                 {/* Prontuário Oficial - 5 Colunas Padronizadas */}
                 <ProntuarioHeaderCard
                   studentCode={activeSection.studentCode}
                   studentName={`Aluno (${activeSection.studentCode.slice(-6)})`}
                   nomeCompleto={nomeAluno.fullName}
                   schoolName={slug}
-                  ageText={activeSection.birthYear ? `${new Date().getFullYear() - activeSection.birthYear} anos` : "7–9 anos (Piloto)"}
+                  ageText={activeSection.birthYear ? `${new Date().getFullYear() - activeSection.birthYear} anos` : "Idade não informada"}
                   professionalName={activeSection.professionalName || me?.name || "Especialista do Núcleo"}
                   professionalRole={activeSection.specialty}
                   journeyState={activeSection.status === "concluido" ? "encerrado" : "delegado"}
@@ -269,7 +306,7 @@ export default function EspecialistaDashboardPage({
                     specialtyOnlySummary={true}
                     userSpecialty={activeSection.specialty}
                     childrenOverview={
-                      <div className="space-y-4">
+                      <div className="min-w-0 space-y-4">
                         {/* Section header */}
                         <div className="flex items-start justify-between border-b border-linha pb-3">
                           <div>
@@ -312,11 +349,13 @@ export default function EspecialistaDashboardPage({
                           </div>
                         )}
 
+                        {ctx && <CaseContextPanel ctx={ctx} isReadOnly={isReadOnly ?? false} />}
+
                         <EspecialidadeFormsPanel key={`${activeSection.id}:${activeSection.status}`} sectionId={activeSection.id} specialty={activeSection.specialty} />
 
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-xs font-semibold text-black">
+                            <label htmlFor={`parecer-${activeSection.id}`} className="text-xs font-semibold text-black">
                               Parecer clínico — {SPECIALTY_NAMES[activeSection.specialty] ?? activeSection.specialty}
                               {!isReadOnly && <span className="text-black ml-1">*</span>}
                             </label>
@@ -331,52 +370,57 @@ export default function EspecialistaDashboardPage({
                             </span>
                           </div>
                           <textarea
+                            id={`parecer-${activeSection.id}`}
                             rows={8}
                             disabled={isReadOnly}
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder={`Descreva detalhadamente suas observações clínicas, marcos avaliados, evolução e recomendações terapêuticas para ${activeSection.specialty} (mínimo de 100 caracteres)...`}
-                            className="w-full rounded-xl border border-linha px-3 py-3 text-sm text-black resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800"
+                            className="w-full min-w-0 rounded-xl border border-linha px-3 py-3 text-sm text-black whitespace-pre-wrap break-words [overflow-wrap:anywhere] resize-y outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800"
                           />
                         </div>
 
                         {!isReadOnly && (
-                          <div className="flex items-center justify-between pt-2 border-t border-linha">
-                            <div className="flex items-center gap-1.5 text-[11px] text-neutral-800">
-                              <Lock className="h-3 w-3" />
-                              Mínimo de 100 caracteres exigido pelo Zod para conclusão imutável.
-                            </div>
-                            <div className="flex gap-3">
+                          <div className="flex flex-col gap-3 border-t border-linha pt-3 sm:flex-row sm:items-start sm:justify-between">
+                            <p className="max-w-xl text-sm text-neutral-800">
+                              Depois de concluir, o parecer não pode mais ser alterado. Mínimo de 100 caracteres.
+                            </p>
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
                               <Button
                                 type="button"
                                 disabled={saving}
                                 onClick={() => handleSave(false)}
-                                variant="outline" size="md"
+                                variant="outline" size="md" className="min-h-[44px]"
                               >
                                 Salvar rascunho
                               </Button>
-                              <Button
-                                type="button"
-                                disabled={saving || notes.trim().length < 100}
-                                onClick={() => handleSave(true)}
-                                variant="primary" size="md"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                                {saving ? "Salvando..." : "Concluir parecer (100+ car.)"}
-                              </Button>
+                              <div className="flex flex-col items-start gap-1 sm:items-end">
+                                <Button
+                                  type="button"
+                                  disabled={saving || notes.trim().length < 100}
+                                  onClick={() => handleSave(true)}
+                                  variant="primary" size="md" className="min-h-[44px]"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                  {saving ? "Salvando..." : "Concluir parecer"}
+                                </Button>
+                                {notes.trim().length < 100 && (
+                                  <p aria-live="polite" className="text-xs font-medium text-neutral-800">
+                                    Faltam {100 - notes.trim().length} caracteres
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
-
-                        {ctx && <CaseContextPanel ctx={ctx} />}
                       </div>
                     }
                   />
                 </div>
 
-                <p className="text-[11px] text-neutral-800 border-t border-linha pt-3">
-                  🔒 Assegure que nenhum identificador direto não autorizado conste no texto livre.
-                  Este parecer faz parte do Prontuário Multidisciplinar Consolidado.
+                <p className="flex items-start gap-2 border-t border-linha pt-3 text-sm text-neutral-800">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>Não escreva nome, CPF, telefone ou endereço da criança ou da família no texto. Este parecer faz parte do Prontuário Multidisciplinar Consolidado.</span>
                 </p>
               </div>
             )}
