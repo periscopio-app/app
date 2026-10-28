@@ -25,9 +25,9 @@ export function resolveAuthBaseUrl(): string {
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
 export const authBaseUrl = resolveAuthBaseUrl();
 
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV !== "development") {
   if (!authSecret) {
-    throw new Error("BETTER_AUTH_SECRET é obrigatória em produção.");
+    throw new Error("BETTER_AUTH_SECRET é obrigatória fora do ambiente de desenvolvimento.");
   }
   if (authSecret === "dev_only_secret_replace_in_production") {
     throw new Error("BETTER_AUTH_SECRET não pode ser o valor de desenvolvimento.");
@@ -111,7 +111,7 @@ export const auth = betterAuth({
       ...(authBaseUrl ? [authBaseUrl] : []),
       ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL.replace(/\/$/, "")] : []),
       ...(process.env.APP_URL ? [process.env.APP_URL.replace(/\/$/, "")] : []),
-      ...(process.env.CORS_ORIGINS ?? "http://localhost:3000,https://periscopio-web-projeto-periscopio.vercel.app")
+      ...(process.env.CORS_ORIGINS ?? "http://localhost:3000")
         .split(",")
         .map((origin) => origin.trim())
         .filter(Boolean),
