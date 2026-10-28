@@ -59,6 +59,7 @@ describe("Nome do aluno na tela do caso (E2E)", { skip }, () => {
     process.env.DATABASE_URL = url!;
     process.env.NODE_ENV = "test";
     process.env.BETTER_AUTH_SECRET = "segredo-de-teste-com-mais-de-32-caracteres!!";
+    process.env.IDENTITY_VAULT_KEY = "chave-sintetica-teste-com-mais-de-32-bytes!!";
     process.env.BETTER_AUTH_URL = "http://localhost:3001";
     process.env.CORS_ORIGINS = "http://localhost:3000";
 
