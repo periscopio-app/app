@@ -56,7 +56,7 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
           desatualizado,
           payload: r ? normalizarPayloadMedico(id, r.payload) : normalizarPayloadMedico(id, {}),
           updatedAt: r?.updatedAt ?? null,
-          completedAt: r?.completedAt ?? null,
+          completedAt: desatualizado ? null : (r?.completedAt ?? null),
           reaberturas: Array.isArray(r?.history) ? (r!.history as unknown[]).length : 0,
         };
       }),
@@ -99,7 +99,24 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
           payload,
           formVersion: MD_FORMS_VERSION,
           updatedAt: new Date(),
-          ...(desatualizado ? { status: "rascunho", completedAt: null, completedBy: null } : {}),
+          ...(desatualizado
+            ? {
+                status: "rascunho",
+                completedAt: null,
+                completedBy: null,
+                history: [
+                  ...(Array.isArray(atual.history) ? (atual.history as unknown[]) : []),
+                  {
+                    payload: atual.payload,
+                    completedAt: atual.completedAt,
+                    completedBy: atual.completedBy,
+                    reopenedAt: new Date().toISOString(),
+                    reopenedBy: null,
+                    reason: "Catálogo atualizado",
+                  },
+                ],
+              }
+            : {}),
         })
         .where(and(eq(caseMedicalForms.id, atual.id), eq(caseMedicalForms.tenantId, tenantId)))
         .returning();
