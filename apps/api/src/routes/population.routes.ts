@@ -24,9 +24,9 @@ const count = z.number().int().min(0).nullable();
 const payloadSchema = z
   .object({
     total: count,
-    ageBands: z.record(count),
-    complaints: z.record(count),
-    services: z.record(count),
+    ageBands: z.record(z.string(), count),
+    complaints: z.record(z.string(), count),
+    services: z.record(z.string(), count),
   })
   .strict();
 export const importSchema = z

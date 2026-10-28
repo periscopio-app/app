@@ -347,8 +347,14 @@ describe("Indicadores do piloto (E2E)", { skip }, () => {
     assert.ok(list.body.measurements.filter((m: any) => m.source === "escola" && m.phase === "inicial").length >= 2, "histórico preservado");
 
     const id = list.body.measurements[0].id;
-    await assert.rejects(db.execute((await import("drizzle-orm")).sql`UPDATE symptom_measurements SET marked_count = 0 WHERE id = ${id}`), /somente inserção/);
-    await assert.rejects(db.execute((await import("drizzle-orm")).sql`DELETE FROM symptom_measurements WHERE id = ${id}`), /somente inserção/);
+    await assert.rejects(
+      db.execute((await import("drizzle-orm")).sql`UPDATE symptom_measurements SET marked_count = 0 WHERE id = ${id}`),
+      (error: any) => /somente inserção/.test(String(error?.cause?.message ?? error?.message)),
+    );
+    await assert.rejects(
+      db.execute((await import("drizzle-orm")).sql`DELETE FROM symptom_measurements WHERE id = ${id}`),
+      (error: any) => /somente inserção/.test(String(error?.cause?.message ?? error?.message)),
+    );
   });
 
   test("medida: a trilha de auditoria registra quem gravou", async () => {

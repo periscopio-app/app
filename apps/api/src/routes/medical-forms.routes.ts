@@ -20,7 +20,7 @@ import { caseVisibleTo } from "./cases.routes";
 /** Estados em que o médico pode escrever: do recebimento até o encerramento. */
 const ESTADOS_EDITAVEIS = new Set(["revisao_medica", "delegado", "retornado"]);
 
-const salvarBody = z.object({ payload: z.record(z.unknown()) });
+const salvarBody = z.object({ payload: z.record(z.string(), z.unknown()) });
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 /**
