@@ -1,10 +1,9 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import {
   legacyPatients,
   legacyPatientComplaints,
   legacyPatientServices,
-  legacyPatientItems,
   schools,
 } from "@periscopio/shared";
 import type { Fact, MetricId } from "./bi-semantic.service";
@@ -16,10 +15,6 @@ export interface HistoricalExecutiveSummary {
   totalComplaints: number;
   totalServices: number;
   totalSchools: number;
-  totalItems: number;
-  totalHypotheses: number;
-  totalFamilyHistory: number;
-  totalMedications: number;
   schools: {
     schoolId: string | null;
     name: string;
@@ -27,43 +22,38 @@ export interface HistoricalExecutiveSummary {
     patients: number;
   }[];
   topComplaints: { complaint: string; count: number }[];
-  topHypotheses: { hypothesis: string; count: number }[];
-  topFamilyHistory: { antecedent: string; count: number }[];
   serviceDemand: { service: string; count: number }[];
   ageDistribution: { age: number | null; count: number }[];
   lastUpdated: string;
 }
 
-export async function getHistoricalExecutiveSummary(tenantId: string): Promise<HistoricalExecutiveSummary> {
+export async function getHistoricalExecutiveSummary(tenantId: string, schoolId: string | null = null): Promise<HistoricalExecutiveSummary> {
+  const patientIdsForSchool = () =>
+    db
+      .select({ id: legacyPatients.id })
+      .from(legacyPatients)
+      .where(and(eq(legacyPatients.tenantId, tenantId), schoolId ? eq(legacyPatients.schoolId, schoolId) : undefined));
+
   const [totalPatientsResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(legacyPatients)
-    .where(eq(legacyPatients.tenantId, tenantId));
+    .where(and(eq(legacyPatients.tenantId, tenantId), schoolId ? eq(legacyPatients.schoolId, schoolId) : undefined));
 
   const [totalComplaintsResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(legacyPatientComplaints)
-    .where(eq(legacyPatientComplaints.tenantId, tenantId));
+    .where(and(
+      eq(legacyPatientComplaints.tenantId, tenantId),
+      schoolId ? inArray(legacyPatientComplaints.patientId, patientIdsForSchool()) : undefined,
+    ));
 
   const [totalServicesResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(legacyPatientServices)
-    .where(eq(legacyPatientServices.tenantId, tenantId));
-
-  const [totalHypothesesResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(legacyPatientItems)
-    .where(sql`${legacyPatientItems.tenantId} = ${tenantId} and ${legacyPatientItems.kind} = 'hypothesis'`);
-
-  const [totalFamilyHistoryResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(legacyPatientItems)
-    .where(sql`${legacyPatientItems.tenantId} = ${tenantId} and ${legacyPatientItems.kind} = 'family_history'`);
-
-  const [totalMedicationsResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(legacyPatientItems)
-    .where(sql`${legacyPatientItems.tenantId} = ${tenantId} and ${legacyPatientItems.kind} = 'medication'`);
+    .where(and(
+      eq(legacyPatientServices.tenantId, tenantId),
+      schoolId ? inArray(legacyPatientServices.patientId, patientIdsForSchool()) : undefined,
+    ));
 
   const schoolStats = await db
     .select({
@@ -74,7 +64,7 @@ export async function getHistoricalExecutiveSummary(tenantId: string): Promise<H
     })
     .from(legacyPatients)
     .leftJoin(schools, eq(legacyPatients.schoolId, schools.id))
-    .where(eq(legacyPatients.tenantId, tenantId))
+    .where(and(eq(legacyPatients.tenantId, tenantId), schoolId ? eq(legacyPatients.schoolId, schoolId) : undefined))
     .groupBy(legacyPatients.schoolId, schools.name, legacyPatients.schoolCode)
     .orderBy(desc(sql`count(*)`));
 
@@ -84,32 +74,13 @@ export async function getHistoricalExecutiveSummary(tenantId: string): Promise<H
       count: sql<number>`count(*)::int`,
     })
     .from(legacyPatientComplaints)
-    .where(eq(legacyPatientComplaints.tenantId, tenantId))
+    .where(and(
+      eq(legacyPatientComplaints.tenantId, tenantId),
+      schoolId ? inArray(legacyPatientComplaints.patientId, patientIdsForSchool()) : undefined,
+    ))
     .groupBy(legacyPatientComplaints.complaint)
     .orderBy(desc(sql`count(*)`))
     .limit(10);
-
-  const topHypotheses = await db
-    .select({
-      hypothesis: legacyPatientItems.text,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(legacyPatientItems)
-    .where(sql`${legacyPatientItems.tenantId} = ${tenantId} and ${legacyPatientItems.kind} = 'hypothesis'`)
-    .groupBy(legacyPatientItems.text)
-    .orderBy(desc(sql`count(*)`))
-    .limit(8);
-
-  const topFamilyHistory = await db
-    .select({
-      antecedent: legacyPatientItems.text,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(legacyPatientItems)
-    .where(sql`${legacyPatientItems.tenantId} = ${tenantId} and ${legacyPatientItems.kind} = 'family_history'`)
-    .groupBy(legacyPatientItems.text)
-    .orderBy(desc(sql`count(*)`))
-    .limit(8);
 
   const serviceDemand = await db
     .select({
@@ -117,7 +88,10 @@ export async function getHistoricalExecutiveSummary(tenantId: string): Promise<H
       count: sql<number>`count(*)::int`,
     })
     .from(legacyPatientServices)
-    .where(eq(legacyPatientServices.tenantId, tenantId))
+    .where(and(
+      eq(legacyPatientServices.tenantId, tenantId),
+      schoolId ? inArray(legacyPatientServices.patientId, patientIdsForSchool()) : undefined,
+    ))
     .groupBy(legacyPatientServices.service)
     .orderBy(desc(sql`count(*)`));
 
@@ -127,23 +101,15 @@ export async function getHistoricalExecutiveSummary(tenantId: string): Promise<H
       count: sql<number>`count(*)::int`,
     })
     .from(legacyPatients)
-    .where(eq(legacyPatients.tenantId, tenantId))
+    .where(and(eq(legacyPatients.tenantId, tenantId), schoolId ? eq(legacyPatients.schoolId, schoolId) : undefined))
     .groupBy(legacyPatients.currentAge)
     .orderBy(legacyPatients.currentAge);
-
-  const hypCount = totalHypothesesResult?.count ?? 0;
-  const famCount = totalFamilyHistoryResult?.count ?? 0;
-  const medCount = totalMedicationsResult?.count ?? 0;
 
   return {
     totalPatients: totalPatientsResult?.count ?? 0,
     totalComplaints: totalComplaintsResult?.count ?? 0,
     totalServices: totalServicesResult?.count ?? 0,
     totalSchools: schoolStats.filter((s) => s.schoolId != null).length,
-    totalItems: hypCount + famCount + medCount,
-    totalHypotheses: hypCount,
-    totalFamilyHistory: famCount,
-    totalMedications: medCount,
     schools: schoolStats.map((s) => ({
       schoolId: s.schoolId,
       name: s.schoolName ?? `Escola Código ${s.schoolCode}`,
@@ -151,8 +117,6 @@ export async function getHistoricalExecutiveSummary(tenantId: string): Promise<H
       patients: s.patientCount,
     })),
     topComplaints,
-    topHypotheses,
-    topFamilyHistory,
     serviceDemand,
     ageDistribution,
     lastUpdated: new Date().toISOString(),

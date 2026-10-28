@@ -20,7 +20,7 @@ import { requireCapability, type Actor } from "../security/actor";
 import { recordAudit } from "../services/audit.service";
 import { caseVisibleTo } from "./cases.routes";
 
-const salvarBody = z.object({ payload: z.record(z.unknown()) });
+const salvarBody = z.object({ payload: z.record(z.string(), z.unknown()) });
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 async function secaoDoEspecialista(actor: Actor, sectionId: string) {

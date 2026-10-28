@@ -566,7 +566,7 @@ export async function casesRoutes(app: FastifyInstance) {
   // ── Avaliação do RE (rascunho → enviado → devolvido) ────────────────────
 
   const reAssessmentBodySchema = z.object({
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
   });
 
   app.get("/api/cases/:caseId/re-assessment", async (request, reply) => {
@@ -1224,7 +1224,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
   const sectionPatchSchema = z
     .object({
-      summary: z.record(z.unknown()).optional(),
+      summary: z.record(z.string(), z.unknown()).optional(),
       notes: z.string().optional(),
       markAsCompleted: z.boolean().optional(),
     })

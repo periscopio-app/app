@@ -7,10 +7,13 @@ try {
   } catch {}
 }
 
-import { buildApp } from "./app";
-import { healCredentialAccounts, seedMasterAccounts } from "./auth/credentials";
-import { incr } from "./observability/metrics";
-import { ensureSchema } from "./services/schema-guard.service";
+// Load local configuration before importing modules that initialize database/auth clients.
+const [{ buildApp }, { healCredentialAccounts, seedMasterAccounts }, { incr }, { ensureSchema }] = await Promise.all([
+  import("./app"),
+  import("./auth/credentials"),
+  import("./observability/metrics"),
+  import("./services/schema-guard.service"),
+]);
 
 const app = await buildApp();
 

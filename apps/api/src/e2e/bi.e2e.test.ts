@@ -5,6 +5,7 @@
  */
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -20,6 +21,7 @@ describe("BI do gestor (E2E)", { skip }, () => {
   let schoolGL = "";
   let schoolNova = "";
   let schoolB = "";
+  let tenantB = "";
   const studentCodes: string[] = [];
 
   async function call(method: string, path: string, who?: string, body?: unknown) {
@@ -70,6 +72,7 @@ describe("BI do gestor (E2E)", { skip }, () => {
 
     const [tA] = await db.insert(shared.tenants).values({ name: "Município A", municipalityCode: "A" }).returning();
     const [tB] = await db.insert(shared.tenants).values({ name: "Município B", municipalityCode: "B" }).returning();
+    tenantB = tB.id;
     const [sGL] = await db.insert(shared.schools).values({ tenantId: tA.id, name: "Escola GL", slug: "escola-gl", status: "active", externalCode: "2" }).returning();
     const [sN] = await db.insert(shared.schools).values({ tenantId: tA.id, name: "Escola Nova", slug: "escola-nova", status: "active" }).returning();
     const [sB] = await db.insert(shared.schools).values({ tenantId: tB.id, name: "Escola B1", slug: "escola-b1", status: "active" }).returning();
@@ -98,6 +101,33 @@ describe("BI do gestor (E2E)", { skip }, () => {
         services: { fonoaudiologia: 66, psicopedagogia: 42, psicoterapia: 29, psicomotricidade: null, neuropsicologia: 52, assistencia_social: 0, consulta_medica: 117 },
       },
     });
+
+    const [legacyBatch] = await db.insert(shared.legacyImportBatches).values({
+      tenantId: tA.id,
+      source: "fixture-sintetico",
+      referenceYear: 2025,
+      fileSha256: "a".repeat(64),
+      mappingSha256: "b".repeat(64),
+      rowCount: 1,
+      columns: [],
+      transformedColumns: [],
+      columnNonNull: {},
+      legalBasis: "fixture de teste",
+      authorizedBy: "fixture de teste",
+    }).returning();
+    const legacyPatientId = randomUUID();
+    await db.insert(shared.legacyPatients).values({
+      id: legacyPatientId,
+      tenantId: tA.id,
+      batchId: legacyBatch.id,
+      schoolId: sGL.id,
+      schoolCode: "2",
+      sourceRow: 1,
+    });
+    await db.insert(shared.legacyPatientItems).values([
+      { patientId: legacyPatientId, tenantId: tA.id, kind: "hypothesis", position: 1, text: "SINTETICO-RESTRINGIDO-HIPOTESE-7391" },
+      { patientId: legacyPatientId, tenantId: tA.id, kind: "family_history", position: 1, text: "SINTETICO-RESTRINGIDO-FAMILIA-2846" },
+    ]);
 
     const people = [
       { key: "admin", email: "admin@teste.local", role: "admin_platform", tenant: tA.id, school: null },
@@ -166,6 +196,17 @@ describe("BI do gestor (E2E)", { skip }, () => {
     assert.equal(r.status, 403);
   });
 
+  test("slug, tenant e fila não permitem trocar o escopo do BI", async () => {
+    assert.equal((await call("GET", "/api/bi/catalog?slug=escola-b1", "municipal")).status, 403);
+    assert.equal((await call("GET", "/api/bi/overview?slug=taruma", "municipal")).status, 403);
+    assert.equal((await call("GET", "/api/bi/summary?slug=escola-b1", "municipal")).status, 403);
+    assert.equal((await call("GET", `/api/bi/questions?tenantId=${tenantB}`, "municipal")).status, 403);
+
+    const ownSchool = await call("GET", "/api/bi/overview?slug=escola-nova", "gestorGL");
+    assert.equal(ownSchool.status, 200);
+    assert.equal(ownSchool.body.cases.rows[0].value, 10);
+  });
+
   test("plano com campo individual ou métrica inexistente é recusado", async () => {
     assert.equal((await call("POST", "/api/bi/query", "municipal", q("student_codes"))).status, 400);
     assert.equal((await call("POST", "/api/bi/query", "municipal", { plan: { metric: "cases", groupBy: ["student_code"] } })).status, 400);
@@ -182,6 +223,16 @@ describe("BI do gestor (E2E)", { skip }, () => {
       assert.equal(p.status, 200);
       for (const code of studentCodes) assert.ok(!p.raw.includes(code), `vazou ${code}`);
     }
+  });
+
+  test("sumário executivo não expõe textos clínicos individuais", async () => {
+    const summary = await call("GET", "/api/bi/summary", "municipal");
+    assert.equal(summary.status, 200);
+    const serialized = JSON.stringify(summary.body);
+    assert.ok(!serialized.includes("SINTETICO-RESTRINGIDO-HIPOTESE-7391"));
+    assert.ok(!serialized.includes("SINTETICO-RESTRINGIDO-FAMILIA-2846"));
+    assert.ok(!("topHypotheses" in summary.body));
+    assert.ok(!("topFamilyHistory" in summary.body));
   });
 
   test("base populacional: valor oculto na origem continua oculto e profissionais usam capacidade", async () => {
@@ -268,6 +319,13 @@ describe("BI do gestor (E2E)", { skip }, () => {
     const a = await call("POST", "/api/bi/ask", "municipal", { question: "casos por escola" });
     assert.equal((await call("POST", "/api/bi/feedback", "boardB", { questionId: a.body.questionId, rating: 1 })).status, 404);
     assert.equal((await call("POST", "/api/bi/feedback", "re", { questionId: a.body.questionId, rating: 1 })).status, 404);
+
+    const otherTenantQuestion = await call("POST", "/api/bi/ask", "boardB", { question: "casos por escola" });
+    assert.equal(otherTenantQuestion.status, 200);
+    assert.equal(
+      (await call("POST", `/api/bi/questions/${otherTenantQuestion.body.questionId}/approve`, "municipal", { approve: true })).status,
+      404,
+    );
   });
 
   test("overview devolve os painéis básicos para cada papel permitido", async () => {
