@@ -13,7 +13,7 @@ import {
 } from "@periscopio/shared";
 import { requireCapability, type Actor } from "../security/actor";
 import { can } from "../services/privilege.service";
-import { canAccessSchool } from "../security/tenancy";
+import { canAccessSchool, canAccessTenant } from "../security/tenancy";
 import {
   AGE_BRACKETS,
   DIMENSIONS,
@@ -54,17 +54,15 @@ function allowAsk(userId: string, max = 50, windowMs = 3_600_000) {
   return true;
 }
 
-export async function resolveTenantId(actor: Actor, query: Record<string, string | undefined>): Promise<string> {
+export async function resolveTenantId(actor: Actor, query: Record<string, string | undefined>): Promise<string | null> {
   if (query.tenantId) {
-    if (actor.role === "admin_platform" || actor.tenantId === query.tenantId) {
-      return query.tenantId;
-    }
+    return canAccessTenant(actor, query.tenantId) ? query.tenantId : null;
   }
 
-  // Se o frontend passou o slug da escola/rede (ex: demo-escola ou taruma)
+  // Slugs resolvem um tenant, mas nunca concedem acesso a ele.
   if (query.slug) {
-    if (query.slug === "demo-escola" || query.slug === "taruma") {
-      return TARUMA_TENANT_ID;
+    if (query.slug === "taruma") {
+      return canAccessTenant(actor, TARUMA_TENANT_ID) ? TARUMA_TENANT_ID : null;
     }
     const [matchingSchool] = await db
       .select({ tenantId: schools.tenantId })
@@ -72,17 +70,17 @@ export async function resolveTenantId(actor: Actor, query: Record<string, string
       .where(eq(schools.slug, query.slug))
       .limit(1);
     if (matchingSchool) {
-      return matchingSchool.tenantId;
+      return canAccessTenant(actor, matchingSchool.tenantId) ? matchingSchool.tenantId : null;
     }
   }
 
   // Se o usuário é admin da plataforma global (tenant padrão 0000...0001) e o tenant não tem dados de BI,
   // aponta por padrão para a base ativa de Tarumã para visualização e consulta
-  if (actor.role === "admin_platform" && (actor.tenantId === "00000000-0000-0000-0000-000000000001" || !actor.tenantId)) {
+  if ((actor.role === "admin_platform" || actor.role === "adm_master") && actor.tenantId === "00000000-0000-0000-0000-000000000001") {
     return TARUMA_TENANT_ID;
   }
 
-  return actor.tenantId;
+  return actor.tenantId || null;
 }
 
 interface SchoolRow {
@@ -92,12 +90,12 @@ interface SchoolRow {
   tenantId: string;
 }
 
-async function visibleSchools(actor: Actor, tenantId: string, isDemo = false): Promise<SchoolRow[]> {
+async function visibleSchools(actor: Actor, tenantId: string): Promise<SchoolRow[]> {
   const all = await db
     .select({ id: schools.id, name: schools.name, externalCode: schools.externalCode, tenantId: schools.tenantId })
     .from(schools)
     .where(eq(schools.tenantId, tenantId));
-  return all.filter((s) => actor.role === "admin_platform" || isDemo || canAccessSchool(actor, s.tenantId, s.id));
+  return all.filter((s) => canAccessSchool(actor, s.tenantId, s.id));
 }
 
 /** Monta fatos sem identificador de pessoa para a métrica pedida, já limitados ao escopo do usuário. */
@@ -106,11 +104,10 @@ export async function loadFacts(
   tenantId: string,
   metric: MetricId,
   capacity: ReturnType<typeof parseCapacity>,
-  isDemo = false,
 ): Promise<Fact[]> {
-  const sch = await visibleSchools(actor, tenantId, isDemo);
+  const sch = await visibleSchools(actor, tenantId);
   const name = new Map(sch.map((s) => [s.id, s.name]));
-  const wholeNetwork = actor.role === "admin_platform" || isDemo || !actor.schoolId;
+  const wholeNetwork = actor.role === "admin_platform" || actor.role === "adm_master" || !actor.schoolId;
 
   if (metric === "students") {
     const rows = await db
@@ -233,16 +230,16 @@ export async function loadFacts(
   return facts;
 }
 
-async function execute(actor: Actor, tenantId: string, plan: QueryPlan, isDemo = false): Promise<QueryResult> {
+async function execute(actor: Actor, tenantId: string, plan: QueryPlan): Promise<QueryResult> {
   const p = { ...plan, filters: { ...plan.filters } };
-  // Quem está preso a uma escola nunca consulta outra, a não ser no modo demo da rede
-  if (actor.role !== "admin_platform" && !isDemo && actor.schoolId) {
+  // Um slug de demonstração não altera o escopo escolar do ator.
+  if (actor.role !== "admin_platform" && actor.role !== "adm_master" && actor.schoolId) {
     p.filters.schoolId = actor.schoolId;
   } else if (p.filters.schoolId) {
-    const ok = (await visibleSchools(actor, tenantId, isDemo)).some((s) => s.id === p.filters.schoolId);
+    const ok = (await visibleSchools(actor, tenantId)).some((s) => s.id === p.filters.schoolId);
     if (!ok) throw Object.assign(new Error("Escola fora do seu escopo"), { statusCode: 403 });
   }
-  const facts = await loadFacts(actor, tenantId, p.metric, parseCapacity(p.capacity), isDemo);
+  const facts = await loadFacts(actor, tenantId, p.metric, parseCapacity(p.capacity));
   return runPlan(facts, p);
 }
 
@@ -309,9 +306,9 @@ export async function biRoutes(app: FastifyInstance) {
     const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
-    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
     const tenantId = await resolveTenantId(actor, query);
-    const sch = await visibleSchools(actor, tenantId, isDemo);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
+    const sch = await visibleSchools(actor, tenantId);
     return {
       metrics: METRICS.map(({ id, label, description, unit, additive, dims, filters }) => ({
         id,
@@ -345,10 +342,10 @@ export async function biRoutes(app: FastifyInstance) {
     const bad = checkPlan(parsed.data.plan);
     if (bad) return reply.status(400).send({ error: bad });
     const query = request.query as Record<string, string | undefined>;
-    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
     const tenantId = await resolveTenantId(actor, query);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
     try {
-      const result = await execute(actor, tenantId, parsed.data.plan, isDemo);
+      const result = await execute(actor, tenantId, parsed.data.plan);
       await db.insert(auditLogs).values({
         tenantId,
         actorId: actor.id,
@@ -368,8 +365,8 @@ export async function biRoutes(app: FastifyInstance) {
     const actor = await requireCapability(request, reply, "bi.view");
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
-    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
     const tenantId = await resolveTenantId(actor, query);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
     const presets: Record<string, QueryPlan> = {
       students: planSchema.parse({ metric: "students" }),
       cases: planSchema.parse({ metric: "cases" }),
@@ -385,7 +382,7 @@ export async function biRoutes(app: FastifyInstance) {
     };
     const out: Record<string, QueryResult & { summary: string }> = {};
     for (const [k, plan] of Object.entries(presets)) {
-      const r = await execute(actor, tenantId, plan, isDemo);
+      const r = await execute(actor, tenantId, plan);
       out[k] = { ...r, summary: summarize(r) };
     }
     await db.insert(auditLogs).values({ tenantId, actorId: actor.id, action: "bi:overview", entity: "bi" });
@@ -398,7 +395,8 @@ export async function biRoutes(app: FastifyInstance) {
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const tenantId = await resolveTenantId(actor, query);
-    return getHistoricalExecutiveSummary(tenantId);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
+    return getHistoricalExecutiveSummary(tenantId, actor.schoolId);
   });
 
   // ── Pergunta em linguagem natural (assistente RAG em Python) ─────────────
@@ -410,10 +408,10 @@ export async function biRoutes(app: FastifyInstance) {
     if (!allowAsk(actor.id)) return reply.status(429).send({ error: "Muitas perguntas seguidas. Tente de novo em alguns minutos." });
 
     const query = request.query as Record<string, string | undefined>;
-    const isDemo = query.slug === "demo-escola" || query.slug === "taruma";
     const tenantId = await resolveTenantId(actor, query);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
     const { text: question, scrubbed } = scrubQuestion(parsed.data.question);
-    const sch = await visibleSchools(actor, tenantId, isDemo);
+    const sch = await visibleSchools(actor, tenantId);
     const examples = await db
       .select({ question: biQuestions.question, plan: biQuestions.plan, corrected: biQuestions.correctedPlan })
       .from(biQuestions)
@@ -474,7 +472,7 @@ export async function biRoutes(app: FastifyInstance) {
       };
     }
     try {
-      const result = await execute(actor, tenantId, planParse.data, isDemo);
+      const result = await execute(actor, tenantId, planParse.data);
       await db.insert(auditLogs).values({
         tenantId,
         actorId: actor.id,
@@ -518,7 +516,7 @@ export async function biRoutes(app: FastifyInstance) {
     const approver = await can(actor, "bi.approve");
     // Isolamento: só a rede da pergunta (ou a administração da plataforma) avalia; quem não é gestão só avalia a própria pergunta.
     // Resposta 404 igual para "não existe" e "não é sua", para não revelar ids de outras redes.
-    const sameNetwork = !!q && (q.tenantId === actor.tenantId || actor.role === "admin_platform");
+    const sameNetwork = !!q && canAccessTenant(actor, q.tenantId);
     if (!q || !sameNetwork || (!approver && q.userId !== actor.id)) {
       return reply.status(404).send({ error: "Pergunta não encontrada" });
     }
@@ -527,7 +525,7 @@ export async function biRoutes(app: FastifyInstance) {
     await db
       .update(biQuestions)
       .set({ rating, correctedPlan: correctedPlan ?? q.correctedPlan, approved, approvedBy: approved ? actor.id : null })
-      .where(eq(biQuestions.id, q.id));
+      .where(and(eq(biQuestions.id, q.id), eq(biQuestions.tenantId, q.tenantId)));
     return { success: true, approved, pendingReview: !approved && (rating === 1 || !!correctedPlan) };
   });
 
@@ -537,6 +535,7 @@ export async function biRoutes(app: FastifyInstance) {
     if (!actor) return;
     const query = request.query as Record<string, string | undefined>;
     const tenantId = await resolveTenantId(actor, query);
+    if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
     const rows = await db
       .select({
         id: biQuestions.id,
@@ -560,11 +559,15 @@ export async function biRoutes(app: FastifyInstance) {
     const actor = await requireCapability(request, reply, "bi.approve");
     if (!actor) return;
     const { id } = request.params as { id: string };
+    if (!z.string().uuid().safeParse(id).success) return reply.status(404).send({ error: "Pergunta não encontrada" });
     const approve = (request.body as { approve?: boolean } | null)?.approve !== false;
     const [q] = await db.select().from(biQuestions).where(eq(biQuestions.id, id)).limit(1);
-    if (!q) return reply.status(404).send({ error: "Pergunta não encontrada" });
+    if (!q || !canAccessTenant(actor, q.tenantId)) return reply.status(404).send({ error: "Pergunta não encontrada" });
     if (approve && !(q.correctedPlan ?? q.plan)) return reply.status(400).send({ error: "Pergunta sem plano para aprovar" });
-    await db.update(biQuestions).set({ approved: approve, approvedBy: approve ? actor.id : null }).where(eq(biQuestions.id, id));
+    await db
+      .update(biQuestions)
+      .set({ approved: approve, approvedBy: approve ? actor.id : null })
+      .where(and(eq(biQuestions.id, id), eq(biQuestions.tenantId, q.tenantId)));
     return { success: true, approved: approve };
   });
 }
