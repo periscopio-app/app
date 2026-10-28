@@ -135,7 +135,7 @@ export default function CourseCatalog() {
   useEffect(() => {
     async function loadCourses() {
       try {
-        const res = await fetch(`${apiUrl}/api/courses`);
+        const res = await fetch(`${apiUrl}/api/courses`, { credentials: "include" });
         const data = await res.json();
         if (res.ok && data.courses && data.courses.length > 0) {
           // Merge API response with interactive lessons structure

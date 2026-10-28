@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { api, ApiError } from "@/lib/api";
 import {
   ClipboardCheck,
   Check,
@@ -129,32 +130,22 @@ Status no Prontuário NEMT: Registro consolidado e anexado ao dossiê multiprofi
     setError(null);
     setSuccess(null);
 
-    const apiUrl = "";
-
     try {
-      const res = await fetch(`${apiUrl}/api/evaluations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: studentId || "std-demo-123",
-          scale: selectedScale,
-          score: currentScore,
-          payload: {
-            answers,
-            classification: riskInfo.level,
-            summaryText: generateClinicalSummaryText(),
-            totalQuestions: questions.length,
-            answeredAt: new Date().toISOString(),
-          },
-        }),
+      await api.post("/api/evaluations", {
+        studentId: studentId || "std-demo-123",
+        scale: selectedScale,
+        payload: {
+          answers,
+          classification: riskInfo.level,
+          summaryText: generateClinicalSummaryText(),
+          totalQuestions: questions.length,
+          answeredAt: new Date().toISOString(),
+        },
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao salvar avaliação clínica.");
-
-      setSuccess(`Avaliação ${selectedScale.toUpperCase()} salva no prontuário com sucesso! Score: ${currentScore} (${riskInfo.level}).`);
-    } catch (err: any) {
-      setError(err?.message || "Falha ao enviar dados da avaliação.");
+      setSuccess(`Avaliação ${selectedScale.toUpperCase()} salva no prontuário com sucesso! (${riskInfo.level})`);
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : "Falha ao enviar dados da avaliação.");
     } finally {
       setSubmitting(false);
     }
