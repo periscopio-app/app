@@ -52,6 +52,8 @@ describe("Recuperação de senha e saúde do sistema (E2E)", { skip }, () => {
     cred = await import("../auth/credentials");
     const { buildApp } = await import("../app");
 
+    assert.equal(process.env.RESEND_API_KEY, undefined, "o teste não deve carregar credenciais do .env local");
+
     const [t] = await dbx.insert(shared.tenants).values({ name: "Município T", municipalityCode: "T" }).returning();
     for (const [key, role] of [["admin", "admin_platform"], ["md", "md1"], ["ana", "ppi"]] as const) {
       const email = `${key}@teste.local`;
