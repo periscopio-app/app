@@ -16,6 +16,14 @@ const nextConfig = {
       (isDev ? "http://localhost:3001" : process.env.NEXT_PUBLIC_API_URL) ||
       "http://localhost:3001";
 
+    if (!isDev && apiUrl === "http://localhost:3001") {
+      console.warn(
+        "[next.config] ATENÇÃO: API_URL e NEXT_PUBLIC_API_URL não definidas em produção. " +
+        "Os rewrites de /api/* vão apontar para localhost e falharão. " +
+        "Defina API_URL no painel do Vercel."
+      );
+    }
+
     return {
       beforeFiles: [],
       afterFiles: [
