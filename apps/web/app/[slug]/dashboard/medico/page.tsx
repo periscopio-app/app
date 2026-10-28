@@ -517,6 +517,11 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                             ? sumarioComPadroes(((reAssessment.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).queixa_professor ?? ""
                             : undefined
                         }
+                        dificuldadesPersistentes={
+                          reAssessment
+                            ? (sumarioComPadroes(((reAssessment.payload ?? {}) as Record<string, unknown>)["secao_sumario"] as never).dificuldades_persistentes ?? null)
+                            : undefined
+                        }
                       />
                     }
                     childrenOverview={
