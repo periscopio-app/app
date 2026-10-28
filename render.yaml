@@ -64,6 +64,9 @@ services:
         sync: false
       - key: SEED_MASTER_2_NAME
         sync: false
+      # Desativa janela terapêutica de 120 dias (canProceedToMedical). Manter false em produção.
+      - key: DISABLE_THERAPEUTIC_WINDOW
+        value: false
 
   - type: keyvalue
     name: periscopio-redis
