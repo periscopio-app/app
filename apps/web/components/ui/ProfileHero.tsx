@@ -46,13 +46,13 @@ export function ProfileHero({ me, slug, schoolName }: { me: Me; slug: string; sc
               <span className="rounded-md bg-neutral-100 px-2 py-0.5 font-medium text-neutral-800">{escola}</span>
             </>
           )}
-          {me.email && <span className="hidden text-neutral-500 sm:inline">· {me.email}</span>}
+          {me.email && <span className="hidden text-neutral-700 sm:inline">· {me.email}</span>}
         </div>
 
         {me.bio?.trim() ? (
-          <p className="max-w-prose whitespace-pre-wrap break-words text-sm text-neutral-800">{me.bio.trim()}</p>
+          <p className="max-w-prose whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-neutral-800">{me.bio.trim()}</p>
         ) : (
-          <p className="text-xs italic text-neutral-500">
+          <p className="text-xs italic text-neutral-700">
             Sem apresentação ainda.{" "}
             <Link href={meuPainel} className="font-semibold text-roxo underline-offset-2 hover:underline">
               Adicione uma minibiografia
@@ -64,7 +64,7 @@ export function ProfileHero({ me, slug, schoolName }: { me: Me; slug: string; sc
 
       <Link
         href={meuPainel}
-        className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-50"
+        className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-start rounded-xl border border-linha bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-roxo-50"
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar perfil
       </Link>

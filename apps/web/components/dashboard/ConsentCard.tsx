@@ -167,7 +167,7 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
           <form onSubmit={handleRegisterConsent} className="space-y-4 text-left">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-48 overflow-y-auto text-xs text-slate-700 leading-relaxed font-mono">
               <h4 className="font-bold text-black mb-1">{term.title} ({term.version})</h4>
-              <p className="whitespace-pre-wrap">{term.content}</p>
+              <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{term.content}</p>
             </div>
 
             {errorMsg && (

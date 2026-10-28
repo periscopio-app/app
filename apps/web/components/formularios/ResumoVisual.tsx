@@ -32,7 +32,7 @@ function CampoResumo({ c, value }: { c: ResumoCampo; value: Record<string, unkno
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-semibold text-black">{c.label}</p>
-      {c.tipo === "texto" && <p className="whitespace-pre-wrap break-words text-xs text-black">{c.texto}</p>}
+      {c.tipo === "texto" && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-xs text-black">{c.texto}</p>}
 
       {c.tipo === "escolha" && (
         <div className="flex flex-wrap gap-1.5">

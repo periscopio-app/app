@@ -216,7 +216,7 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
                 role="tab"
                 aria-selected={modo === id}
                 onClick={() => setModo(id)}
-                className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold ${modo === id ? "bg-white text-black shadow-sm" : "text-neutral-800"}`}
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold ${modo === id ? "bg-white text-black shadow-sm" : "text-neutral-800"}`}
               >
                 <Icone className="h-3.5 w-3.5" aria-hidden /> {rotulo}
               </button>
@@ -231,7 +231,7 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
 
           {atual.pendenciasDeValidacao.length > 0 && (
             <details className="rounded-xl border border-ouro-300 bg-ouro-50 px-3 py-2 text-[11px] text-black">
-              <summary className="cursor-pointer font-semibold">Itens do capítulo ainda em validação clínica ({atual.pendenciasDeValidacao.length})</summary>
+              <summary className="min-h-[44px] cursor-pointer font-semibold">Itens do capítulo ainda em validação clínica ({atual.pendenciasDeValidacao.length})</summary>
               <ul className="mt-1 list-disc space-y-1 pl-5">
                 {atual.pendenciasDeValidacao.map((p) => (
                   <li key={p}>{p}</li>
@@ -249,16 +249,16 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
             <div className="flex flex-wrap gap-2">
               {!travado && (
                 <>
-                  <Button type="button" onClick={() => void salvar()} disabled={ocupado || !alterado} variant="outline" size="sm">
+                  <Button type="button" onClick={() => void salvar()} disabled={ocupado || !alterado} variant="outline" size="sm" className="min-h-[44px]">
                     <Save className="h-3.5 w-3.5" aria-hidden /> Salvar rascunho
                   </Button>
-                  <Button type="button" onClick={() => void concluir()} disabled={ocupado || Object.keys(valor).length === 0} variant="primary" size="sm">
+                  <Button type="button" onClick={() => void concluir()} disabled={ocupado || Object.keys(valor).length === 0} variant="primary" size="sm" className="min-h-[44px]">
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Concluir formulário
                   </Button>
                 </>
               )}
               {d.editavel && status === "concluido" && !reabrindo && (
-                <Button type="button" onClick={() => setReabrindo(true)} variant="warning" size="sm">
+                <Button type="button" onClick={() => setReabrindo(true)} variant="warning" size="sm" className="min-h-[44px]">
                   <Pencil className="h-3.5 w-3.5" aria-hidden /> Reabrir para retificar
                 </Button>
               )}
@@ -270,10 +270,10 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
               <label htmlFor="esp-motivo" className="block text-xs font-semibold text-black">Motivo da reabertura (fica na trilha do caso)</label>
               <input id="esp-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} className="w-full rounded-lg border border-linha bg-white px-3 py-2 text-sm text-black" />
               <div className="flex gap-2">
-                <Button type="button" onClick={() => void reabrir()} disabled={ocupado || motivo.trim().length < 3} variant="warning" size="sm">
+                <Button type="button" onClick={() => void reabrir()} disabled={ocupado || motivo.trim().length < 3} variant="warning" size="sm" className="min-h-[44px]">
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Confirmar reabertura
                 </Button>
-                <Button type="button" onClick={() => setReabrindo(false)} variant="ghost" size="sm">Cancelar</Button>
+                <Button type="button" onClick={() => setReabrindo(false)} variant="ghost" size="sm" className="min-h-[44px]">Cancelar</Button>
               </div>
             </div>
           )}
