@@ -16,9 +16,10 @@ interface FogapViewerProps {
   grade?: string | null;
   schoolName?: string | null;
   professionalName?: string | null;
+  somenteSumario?: boolean;
 }
 
-export function FogapViewer({ payload, status, submittedAt, studentCode, birthYear, birthMonth, grade, schoolName, professionalName }: FogapViewerProps) {
+export function FogapViewer({ payload, status, submittedAt, studentCode, birthYear, birthMonth, grade, schoolName, professionalName, somenteSumario = false }: FogapViewerProps) {
   if (!payload || typeof payload !== "object") {
     return (
       <div className="p-4 rounded-xl border border-dashed border-slate-300 text-slate-500 text-sm">
@@ -59,6 +60,11 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       {temItens && (
         <FogapDesenvolvimento faixa={faixa} faixaSugerida={null} respostas={respostas} readOnly onFaixa={() => {}} onResponder={() => {}} />
       )}
+      {!temItens && (
+        <p className="rounded-xl border border-ceu-300 bg-ceu-50 p-3 text-sm text-black" role="status">
+          Seu perfil vê só o sumário do RE. Peça a permissão &apos;Ver tudo da escola&apos; ao administrador.
+        </p>
+      )}
 
       {/* Resumo do Cabeçalho FOGAP */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -82,7 +88,9 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       </div>
 
       <p className="text-[11px] text-neutral-700">
-        Sumário (Formulário I) e as respostas item a item do FOGAP, como o RE enviou. Os formulários A a H estão em “Tudo o que a escola registrou”.
+        {temItens && !somenteSumario
+          ? "Sumário (Formulário I) e as respostas item a item do FOGAP, como o RE enviou. Os formulários A a H estão em “Tudo o que a escola registrou”."
+          : "Sumário (Formulário I) do RE. Os formulários A a H estão em “Tudo o que a escola registrou”."}
       </p>
     </div>
   );

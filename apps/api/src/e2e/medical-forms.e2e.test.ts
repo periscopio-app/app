@@ -52,6 +52,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const pessoas = [
       { key: "re", role: "ppi", tenant: t.id, school: e.id, specialty: "psicopedagogia" },
       { key: "md", role: "md1", tenant: t.id, school: null, specialty: "medicina" },
+      { key: "mdResumo", role: "md1", tenant: t.id, school: null, specialty: "medicina" },
       { key: "mdOutro", role: "md1", tenant: t2.id, school: null, specialty: "medicina" },
       { key: "fono", role: "specialist", tenant: t.id, school: null, specialty: "fonoaudiologia" },
       { key: "psico", role: "specialist", tenant: t.id, school: null, specialty: "psicologia" },
@@ -63,6 +64,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
       }).returning();
       ids[p.key] = u.id;
     }
+    await dbx.insert(shared.privilegeUserGrants).values({ userId: ids.mdResumo, capability: "school.read_full", allowed: false });
 
     const mk = async (code: string, estado: string) => {
       const [st] = await dbx.insert(shared.students).values({ tenantId: t.id, schoolId: e.id, studentCode: code, birthYear: 2018, birthMonth: 3, ageBracket: "06-09", grade: "3º ano" }).returning();
@@ -80,7 +82,7 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     });
     await dbx.insert(shared.reAssessments).values({
       tenantId: t.id, caseId: caso, formCode: shared.FOGAP_FORM_CODE, formVersion: shared.FOGAP_VERSION, status: "enviado",
-      payload: shared.makeFogapPayloadVazio(), createdBy: ids.re, submittedAt: new Date(), submittedBy: ids.re,
+      payload: { ...shared.makeFogapPayloadVazio(), faixa_fogap: "6a9", respostas_desenvolvimento: { d1: "adequada" } }, createdBy: ids.re, submittedAt: new Date(), submittedBy: ids.re,
     });
   });
 
@@ -110,7 +112,19 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     assert.ok(j.body.forms.i, "Formulário I (FOGAP/sumário) deve vir");
     for (const id of ["a", "b", "c", "d", "e", "f", "i"]) assert.ok(id in j.body.forms, `formulário ${id} visível ao médico`);
     assert.notEqual(j.body.somenteSumario, true);
+    assert.equal(j.body.forms.i.payload.faixa_fogap, "6a9");
+    assert.deepEqual(j.body.forms.i.payload.respostas_desenvolvimento, { d1: "adequada" });
     assert.equal(j.body.caseState, "revisao_medica");
+
+    const jornadaResumo = await call("GET", `/api/cases/${caso}/re-journey`, "mdResumo");
+    assert.equal(jornadaResumo.status, 200);
+    assert.equal(jornadaResumo.body.somenteSumario, true);
+    assert.ok(!("faixa_fogap" in jornadaResumo.body.forms.i.payload));
+    assert.ok(!("respostas_desenvolvimento" in jornadaResumo.body.forms.i.payload));
+    const reAssessmentResumido = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "mdResumo");
+    assert.equal(reAssessmentResumido.body.somenteSumario, true);
+    assert.ok(!("faixa_fogap" in reAssessmentResumido.body.assessment.payload));
+    assert.ok(!("respostas_desenvolvimento" in reAssessmentResumido.body.assessment.payload));
 
     // médico lê, mas não escreve na escola
     assert.equal((await call("PUT", `/api/cases/${caso}/re-journey/fogap-desenvolvimento`, "md", { faixa: "6a9", respostas: {} })).status >= 400, true, "o médico lê, não escreve na escola");

@@ -117,6 +117,7 @@ export interface ReAssessment {
   payload: Record<string, unknown>;
   createdAt: string;
   submittedAt: string | null;
+  somenteSumario?: boolean;
 }
 
 export interface CaseSection {

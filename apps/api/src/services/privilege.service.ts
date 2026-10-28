@@ -77,6 +77,11 @@ export async function can(subject: PrivilegeSubject, key: string): Promise<boole
   return (await decideCapability(subject, key)).allowed;
 }
 
+/** Leitura integral dos registros da escola pelo RE ou por quem recebeu essa permissão. */
+export async function leituraIntegral(actor: PrivilegeSubject): Promise<boolean> {
+  return (await can(actor, "fogap.fill")) || (await can(actor, "school.read_full"));
+}
+
 /** Lista efetiva (o que a pessoa realmente pode): usada pelo menu e pelos botões da interface. */
 export async function effectiveCapabilities(subject: PrivilegeSubject): Promise<string[]> {
   const grants = await loadGrants(subject);

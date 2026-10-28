@@ -24,7 +24,7 @@ import {
   type ReFormId,
 } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
-import { can } from "../services/privilege.service";
+import { can, leituraIntegral } from "../services/privilege.service";
 import { sugerirObservacoes } from "../services/re-observacoes.service";
 import { caseVisibleTo } from "./cases.routes";
 import {
@@ -73,9 +73,8 @@ export async function reJourneyRoutes(app: FastifyInstance) {
 
     // Na escola só o RE preenche. O médico que recebeu o caso vê tudo da escola sobre a criança (somente leitura);
     // quem não preenche nem tem leitura integral (especialista) recebe só o Formulário I (Sumário/FOGAP).
-    const dono = await can(actor, "fogap.fill");
-    const leituraIntegral = dono || (await can(actor, "school.read_full"));
-    if (!leituraIntegral) {
+    const podeLerIntegralmente = await leituraIntegral(actor);
+    if (!podeLerIntegralmente) {
       const i = j.linhas.i;
       return {
         caseState: visible.caseItem.journeyState,
