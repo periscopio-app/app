@@ -295,4 +295,78 @@ describe("Formulários do médico e encaminhamento (E2E)", { skip }, () => {
     const r = await call("PUT", `/api/cases/${caso}/medical-forms/sumario_medico`, "md", { payload: { queixa_professor: "sumário em andamento" } });
     assert.equal(r.status, 200);
   });
+
+  test("catálogo novo: seção concluída com versão antiga volta como rascunho, sem perder o texto", async () => {
+    const { eq, and } = await import("drizzle-orm");
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: (await dbx.select().from(shared.cases).where(eq(shared.cases.id, caso)))[0].tenantId, caseId: caso, formId: "queixa_escola",
+      formVersion: "md-0.2-provisorio", status: "concluido", payload: { registro: "texto da versão antiga" }, authorId: ids.md,
+      completedBy: ids.md, completedAt: new Date(),
+    });
+
+    const antes = await call("GET", `/api/cases/${caso}/medical-forms`, "md");
+    const b = antes.body.forms.find((f: any) => f.id === "queixa_escola");
+    assert.equal(b.status, "rascunho", "nunca aparece 'concluída e vazia': volta editável");
+    assert.equal(b.desatualizado, true);
+    assert.equal(b.completedAt, null);
+    assert.equal(b.payload.queixas, "");
+
+    // o médico marca as opções e salva: a linha vira rascunho e o conteúdo antigo fica no histórico
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/queixa_escola`, "md", { payload: { queixas: "5,2" } });
+    assert.equal(salvo.status, 200);
+    assert.equal(salvo.body.form.status, "rascunho");
+    assert.equal(salvo.body.form.payload.queixas, "2,5");
+    const [linha] = await dbx.select().from(shared.caseMedicalForms).where(and(eq(shared.caseMedicalForms.caseId, caso), eq(shared.caseMedicalForms.formId, "queixa_escola")));
+    assert.equal(linha.formVersion, shared.MD_FORMS_VERSION);
+    assert.equal((linha.history as any[]).length, 1);
+    assert.equal((linha.history as any[])[0].payload.registro, "texto da versão antiga", "nada do que estava salvo é apagado");
+
+    // conclui de novo: grava a versão atual e a trava volta a valer
+    assert.equal((await call("POST", `/api/cases/${caso}/medical-forms/queixa_escola/complete`, "md")).status, 200);
+    const depois = (await call("GET", `/api/cases/${caso}/medical-forms`, "md")).body.forms.find((f: any) => f.id === "queixa_escola");
+    assert.equal(depois.status, "concluido");
+    assert.equal(depois.desatualizado, false);
+    assert.equal((await call("PUT", `/api/cases/${caso}/medical-forms/queixa_escola`, "md", { payload: { queixas: "3" } })).status, 409);
+  });
+
+  test("hipótese diagnóstica: só CID 10 e CID 11; o texto das células antigas não se perde", async () => {
+    const { eq } = await import("drizzle-orm");
+    const r = await call("GET", `/api/cases/${caso}/medical-forms`, "md");
+    const campos = (shared.MD_FORMS as Record<string, { campos: { id: string }[] }>).hipotese_diagnostica.campos.map((c) => c.id);
+    assert.deepEqual(campos, ["cid10", "cid11"]);
+    assert.deepEqual(Object.keys(r.body.forms.find((f: any) => f.id === "hipotese_diagnostica").payload), ["cid10", "cid11"]);
+
+    await dbx.insert(shared.caseMedicalForms).values({
+      tenantId: (await dbx.select().from(shared.cases).where(eq(shared.cases.id, caso)))[0].tenantId, caseId: caso, formId: "hipotese_diagnostica",
+      formVersion: "md-1.0-capitulo-1809", status: "rascunho", payload: { cid10_1: "F90.0", cid10_2: "F84.0", cid11_1: "6A05" }, authorId: ids.md,
+    });
+    const g = (await call("GET", `/api/cases/${caso}/medical-forms`, "md")).body.forms.find((f: any) => f.id === "hipotese_diagnostica");
+    assert.deepEqual(g.payload, { cid10: "F90.0; F84.0", cid11: "6A05" });
+    const salvo = await call("PUT", `/api/cases/${caso}/medical-forms/hipotese_diagnostica`, "md", { payload: g.payload });
+    assert.deepEqual(salvo.body.form.payload, { cid10: "F90.0; F84.0", cid11: "6A05" });
+  });
+
+  test("médico sem 'Ver tudo da escola': a API avisa (somenteSumario) e não manda as respostas do FOGAP", async () => {
+    const { eq, and } = await import("drizzle-orm");
+    const { invalidatePrivilegeCache } = await import("../services/privilege.service");
+    await dbx.insert(shared.privilegeUserGrants).values({ userId: ids.md, capability: "school.read_full", allowed: false });
+    invalidatePrivilegeCache();
+    try {
+      const j = await call("GET", `/api/cases/${caso}/re-journey`, "md");
+      assert.equal(j.status, 200);
+      assert.equal(j.body.somenteSumario, true);
+      assert.ok(!("respostas_desenvolvimento" in j.body.forms.i.payload));
+      assert.ok(!("faixa_fogap" in j.body.forms.i.payload));
+      assert.ok(!("a" in j.body.forms), "formulários A a H também não vêm");
+      const a = await call("GET", `/api/cases/${caso}/re-assessment?completo=1`, "md");
+      assert.equal(a.body.somenteSumario, true);
+      assert.ok(!("respostas_desenvolvimento" in a.body.assessment.payload));
+    } finally {
+      await dbx.delete(shared.privilegeUserGrants).where(and(eq(shared.privilegeUserGrants.userId, ids.md), eq(shared.privilegeUserGrants.capability, "school.read_full")));
+      invalidatePrivilegeCache();
+    }
+    const volta = await call("GET", `/api/cases/${caso}/re-journey`, "md");
+    assert.notEqual(volta.body.somenteSumario, true);
+    assert.ok("respostas_desenvolvimento" in volta.body.forms.i.payload, "com a permissão de volta, o médico lê as respostas item a item");
+  });
 });
