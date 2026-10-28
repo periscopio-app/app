@@ -20,6 +20,7 @@ describe("BI do gestor (E2E)", { skip }, () => {
   let schoolGL = "";
   let schoolNova = "";
   let schoolB = "";
+  let tenantB = "";
   const studentCodes: string[] = [];
 
   async function call(method: string, path: string, who?: string, body?: unknown) {
@@ -70,6 +71,7 @@ describe("BI do gestor (E2E)", { skip }, () => {
 
     const [tA] = await db.insert(shared.tenants).values({ name: "Município A", municipalityCode: "A" }).returning();
     const [tB] = await db.insert(shared.tenants).values({ name: "Município B", municipalityCode: "B" }).returning();
+    tenantB = tB.id;
     const [sGL] = await db.insert(shared.schools).values({ tenantId: tA.id, name: "Escola GL", slug: "escola-gl", status: "active", externalCode: "2" }).returning();
     const [sN] = await db.insert(shared.schools).values({ tenantId: tA.id, name: "Escola Nova", slug: "escola-nova", status: "active" }).returning();
     const [sB] = await db.insert(shared.schools).values({ tenantId: tB.id, name: "Escola B1", slug: "escola-b1", status: "active" }).returning();
@@ -164,6 +166,17 @@ describe("BI do gestor (E2E)", { skip }, () => {
   test("escola de outro município é recusada", async () => {
     const r = await call("POST", "/api/bi/query", "municipal", q("cases", [], { schoolId: schoolB }));
     assert.equal(r.status, 403);
+  });
+
+  test("slug, tenant e fila não permitem trocar o escopo do BI", async () => {
+    assert.equal((await call("GET", "/api/bi/catalog?slug=escola-b1", "municipal")).status, 403);
+    assert.equal((await call("GET", "/api/bi/overview?slug=taruma", "municipal")).status, 403);
+    assert.equal((await call("GET", "/api/bi/summary?slug=escola-b1", "municipal")).status, 403);
+    assert.equal((await call("GET", `/api/bi/questions?tenantId=${tenantB}`, "municipal")).status, 403);
+
+    const ownSchool = await call("GET", "/api/bi/overview?slug=escola-nova", "gestorGL");
+    assert.equal(ownSchool.status, 200);
+    assert.equal(ownSchool.body.cases.rows[0].value, 10);
   });
 
   test("plano com campo individual ou métrica inexistente é recusado", async () => {
@@ -268,6 +281,13 @@ describe("BI do gestor (E2E)", { skip }, () => {
     const a = await call("POST", "/api/bi/ask", "municipal", { question: "casos por escola" });
     assert.equal((await call("POST", "/api/bi/feedback", "boardB", { questionId: a.body.questionId, rating: 1 })).status, 404);
     assert.equal((await call("POST", "/api/bi/feedback", "re", { questionId: a.body.questionId, rating: 1 })).status, 404);
+
+    const otherTenantQuestion = await call("POST", "/api/bi/ask", "boardB", { question: "casos por escola" });
+    assert.equal(otherTenantQuestion.status, 200);
+    assert.equal(
+      (await call("POST", `/api/bi/questions/${otherTenantQuestion.body.questionId}/approve`, "municipal", { approve: true })).status,
+      404,
+    );
   });
 
   test("overview devolve os painéis básicos para cada papel permitido", async () => {
