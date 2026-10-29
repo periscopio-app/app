@@ -97,7 +97,11 @@ export function MedicoFormsPanel({
   async function salvar(id: MdFormId) {
     setOcupado(id);
     try {
-      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: rascunhos[id] ?? {} });
+      const form = d?.forms.find((f) => f.id === id);
+      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, {
+        payload: rascunhos[id] ?? {},
+        ...(form?.updatedAt ? { ifUpdatedAt: form.updatedAt } : {}),
+      });
       aviso(id, "ok", "Rascunho salvo.");
       await carregar();
     } catch (e) {
@@ -110,7 +114,11 @@ export function MedicoFormsPanel({
   async function concluir(id: MdFormId) {
     setOcupado(id);
     try {
-      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, { payload: rascunhos[id] ?? {} });
+      const form = d?.forms.find((f) => f.id === id);
+      await api.put(`/api/cases/${caseId}/medical-forms/${id}`, {
+        payload: rascunhos[id] ?? {},
+        ...(form?.updatedAt ? { ifUpdatedAt: form.updatedAt } : {}),
+      });
       await api.post(`/api/cases/${caseId}/medical-forms/${id}/complete`, {});
       aviso(id, "ok", "Seção concluída. Para alterar, reabra com o motivo.");
       await carregar();
