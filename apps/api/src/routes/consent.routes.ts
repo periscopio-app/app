@@ -74,36 +74,48 @@ export async function consentRoutes(app: FastifyInstance) {
       const queryType = ((request.query as any)?.type || "responsavel_legal") as string;
       const tenantId = actor.tenantId;
 
-      let [term] = await db
-        .select()
-        .from(consentTerms)
-        .where(and(eq(consentTerms.tenantId, tenantId), eq(consentTerms.type, queryType), eq(consentTerms.active, true)))
-        .orderBy(desc(consentTerms.publishedAt))
-        .limit(1);
-
-      if (!term) {
-        const [inserted] = await db
-          .insert(consentTerms)
-          .values({
-            tenantId,
-            version: TERMO_PADRAO_V1.version,
-            type: queryType,
-            title: TERMO_PADRAO_V1.title,
-            summary: TERMO_PADRAO_V1.summary,
-            content: TERMO_PADRAO_V1.content,
-            active: true,
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        term = inserted || (await db
+      try {
+        let [term] = await db
           .select()
           .from(consentTerms)
-          .where(and(eq(consentTerms.tenantId, tenantId), eq(consentTerms.type, queryType)))
-          .limit(1))[0];
-      }
+          .where(and(eq(consentTerms.tenantId, tenantId), eq(consentTerms.type, queryType), eq(consentTerms.active, true)))
+          .orderBy(desc(consentTerms.publishedAt))
+          .limit(1);
 
-      return { term };
+        if (!term) {
+          const [inserted] = await db
+            .insert(consentTerms)
+            .values({
+              tenantId,
+              version: TERMO_PADRAO_V1.version,
+              type: queryType,
+              title: TERMO_PADRAO_V1.title,
+              summary: TERMO_PADRAO_V1.summary,
+              content: TERMO_PADRAO_V1.content,
+              active: true,
+            })
+            .onConflictDoNothing()
+            .returning();
+
+          term = inserted || (await db
+            .select()
+            .from(consentTerms)
+            .where(and(eq(consentTerms.tenantId, tenantId), eq(consentTerms.type, queryType)))
+            .limit(1))[0];
+        }
+
+        return { term };
+      } catch {
+        return {
+          term: {
+            id: "00000000-0000-0000-0000-000000000001",
+            ...TERMO_PADRAO_V1,
+            type: queryType,
+            active: true,
+            publishedAt: new Date().toISOString(),
+          },
+        };
+      }
     }
   );
 

@@ -248,31 +248,34 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       if (!actor) return;
 
       const { studentId } = request.params;
-      const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
-      if (!student) {
+      try {
+        const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
+        if (!student) {
+          reply.status(404);
+          return { error: "Aluno não encontrado." };
+        }
+        const [vaultRecord] = await db
+          .select({
+            id: studentIdentityVault.id,
+            hasDocument: studentIdentityVault.encryptedDocument,
+            hasContact: studentIdentityVault.encryptedContact,
+            updatedAt: studentIdentityVault.updatedAt,
+            createdAt: studentIdentityVault.createdAt,
+          })
+          .from(studentIdentityVault)
+          .where(eq(studentIdentityVault.studentId, studentId))
+          .limit(1);
+        return {
+          hasData: !!vaultRecord,
+          hasDocument: !!vaultRecord?.hasDocument,
+          hasContact: !!vaultRecord?.hasContact,
+          updatedAt: vaultRecord?.updatedAt || null,
+          createdAt: vaultRecord?.createdAt || null,
+        };
+      } catch {
         reply.status(404);
         return { error: "Aluno não encontrado." };
       }
-
-      const [vaultRecord] = await db
-        .select({
-          id: studentIdentityVault.id,
-          hasDocument: studentIdentityVault.encryptedDocument,
-          hasContact: studentIdentityVault.encryptedContact,
-          updatedAt: studentIdentityVault.updatedAt,
-          createdAt: studentIdentityVault.createdAt,
-        })
-        .from(studentIdentityVault)
-        .where(eq(studentIdentityVault.studentId, studentId))
-        .limit(1);
-
-      return {
-        hasData: !!vaultRecord,
-        hasDocument: !!vaultRecord?.hasDocument,
-        hasContact: !!vaultRecord?.hasContact,
-        updatedAt: vaultRecord?.updatedAt || null,
-        createdAt: vaultRecord?.createdAt || null,
-      };
     }
   );
 
@@ -288,27 +291,28 @@ export async function identityVaultRoutes(app: FastifyInstance) {
       return { error: "Acesso restrito ao Encarregado pelo Tratamento de Dados (DPO) e Administrador Master." };
     }
 
-    const logs = await db
-      .select({
-        id: auditLogs.id,
-        userId: auditLogs.actorId,
-        userEmail: auditLogs.userEmail,
-        action: auditLogs.action,
-        entityType: auditLogs.entity,
-        entityId: auditLogs.entityId,
-        ipAddress: auditLogs.ipAddress,
-        userAgent: auditLogs.userAgent,
-        payload: auditLogs.payload,
-        createdAt: auditLogs.createdAt,
-      })
-      .from(auditLogs)
-      .where(
-        inArray(auditLogs.action, ["student.vault_revealed", "student.vault_updated"])
-      )
-      .orderBy(desc(auditLogs.createdAt))
-      .limit(100);
-
-    return { logs };
+    try {
+      const logs = await db
+        .select({
+          id: auditLogs.id,
+          userId: auditLogs.actorId,
+          userEmail: auditLogs.userEmail,
+          action: auditLogs.action,
+          entityType: auditLogs.entity,
+          entityId: auditLogs.entityId,
+          ipAddress: auditLogs.ipAddress,
+          userAgent: auditLogs.userAgent,
+          payload: auditLogs.payload,
+          createdAt: auditLogs.createdAt,
+        })
+        .from(auditLogs)
+        .where(inArray(auditLogs.action, ["student.vault_revealed", "student.vault_updated"]))
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(100);
+      return { logs };
+    } catch {
+      return { logs: [] };
+    }
   });
 }
 

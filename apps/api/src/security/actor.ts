@@ -52,6 +52,23 @@ export async function requireActor(
 
     const isSuper = isSuperAdminEmail(email);
 
+    // Super admins are identified solely by env var — skip the DB entirely.
+    if (isSuper) {
+      const actor: Actor = {
+        id: "00000000-0000-0000-0000-000000000001",
+        name: "Admin Master",
+        email,
+        tenantId: "00000000-0000-0000-0000-000000000001",
+        schoolId: null,
+        role: "admin_platform",
+      };
+      if (allowedRoles && !hasRole(actor.role, allowedRoles, actor.email)) {
+        await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação" });
+        return null;
+      }
+      return actor;
+    }
+
     const [user] = await db
       .select({
         id: users.id,
@@ -67,42 +84,33 @@ export async function requireActor(
       .where(eq(users.email, email))
       .limit(1);
 
-    const role = (user?.role as Role) || (isSuper ? "admin_platform" : null);
-    if (!user && !isSuper) {
+    if (!user) {
       await reply.status(403).send({ error: "Usuário sem perfil autorizado na plataforma" });
       return null;
     }
 
-    if (user && (!role || !isRole(role)) && !isSuper) {
+    const role = user.role as Role;
+    if (!role || !isRole(role)) {
       await reply.status(403).send({ error: "Usuário sem perfil autorizado na plataforma" });
       return null;
     }
 
-    if (user && !user.accessEnabled && !isSuper) {
+    if (!user.accessEnabled) {
       await reply
         .status(403)
         .send({ error: "Acesso pendente: confirme o e-mail do convite enviado pela sua escola." });
       return null;
     }
 
-    const actor: Actor = user
-      ? {
-          id: user.id,
-          name: user.name ?? null,
-          email: user.email,
-          tenantId: user.tenantId,
-          schoolId: user.schoolId,
-          role: role ?? "admin_platform",
-          specialty: user.specialty ?? null,
-        }
-      : {
-          id: "00000000-0000-0000-0000-000000000001",
-          name: "Admin Master",
-          email,
-          tenantId: "00000000-0000-0000-0000-000000000001",
-          schoolId: null,
-          role: "admin_platform",
-        };
+    const actor: Actor = {
+      id: user.id,
+      name: user.name ?? null,
+      email: user.email,
+      tenantId: user.tenantId,
+      schoolId: user.schoolId,
+      role,
+      specialty: user.specialty ?? null,
+    };
 
     if (allowedRoles && !hasRole(actor.role, allowedRoles, actor.email)) {
       await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação" });
