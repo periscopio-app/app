@@ -2,11 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildApp } from "../app";
 
+const TEST_SUPER_EMAIL = "bruno@oceanoazul.dev.br";
+
 test("RNDS Route: GET /api/rnds/status identifica o gerador como protótipo sem integração configurada", async () => {
   const app = await buildApp({ logger: false });
   const response = await app.inject({
     method: "GET",
     url: "/api/rnds/status",
+    headers: { "x-test-email": TEST_SUPER_EMAIL },
   });
 
   assert.equal(response.statusCode, 200);
@@ -65,6 +68,7 @@ test("RNDS Route: POST /api/rnds/rel/bundle gera Bundle FHIR experimental com en
   const response = await app.inject({
     method: "POST",
     url: "/api/rnds/rel/bundle",
+    headers: { "x-test-email": TEST_SUPER_EMAIL },
     payload,
   });
 
@@ -89,6 +93,7 @@ test("RNDS Bundle: narrativa XHTML escapa conteúdo fornecido pelo cliente", asy
   const response = await app.inject({
     method: "POST",
     url: "/api/rnds/rel/bundle",
+    headers: { "x-test-email": TEST_SUPER_EMAIL },
     payload: {
       caseId: "synthetic-case-1",
       patient: {},
