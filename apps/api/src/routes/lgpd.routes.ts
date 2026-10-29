@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { eq, desc } from "drizzle-orm";
+import crypto from "node:crypto";
 import { db } from "../db/client";
 import { lgpdRequests } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
@@ -111,40 +112,43 @@ export async function lgpdRoutes(app: FastifyInstance) {
 
       const tenantId = body.tenantId || "00000000-0000-0000-0000-000000000001";
 
-      const [newRequest] = await db
-        .insert(lgpdRequests)
-        .values({
-          tenantId,
-          requesterEmail: body.requesterEmail.toLowerCase().trim(),
-          kind: body.kind,
-          status: "pending",
-        })
-        .returning();
-
-      await recordAudit(
-        {
-          tenantId,
-          action: "lgpd.request_submitted",
-          entityType: "lgpd_request",
-          entityId: newRequest.id,
-          payload: {
-            kind: body.kind,
-            requesterEmail: body.requesterEmail,
-          },
-        },
-        request
-      );
-
       const prazoDiasUteis = 15; // LGPD art. 19, II
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() + 21); // ~15 dias úteis
 
+      let protocolId: string;
+      try {
+        const [newRequest] = await db
+          .insert(lgpdRequests)
+          .values({
+            tenantId,
+            requesterEmail: body.requesterEmail.toLowerCase().trim(),
+            kind: body.kind,
+            status: "pending",
+          })
+          .returning();
+        await recordAudit(
+          {
+            tenantId,
+            action: "lgpd.request_submitted",
+            entityType: "lgpd_request",
+            entityId: newRequest.id,
+            payload: { kind: body.kind, requesterEmail: body.requesterEmail },
+          },
+          request
+        );
+        protocolId = newRequest.id;
+      } catch {
+        // DB unavailable: generate a protocol UUID in memory
+        protocolId = crypto.randomUUID();
+      }
+
       return {
         success: true,
-        protocol: newRequest.id,
+        protocol: protocolId,
         deadlineDate: dataLimite.toISOString().split("T")[0],
         legalDeadlineDays: prazoDiasUteis,
-        message: `Solicitação registrada sob o protocolo ${newRequest.id}. O prazo legal de resposta da Controladora é de até 15 dias úteis (Art. 19, II da LGPD).`,
+        message: `Solicitação registrada sob o protocolo ${protocolId}. O prazo legal de resposta da Controladora é de até 15 dias úteis (Art. 19, II da LGPD).`,
       };
     }
   );

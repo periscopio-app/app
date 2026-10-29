@@ -25,7 +25,7 @@ export function resolveAuthBaseUrl(): string {
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
 export const authBaseUrl = resolveAuthBaseUrl();
 
-if (process.env.NODE_ENV !== "development") {
+if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
   if (!authSecret) {
     throw new Error("BETTER_AUTH_SECRET é obrigatória fora do ambiente de desenvolvimento.");
   }
