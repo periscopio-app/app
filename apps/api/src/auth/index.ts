@@ -35,6 +35,8 @@ if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
   if (authSecret.length < 32) {
     console.warn("[auth] BETTER_AUTH_SECRET tem menos de 32 caracteres; troque por um segredo longo.");
   }
+} else if (!authSecret) {
+  console.warn("[auth] BETTER_AUTH_SECRET não definida — usando valor padrão inseguro. Defina a variável antes de qualquer ambiente não-local.");
 }
 
 const emailEnabled = Boolean(process.env.RESEND_API_KEY);

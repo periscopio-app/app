@@ -74,11 +74,15 @@ export function isRole(value: string): value is Role {
   return roles.includes(value as Role);
 }
 
-/** Verifica se um e-mail é Super Admin / Gestão Suprema (ex: bruno@oceanoazul.dev.br). */
+/** Verifica se um e-mail é Super Admin / Gestão Suprema. Requer SUPERADMIN_EMAILS definida via env. */
 export function isSuperAdminEmail(email?: string | null): boolean {
   if (!email) return false;
+  const raw = process.env.SUPERADMIN_EMAILS ?? "";
+  if (!raw && process.env.NODE_ENV === "production") {
+    console.warn("[roles] SUPERADMIN_EMAILS não configurada em produção — super admin desabilitado.");
+  }
   const normalized = email.trim().toLowerCase();
-  const superadmins = (process.env.SUPERADMIN_EMAILS || "bruno@oceanoazul.dev.br")
+  const superadmins = raw
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
