@@ -63,6 +63,14 @@ const CLOSE_LABELS: Record<string, string> = {
   interrupcao_justificada: "Interrupção justificada",
 };
 
+const CLOSE_REASON_PLACEHOLDER: Record<string, string> = {
+  alta: "Descreva a evolução clínica do aluno e os critérios que fundamentam a alta após os pareceres dos especialistas.",
+  encaminhamento: "Descreva o serviço de destino, o motivo do encaminhamento e as orientações para continuidade.",
+  acompanhamento: "Descreva o plano de acompanhamento periódico e os critérios de reavaliação.",
+  abandono: "Descreva as circunstâncias do abandono e as tentativas de contato realizadas.",
+  interrupcao_justificada: "Descreva a justificativa para a interrupção e as providências tomadas.",
+};
+
 const SPECIALTIES = [
   { id: "neuropsicologia", label: "Neuropsicólogo(a) — Avaliação Neuropsicológica" },
   { id: "fonoaudiologia", label: "Fonoaudiólogo(a)" },
@@ -894,20 +902,37 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                       <div className="flex items-start gap-2 rounded-xl border border-ouro-300 bg-ouro-50 px-4 py-3 text-sm text-black">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                         <span>
-                          Encerramento disponível apenas após todos os especialistas concluírem seus pareceres (estado: <strong>retornado</strong>).
+                          Encerramento disponível apenas após todos os especialistas designados concluírem seus pareceres e devolverem ao médico.
                         </span>
                       </div>
                     ) : (
                       <>
+                        {/* Especialistas que devolveram — contexto para a decisão do médico */}
+                        {designadas.length > 0 && (
+                          <div className="rounded-xl border border-sucesso/30 bg-sucesso/5 px-3 py-2 space-y-1">
+                            <p className="text-[11px] font-semibold text-black">Especialistas que devolveram ao médico</p>
+                            <ul className="space-y-0.5">
+                              {designadas.map((sec) => (
+                                <li key={sec.id} className="flex items-center gap-2 text-[11px] text-black">
+                                  <CheckCircle className="h-3.5 w-3.5 shrink-0 text-sucesso" aria-hidden />
+                                  <span>
+                                    {SPECIALTIES.find((s) => s.id === sec.specialty)?.label ?? sec.specialty}
+                                    {sec.professionalName ? ` · ${sec.professionalName}` : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-xs font-semibold text-black mb-1">
                             Decisão de conduta
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {(["encaminhamento", "acompanhamento", "alta", "abandono", "interrupcao_justificada"] as const).map((d) => (
                               <label
                                 key={d}
-                                className={`flex-1 flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
+                                className={`flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
                                   closeDecision === d
                                     ? "border-roxo bg-roxo-100 text-black"
                                     : "border-linha text-black hover:bg-fundo"
@@ -946,16 +971,18 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           <textarea
                             rows={4}
                             required
+                            minLength={10}
                             value={closeReason}
                             onChange={(e) => setCloseReason(e.target.value)}
-                            placeholder="Descreva a conduta clínica adotada e a justificativa para o encerramento..."
+                            placeholder={CLOSE_REASON_PLACEHOLDER[closeDecision]}
                             className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black resize-none outline-none focus:ring-2 focus:ring-roxo/40"
                           />
+                          <span className="block text-[11px] text-neutral-700 mt-0.5">Mínimo 10 caracteres.</span>
                         </div>
                         <div className="flex justify-end">
                           <Button
                             type="submit"
-                            disabled={closing || !closeReason.trim()}
+                            disabled={closing || closeReason.trim().length < 10}
                             variant="primary" size="md"
                           >
                             {closing ? "Encerrando..." : "Encerrar caso"}

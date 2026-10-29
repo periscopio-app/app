@@ -91,7 +91,10 @@ export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange 
     if (!atual) return false;
     setOcupado(true);
     try {
-      await api.put(`/api/cases/sections/${sectionId}/forms/${atual.id}`, { payload: rascunhos[atual.id] ?? {} });
+      await api.put(`/api/cases/sections/${sectionId}/forms/${atual.id}`, {
+        payload: rascunhos[atual.id] ?? {},
+        ...(linha?.updatedAt ? { ifUpdatedAt: linha.updatedAt } : {}),
+      });
       setMsg({ tom: "ok", texto: "Rascunho salvo." });
       await carregar();
       return true;

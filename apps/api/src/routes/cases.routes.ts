@@ -1411,7 +1411,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     .object({
       decision: z.enum(["encaminhamento", "acompanhamento", "alta", "abandono", "interrupcao_justificada"]),
       followUp: z.enum(["semestral", "anual"]).optional(),
-      reason: z.string().min(1),
+      reason: z.string().trim().min(10, "Justificativa clínica deve ter pelo menos 10 caracteres."),
     })
     .refine((d) => d.decision !== "acompanhamento" || !!d.followUp, {
       message: "Informe a periodicidade do acompanhamento (semestral ou anual).",
