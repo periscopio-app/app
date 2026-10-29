@@ -108,6 +108,12 @@ const CLASSE_REY: ReOpcao[] = [
 /** Níveis 1 a 4 marcados pelo profissional na bateria psicomotora. O significado de cada nível fica no instrumento. */
 const NIVEL_1_4: ReOpcao[] = [o("1", "1"), o("2", "2"), o("3", "3"), o("4", "4")];
 const NIVEL_0_5: ReOpcao[] = ["0", "1", "2", "3", "4", "5"].map((v) => o(v, v));
+const SRS2_ESCALA: ReOpcao[] = [
+  o("1", "1 — Não é verdade"),
+  o("2", "2 — Algumas vezes é verdade"),
+  o("3", "3 — Muitas vezes é verdade"),
+  o("4", "4 — Quase sempre é verdade"),
+];
 const DATA_NOTA = "Escolha a data no calendário.";
 
 // ── Construtores ───────────────────────────────────────────────────────────────────────────────
@@ -948,18 +954,37 @@ const FONO_SINTESE = def(
 const FONO_SRS2 = def(
   "fono_srs2",
   "3",
-  "SRS-2 — resultado (Escala de Responsividade Social)",
+  "Social Responsiveness Scale, 2nd Edition — SRS-2",
   "SRS-2",
-  "Instrumento licenciado (WPS/Hogrefe CETEPP). O sistema não reproduz os itens: registre aqui só o resultado e a data da aplicação.",
+  "Responsável descreve o comportamento da criança nos últimos 6 meses. O sistema registra as respostas, sem calcular ou interpretar o resultado.",
   [
+    sec("identificacao", "Identificação da aplicação", [
+      data("data_aplicacao", "Data da avaliação"),
+      ue("respondente", "Respondente", [o("mae_pai", "Mãe/Pai"), o("professor", "Professor"), o("outro", "Outro")]),
+    ]),
+    sec("itens", "Itens SRS-2", [
+      mx("itens_srs2", "Marque uma resposta por item.", [
+        ["01", "Parece muito mais inquieta em situações sociais do que quanto está sozinha."], ["02", "As expressões em seu rosto são combinam com o que está dizendo."], ["03", "Parece confiante (ou segura) quanto está interagindo com outras pessoas."], ["04", "na sobrecarga de estímulos, apresenta padrões rígidos ou inflexíveis de comportamento que parecem estranhos."], ["05", "Não percebe quando os outros estão tentando tirar vantagem dela."],
+        ["06", "Prefere estar sozinho a estar com os outros."], ["07", "Demonstra perceber o que os outros estão pensando ou sentindo."], ["08", "Se comporta de maneira estranha ou bizarra."], ["09", "Fica próxima a adultos, parece ser muito dependente deles."], ["10", "Leva as coisas muito \"ao pé da letra\" e não compreende o real significado de uma conversa."],
+        ["11", "É autoconfiante."], ["12", "É capaz de comunicar seus sentimentos para as outras pessoas."], ["13", "É estranha na \"tomada de vez\" das interações com seus colegas (por exemplo, não parece entender a reciprocidade de uma conversa)."], ["14", "Não tem boa coordenação."], ["15", "É capaz de entender o tom de voz e as expressões faciais das outras pessoas."],
+        ["16", "Evita o contato visual ou tem contato visual diferente."], ["17", "Reconhece quando algo é injusto."], ["18", "Tem dificuldade em fazer amigos, mesmo tentando dar o melhor de si."], ["19", "Fica frustrada quando não consegue expressar suas ideias em uma conversa."], ["20", "Mostra interesses sensoriais incomuns (por exemplo, coloca na boca ou gira objetos) ou formar estranhas de brincar com brinquedos."],
+        ["21", "É capaz de imitar as ações de outras pessoas."], ["22", "Brinca adequadamente com crianças da sua idade."], ["23", "Não participa de atividades em grupo a menos que seja convidada a fazê-lo."], ["24", "Tem mais dificuldade do que outras crianças com mudanças na sua rotina."], ["25", "Não parece de importar em estar fora de sintonia ou em um \"mundo\" diferente dos outros."],
+        ["26", "Oferece conforto para os outros quando estão tristes."], ["27", "Evita iniciar interações sociais com seus colegas ou adultos."], ["28", "Pensa ou fala sobre a mesma coisa repetidamente."], ["29", "É considerada como estranha ou esquisita por outras crianças."], ["30", "Fica perturbada em uma situação com muitas coisas acontecendo."],
+        ["31", "Não consegue tirar algo da sua mente uma vez que começa a pensar."], ["32", "Tem boa higiene pessoal."], ["33", "É socialmente desajeitada, mesmo quando tenta ser educada."], ["34", "Evita pessoas que querem se aproximar dela por meio de contato afetivo."], ["35", "Tem dificuldade em acompanhar o fluxo de uma conversa normal."],
+        ["36", "Tem dificuldade em se relacionar com adultos."], ["37", "Tem dificuldade em se relacionar com seus colegas."], ["38", "Responde adequadamente às mudanças de humor dos outros (um amigo muda de feliz para triste)."], ["39", "Tem uma variedade de interesses extraordinariamente incomuns."], ["40", "É imaginativa, hábil em fantasiar (sem perder contato com a realidade)."],
+        ["41", "Muda de uma atividade para outra sem objetivo aparente."], ["42", "Parece excessivamente sensível aos sons, texturas e cheiros."], ["43", "Se separa facilmente (ou frequentemente) dos cuidadores."], ["44", "Não entende como os acontecimentos se encadeiam entre si (causa e efeito), como outros da sua idade."], ["45", "Dirige sua atenção para onde os outros estão olhando ou ouvindo."],
+        ["46", "Tem expressão facial excessivamente séria."], ["47", "Comporta-se como tola ou ri de forma inadequada."], ["48", "Tem senso de humor e entende as piadas."], ["49", "É muito hábil em algumas tarefas específicas, mas não consegue fazer a maioria das outras tarefas."], ["50", "Tem comportamentos repetitivos, estranhos, agita as mãos ou balança o corpo."],
+        ["51", "Tem dificuldade em responder perguntas objetivamente, e fala em torno do assunto."], ["52", "Sabe quando está falando muito alto ou fazendo muito barulho."], ["53", "Fala com as pessoas com um tom de voz incomum (como um robô ou come se estivesse dando uma palestra)."], ["54", "Parece agir com as pessoas como se elas fossem objetos."], ["55", "Sabe quando está muito próxima ou invadindo o espaço de alguém."],
+        ["56", "Caminha entre duas pessoas que estão conversando."], ["57", "Sofre provocações de colegas."], ["58", "Concentra-se demais em partes das coisas e não no todo: se solicitada para descrever o que aconteceu em uma história, fala só das roupas."], ["59", "É excessivamente desconfiada."], ["60", "É emocionalmente distante, não demonstrando seus sentimentos."],
+        ["61", "É inflexível e tem dificuldade para mudar de ideia."], ["62", "Dá explicações incomuns ou ilógicas do porquê de fazer as coisas."], ["63", "Toca os outros de maneira incomum (apenas faz contato e vai embora sem dizer nada)."], ["64", "Fica muito agitada em situações sociais."], ["65", "Fica com olhar perdido ou olha fixamente para o nada."],
+      ], SRS2_ESCALA),
+    ]),
     sec("resultado", "Resultado informado pelo profissional", [
-      data("data_aplicacao", "Data da aplicação"),
-      m("respondente", "Quem respondeu", [o("mae_pai", "Mãe/Pai"), o("professor", "Professor"), o("outro", "Outro")]),
       t("resultado_informado", "Resultado informado no protocolo do instrumento"),
       tl("anotacao", "Anotações do profissional"),
     ]),
   ],
-  ["NAO IMPLEMENTAR ATE VALIDACAO: itens, pontuação e licença do SRS-2 (direitos reservados à editora). Os 65 itens não foram digitalizados."]
+  ["Uso dos 65 itens autorizado pelo titular da licença em 2026-10-29. O sistema não calcula escore, ponto de corte ou classificação."]
 );
 
 const FONO_PLANO = def(
