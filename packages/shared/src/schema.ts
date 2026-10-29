@@ -149,8 +149,9 @@ export const cases = pgTable("cases", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
   studentId: uuid("student_id").notNull().references(() => students.id),
+  /** @deprecated Use journeyState. Campo legado mantido para compatibilidade de banco; não usar em novas queries. Valores antigos: triagem | sisreg | investigacao | reabilitacao */
   status: varchar("status", { length: 30 }).notNull(),
-  // triagem | sisreg | investigacao | reabilitacao (legado, mantido por compatibilidade)
+  /** Estado canônico da jornada. Fonte da verdade para toda lógica de fluxo. */
   journeyState: varchar("journey_state", { length: 30 }).notNull().default("rascunho"),
   // rascunho | enviado_re | revisao_medica | delegado | retornado | encerrado
   assignedToId: uuid("assigned_to_id").references(() => users.id),

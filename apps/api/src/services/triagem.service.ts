@@ -27,7 +27,10 @@ export async function canProceedToMedical(
   isCrisisBypass: boolean
 ): Promise<void> {
   if (isCrisisBypass) return;
-  if (process.env.DISABLE_THERAPEUTIC_WINDOW === "true") return;
+  if (process.env.DISABLE_THERAPEUTIC_WINDOW === "true") {
+    console.warn("[canProceedToMedical] DISABLE_THERAPEUTIC_WINDOW ativo — janela terapêutica de 120 dias ignorada. NÃO use em produção.");
+    return;
+  }
 
   const [caso] = await db
     .select()

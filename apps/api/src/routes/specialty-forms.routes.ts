@@ -20,7 +20,10 @@ import { requireCapability, type Actor } from "../security/actor";
 import { recordAudit } from "../services/audit.service";
 import { caseVisibleTo } from "./cases.routes";
 
-const salvarBody = z.object({ payload: z.record(z.string(), z.unknown()) });
+const salvarBody = z.object({
+  payload: z.record(z.string(), z.unknown()),
+  ifUpdatedAt: z.string().datetime().optional(),
+});
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 async function secaoDoEspecialista(actor: Actor, sectionId: string) {
@@ -100,6 +103,13 @@ export async function specialtyFormsRoutes(app: FastifyInstance) {
       .where(and(eq(caseSpecialtyForms.sectionId, section.id), eq(caseSpecialtyForms.formId, formId)))
       .limit(1);
     if (atual?.status === "concluido") return reply.status(409).send({ error: "Formulário concluído. Para alterar, reabra com o motivo." });
+
+    if (body.data.ifUpdatedAt && atual) {
+      const serverTs = atual.updatedAt ? new Date(atual.updatedAt).toISOString() : null;
+      if (serverTs !== body.data.ifUpdatedAt) {
+        return reply.status(409).send({ error: "Registro foi modificado por outra sessão. Recarregue e tente novamente." });
+      }
+    }
 
     let saved;
     if (atual) {

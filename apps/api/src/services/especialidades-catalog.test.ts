@@ -69,13 +69,29 @@ describe("catálogo das especialidades", () => {
     for (const { f } of todos) assert.ok(f.pendenciasDeValidacao.length >= 1, f.id);
   });
 
-  test("instrumentos licenciados guardam só o resultado: SRS-2, MASC, SCARED, CBCL e ASQ não têm itens", () => {
-    for (const id of ["fono_srs2", "psi_masc", "psi_scared"]) {
-      const f = formDaEspecialidade(id.startsWith("fono") ? "fonoaudiologia" : "psicologia", id)!;
+  test("instrumentos sem licença confirmada guardam só o resultado", () => {
+    for (const id of ["psi_masc", "psi_scared"]) {
+      const f = formDaEspecialidade("psicologia", id)!;
       assert.ok(camposDoForm(f).length <= 8, id);
     }
     const social = formDaEspecialidade("servico_social", "as_cbcl_asq")!;
     assert.ok(camposDoForm(social).length <= 10);
+  });
+
+  test("SRS-2 licenciado reproduz os 65 itens, com quatro respostas e sem cálculo", () => {
+    const f = formDaEspecialidade("fonoaudiologia", "fono_srs2")!;
+    const itens = camposDoForm(f).find((c) => c.key === "itens_srs2");
+    assert.ok(itens && itens.tipo === "matriz");
+    if (!itens || itens.tipo !== "matriz") throw new Error("matriz SRS-2 ausente");
+    assert.equal(itens.linhas.length, 65);
+    assert.deepEqual(itens.opcoes.map((o) => o.value), ["1", "2", "3", "4"]);
+    assert.equal(itens.linhas[3]?.label, "na sobrecarga de estímulos, apresenta padrões rígidos ou inflexíveis de comportamento que parecem estranhos.");
+  });
+
+  test("plano terapêutico fono preserva o item 4 do capítulo", () => {
+    const f = formDaEspecialidade("fonoaudiologia", "fono_plano_terapeutico")!;
+    const campo = camposDoForm(f).find((c) => c.key === "criterios_alta");
+    assert.equal(campo?.label, "4. Critérios de alta");
   });
 
   test("o sistema não calcula: nenhum campo guarda total, escore ou classe calculados", () => {

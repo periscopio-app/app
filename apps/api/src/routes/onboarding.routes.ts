@@ -375,9 +375,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
       for (const prof of body.professionals) {
         if (!prof.name || !prof.email) continue;
 
-        // Determina role específica ou specialist
+        // Determina role: médico → md1; qualquer especialidade clínica → specialist.
+        // psicopedagogia é especialidade do Núcleo Assistencial (specialist), não RE (ppi).
         let role = "specialist";
-        if (prof.specialty === "psicopedagogia") role = "ppi";
         if (prof.specialty === "medicina") role = "md1";
 
         const [createdProf] = await db

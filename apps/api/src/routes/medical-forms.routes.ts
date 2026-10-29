@@ -20,7 +20,10 @@ import { caseVisibleTo } from "./cases.routes";
 /** Estados em que o médico pode escrever: do recebimento até o encerramento. */
 const ESTADOS_EDITAVEIS = new Set(["revisao_medica", "delegado", "retornado"]);
 
-const salvarBody = z.object({ payload: z.record(z.string(), z.unknown()) });
+const salvarBody = z.object({
+  payload: z.record(z.string(), z.unknown()),
+  ifUpdatedAt: z.string().datetime().optional(),
+});
 const reabrirBody = z.object({ reason: z.string().trim().min(3, "Informe o motivo da reabertura").max(500) });
 
 /**
@@ -89,6 +92,13 @@ export async function medicalFormsRoutes(app: FastifyInstance) {
     const desatualizado = Boolean(atual && atual.status === "concluido" && atual.formVersion !== MD_FORMS_VERSION);
     if (atual?.status === "concluido" && !desatualizado) {
       return reply.status(409).send({ error: "Seção concluída. Para alterar, reabra com o motivo." });
+    }
+
+    if (body.data.ifUpdatedAt && atual) {
+      const serverTs = atual.updatedAt ? new Date(atual.updatedAt).toISOString() : null;
+      if (serverTs !== body.data.ifUpdatedAt) {
+        return reply.status(409).send({ error: "Registro foi modificado por outra sessão. Recarregue e tente novamente." });
+      }
     }
 
     let saved;

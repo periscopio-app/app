@@ -6,7 +6,6 @@ export async function authRoutes(app: FastifyInstance) {
   app.get("/api/auth/config", async (_request, reply) => {
     return {
       authProvider: "better-auth",
-      googleAuthEnabled: false,
       baseUrl: `${authBaseUrl}/api/auth`,
     };
   });
