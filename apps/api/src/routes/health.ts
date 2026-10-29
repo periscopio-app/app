@@ -16,6 +16,9 @@ async function pingDb(): Promise<{ ok: boolean; latencyMs: number }> {
 }
 
 export async function healthRoutes(app: FastifyInstance) {
+  // Raiz: Render usa healthCheckPath="" em serviços criados antes de render.yaml definir /health.
+  app.get("/", { logLevel: "warn" }, async () => ({ status: "ok" }));
+
   // Vivacidade: usado pelo Render a cada poucos segundos, por isso fica fora do log de acesso.
   app.get("/health", { logLevel: "warn" }, async () => ({ status: "ok" }));
 
