@@ -62,7 +62,9 @@ export function FogapViewer({ payload, status, submittedAt, studentCode, birthYe
       )}
       {!temItens && (
         <p className="rounded-xl border border-ceu-300 bg-ceu-50 p-3 text-sm text-black" role="status">
-          Seu perfil vê só o sumário do RE. Peça a permissão &apos;Ver tudo da escola&apos; ao administrador.
+          {somenteSumario
+            ? "Os formulários A a H (itens item a item do FOGAP) ficam disponíveis para o médico responsável."
+            : "Os itens de desenvolvimento não foram preenchidos neste caso."}
         </p>
       )}
 
