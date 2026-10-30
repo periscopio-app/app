@@ -161,10 +161,10 @@ export async function populationRoutes(app: FastifyInstance) {
     const capacity = parseCapacity(capRaw);
 
     const rows = await db.select().from(populationAggregates).where(eq(populationAggregates.source, TARUMA_SOURCE));
-    // Usuário do próprio município enxerga o dele; a administração da plataforma ou visualização demo enxergam Tarumã.
-    const isDemo = q.slug === "demo-escola" || q.slug === "taruma" || q.demo === "true";
+    // Usuário do próprio município enxerga o dele; admin da plataforma enxerga Tarumã.
+    // Remover o bypass isDemo que dava acesso irrestrito a qualquer autenticado.
     let tenantId = rows.find((r) => r.tenantId === actor.tenantId)?.tenantId;
-    if (!tenantId && (actor.role === "admin_platform" || isDemo)) {
+    if (!tenantId && actor.role === "admin_platform") {
       tenantId = rows[0]?.tenantId;
     }
     if (!tenantId) {
