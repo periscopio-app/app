@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Lock, Pencil, ShieldCheck } from "lucide-react";
+import { KeyRound, Lock, Pencil, ShieldCheck, ShieldOff } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { resetMe } from "@/lib/capabilities";
 import { ESPECIALIDADES, formatarTelefone, type MetricasPerfil as Metricas, type PerfilUsuario } from "@/lib/perfil";
 import { Alert, Avatar, Button, Card, ConfirmDialog, Field } from "@/components/ui";
+import { authClient } from "@/lib/auth-client";
 import { FotoPerfil } from "./FotoPerfil";
 import { MetricasPerfil } from "./MetricasPerfil";
 
@@ -29,10 +30,19 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string | null | undef
 }
 
 export function MeuPainel() {
+  const { data: session, isPending: sessionLoading } = authClient.useSession();
+  const twoFaAtivo = Boolean((session?.user as any)?.twoFactorEnabled);
+
   const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
   const [metricas, setMetricas] = useState<Metricas | null>(null);
   const [erroPerfil, setErroPerfil] = useState<string | null>(null);
   const [erroMetricas, setErroMetricas] = useState<string | null>(null);
+
+  // 2FA enrollment state
+  const [twoFaEtapa, setTwoFaEtapa] = useState<"idle" | "aguardando_otp" | "desativando">("idle");
+  const [twoFaOtp, setTwoFaOtp] = useState("");
+  const [twoFaOcupado, setTwoFaOcupado] = useState(false);
+  const [twoFaMsg, setTwoFaMsg] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
 
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState("");
@@ -105,6 +115,61 @@ export function MeuPainel() {
       setErroExclusao(err instanceof ApiError ? err.message : "Não foi possível registrar o pedido agora.");
     } finally {
       setPedindo(false);
+    }
+  }
+
+  async function ativar2FA() {
+    setTwoFaOcupado(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await authClient.twoFactor.enable({ method: "otp" } as any);
+      if (res.error) throw new Error(res.error.message ?? "Erro ao ativar.");
+      setTwoFaEtapa("aguardando_otp");
+      setTwoFaMsg({ tom: "ok", texto: "Código enviado para o seu e-mail. Válido por 10 minutos." });
+    } catch (e: any) {
+      setTwoFaMsg({ tom: "erro", texto: e?.message ?? "Não foi possível iniciar a ativação." });
+    } finally {
+      setTwoFaOcupado(false);
+    }
+  }
+
+  async function confirmar2FA() {
+    if (twoFaOtp.trim().length < 6) return;
+    setTwoFaOcupado(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await authClient.twoFactor.verifyOtp({ code: twoFaOtp.trim() } as any);
+      if (res.error) {
+        const msg =
+          res.error.code === "OTP_HAS_EXPIRED" ? "Código expirado. Reinicie a ativação." :
+          res.error.code === "INVALID_CODE" ? "Código incorreto. Tente de novo." :
+          "Código inválido.";
+        setTwoFaMsg({ tom: "erro", texto: msg });
+        return;
+      }
+      setTwoFaEtapa("idle");
+      setTwoFaOtp("");
+      setTwoFaMsg({ tom: "ok", texto: "Verificação em dois fatores ativada com sucesso." });
+    } catch (e: any) {
+      setTwoFaMsg({ tom: "erro", texto: e?.message ?? "Não foi possível confirmar o código." });
+    } finally {
+      setTwoFaOcupado(false);
+    }
+  }
+
+  async function desativar2FA() {
+    setTwoFaOcupado(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await authClient.twoFactor.disable({} as any);
+      if (res.error) throw new Error(res.error.message ?? "Erro ao desativar.");
+      setTwoFaEtapa("idle");
+      setTwoFaMsg({ tom: "ok", texto: "Verificação em dois fatores desativada." });
+    } catch (e: any) {
+      setTwoFaMsg({ tom: "erro", texto: e?.message ?? "Não foi possível desativar." });
+    } finally {
+      setTwoFaOcupado(false);
+      setTwoFaEtapa("idle");
     }
   }
 
@@ -231,6 +296,95 @@ export function MeuPainel() {
           </div>
         </Card>
       </div>
+
+      {!sessionLoading && (
+        <Card className="space-y-4 p-6 md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-xl font-bold text-black">
+              <KeyRound className="h-5 w-5" aria-hidden="true" />
+              Verificação em dois fatores (2FA)
+            </h2>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${twoFaAtivo ? "bg-sucesso/10 text-black" : "bg-linha text-black"}`}>
+              {twoFaAtivo ? "Ativado" : "Desativado"}
+            </span>
+          </div>
+
+          <p className="text-sm leading-relaxed text-neutral-800">
+            Ao entrar, além da senha, você recebe um código de 6 dígitos no seu e-mail cadastrado. O código expira em 10 minutos e é de uso único.
+          </p>
+
+          {twoFaMsg && (
+            <Alert tom={twoFaMsg.tom === "ok" ? "ok" : "erro"}>{twoFaMsg.texto}</Alert>
+          )}
+
+          {twoFaEtapa === "aguardando_otp" && (
+            <div className="space-y-3 rounded-xl border border-linha bg-fundo p-4">
+              <label htmlFor="2fa-otp" className="block text-sm font-semibold text-black">
+                Digite o código enviado para {perfil.email}
+              </label>
+              <input
+                id="2fa-otp"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={twoFaOtp}
+                onChange={(e) => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                autoComplete="one-time-code"
+                className="w-32 rounded-xl border border-linha bg-white px-4 py-3 text-center text-xl font-bold tracking-widest text-black focus:border-roxo focus:outline-none focus:ring-2 focus:ring-roxo/30"
+                placeholder="000000"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => void confirmar2FA()} disabled={twoFaOcupado || twoFaOtp.trim().length < 6} size="md">
+                  {twoFaOcupado ? "Verificando…" : "Confirmar código"}
+                </Button>
+                <Button variant="ghost" onClick={() => { setTwoFaEtapa("idle"); setTwoFaOtp(""); setTwoFaMsg(null); }} disabled={twoFaOcupado} size="md">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {twoFaEtapa === "idle" && (
+            <div className="flex flex-wrap gap-2">
+              {!twoFaAtivo ? (
+                <Button onClick={() => void ativar2FA()} disabled={twoFaOcupado} size="md">
+                  {twoFaOcupado ? "Enviando código…" : "Ativar 2FA"}
+                </Button>
+              ) : (
+                <Button
+                  variant="danger"
+                  onClick={() => setTwoFaEtapa("desativando")}
+                  disabled={twoFaOcupado}
+                  size="md"
+                >
+                  <ShieldOff className="h-4 w-4" aria-hidden="true" />
+                  Desativar 2FA
+                </Button>
+              )}
+            </div>
+          )}
+
+          {twoFaEtapa === "desativando" && (
+            <div className="space-y-3 rounded-xl border border-erro/20 bg-erro/5 p-4">
+              <p className="text-sm font-semibold text-black">
+                Confirmar desativação do 2FA?
+              </p>
+              <p className="text-xs text-neutral-800">
+                Ao desativar, o login voltará a exigir apenas e-mail e senha.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="danger" onClick={() => void desativar2FA()} disabled={twoFaOcupado} size="md">
+                  {twoFaOcupado ? "Desativando…" : "Confirmar desativação"}
+                </Button>
+                <Button variant="ghost" onClick={() => { setTwoFaEtapa("idle"); setTwoFaMsg(null); }} disabled={twoFaOcupado} size="md">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {metricas ? (
         <MetricasPerfil metricas={metricas} />

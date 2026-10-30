@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth";
+import { twoFactor } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendEmail } from "../email/index";
-import { resetPasswordEmail, verificationEmail } from "../email/templates";
+import { resetPasswordEmail, twoFactorOtpEmail, verificationEmail } from "../email/templates";
 
 /**
  * Better Auth com Postgres (Neon) como storage de sessão/usuário.
@@ -104,6 +105,21 @@ export const auth = betterAuth({
       );
     },
   },
+  plugins: [
+    twoFactor({
+      otpOptions: {
+        period: 10,
+        digits: 6,
+        async sendOTP({ user, otp }) {
+          if (!emailEnabled) return;
+          const mail = twoFactorOtpEmail(user.name || user.email, otp);
+          await sendEmail(user.email, mail.subject, mail.html).catch((err) =>
+            console.error("[2fa] falha ao enviar OTP:", err?.message ?? err),
+          );
+        },
+      },
+    }),
+  ],
   trustedOrigins: Array.from(
     new Set([
       "http://localhost:3000",

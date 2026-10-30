@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { twoFactorClient } from "better-auth/client/plugins";
 
 /**
  * Fonte única de autenticação: o Better Auth da API (Render).
@@ -16,6 +17,14 @@ function resolveBaseURL(): string {
 
 export const authClient = createAuthClient({
   baseURL: resolveBaseURL(),
+  plugins: [
+    twoFactorClient({
+      onTwoFactorRedirect({ twoFactorMethods }) {
+        const params = new URLSearchParams({ methods: (twoFactorMethods ?? ["otp"]).join(",") });
+        window.location.href = `/verificar-acesso?${params.toString()}`;
+      },
+    }),
+  ],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;
