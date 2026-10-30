@@ -254,8 +254,9 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
         setJ(d);
         hidratar(d, inicial);
         setLoadErr(null);
-        const devolvido = Object.values(d.forms).some((f) => f?.status === "devolvido");
-        if (devolvido) {
+        // O status "devolvido" fica no assessment (não nos forms). Consultamos sempre
+        // que o caso está em rascunho; o servidor devolve null quando não houve devolução.
+        if (d.caseState === "rascunho") {
           const r = await api.get<{ returnReason?: string | null }>(`${base}/re-assessment`).catch(() => null);
           setReturnReason(r?.returnReason ?? null);
         } else {
