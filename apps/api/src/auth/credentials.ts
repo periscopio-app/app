@@ -33,14 +33,22 @@ export async function credentialFingerprint(email: string): Promise<string> {
 export async function upsertCredential(opts: {
   email: string;
   name: string;
-  password: string;
+  password?: string;
+  /** Hash Better Auth gerado fora do processo; nunca uma senha em texto. */
+  passwordHash?: string;
   isAdmin?: boolean;
 }): Promise<void> {
   const client = await (db as any).$client;
   if (!client?.query) throw new Error("Cliente SQL indisponível para criar credencial.");
 
   const email = opts.email.toLowerCase().trim();
-  const hashed = await hashPassword(opts.password);
+  if (!opts.password && !opts.passwordHash) {
+    throw new Error("Informe uma senha ou um hash de senha para criar a credencial.");
+  }
+  if (opts.password && opts.passwordHash) {
+    throw new Error("Informe apenas a senha ou o hash de senha, nunca os dois.");
+  }
+  const hashed = opts.password ? await hashPassword(opts.password) : opts.passwordHash!.trim();
 
   const found = await client.query(
     `SELECT id FROM neon_auth."user" WHERE lower(email) = $1 LIMIT 1`,
@@ -50,10 +58,17 @@ export async function upsertCredential(opts: {
   let userId: string;
   if (found.rows.length > 0) {
     userId = found.rows[0].id;
-    await client.query(
-      `UPDATE neon_auth."user" SET "emailVerified" = true, "updatedAt" = NOW() WHERE id = $1`,
-      [userId],
-    );
+    if (opts.isAdmin !== undefined) {
+      await client.query(
+        `UPDATE neon_auth."user" SET name = $1, role = $2, "emailVerified" = true, "updatedAt" = NOW() WHERE id = $3`,
+        [opts.name, opts.isAdmin ? "admin" : "user", userId],
+      );
+    } else {
+      await client.query(
+        `UPDATE neon_auth."user" SET name = $1, "emailVerified" = true, "updatedAt" = NOW() WHERE id = $2`,
+        [opts.name, userId],
+      );
+    }
   } else {
     userId = crypto.randomUUID();
     await client.query(

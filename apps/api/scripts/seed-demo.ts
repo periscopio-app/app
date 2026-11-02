@@ -1,21 +1,31 @@
 /**
  * Perfil de demonstração completo (dados 100% fictícios, sem nome nem identificador de criança).
  *
- *   DATABASE_URL=... SEED_DEMO_PASSWORD='<senha>' tsx scripts/seed-demo.ts [--apply]
+ *   pnpm exec tsx scripts/seed-demo.ts [--apply]
  *
  * Cria (se não existirem): município "Demonstração", Escola Demo (slug demo-escola) com localização e matrícula
- * fictícias, um usuário por papel de teste, incluindo professor e cada especialidade (e-mails em @demo.periscopio.test, domínio que não recebe e-mail),
- * 12 alunos sintéticos e 1 caso aberto. A senha vem do ambiente e nunca é impressa.
+ * fictícias, um usuário por papel de teste, incluindo professor e cada especialidade (e-mails no domínio configurado),
+ * 12 alunos sintéticos e 1 caso aberto. A senha ou hash vem do ambiente e nunca é impresso.
  * Sem --apply roda em simulação.
  */
+import "dotenv/config";
+try {
+  process.loadEnvFile("../../.env");
+} catch {
+  try {
+    process.loadEnvFile(".env");
+  } catch {}
+}
+
 import { and, eq } from "drizzle-orm";
 import { db } from "../src/db/client";
 import { caseTimeline, cases, schools, students, tenants, users } from "@periscopio/shared";
 import { upsertCredential } from "../src/auth/credentials";
 import { ageBracketOf, generateStudentCode } from "../src/services/student-code";
 
-const DOMAIN = "demo.periscopio.test";
+const DOMAIN = process.env.SEED_DEMO_EMAIL_DOMAIN || "demo.periscopio.test";
 const PEOPLE = [
+  { key: "admin", name: "Administrador(a) Master (demo)", role: "admin_platform", school: false },
   { key: "gestor.municipal", name: "Gestor(a) Municipal (demo)", role: "municipal_manager", school: false },
   { key: "gestor.escola", name: "Gestor(a) Escolar (demo)", role: "school_manager", school: true },
   { key: "professor", name: "Professor(a) (demo)", role: "teacher", school: true },
@@ -34,11 +44,21 @@ const PEOPLE = [
 async function main() {
   const apply = process.argv.includes("--apply");
   const password = process.env.SEED_DEMO_PASSWORD;
-  if (apply && (!password || password.length < 8)) throw new Error("Defina SEED_DEMO_PASSWORD (mín. 8 caracteres) no ambiente.");
+  const passwordHash = process.env.SEED_DEMO_PASSWORD_HASH;
+  if (apply && !password && !passwordHash) {
+    throw new Error("Defina SEED_DEMO_PASSWORD ou SEED_DEMO_PASSWORD_HASH no ambiente (.env).");
+  }
+  if (apply && password && passwordHash) {
+    throw new Error("Defina apenas SEED_DEMO_PASSWORD ou SEED_DEMO_PASSWORD_HASH, nunca os dois.");
+  }
   console.log(apply ? "APLICANDO perfil de demonstração" : "SIMULAÇÃO (nada será gravado)");
 
   let [tenant] = await db.select().from(tenants).where(eq(tenants.municipalityCode, "DEMO")).limit(1);
-  if (!tenant && apply) [tenant] = await db.insert(tenants).values({ name: "Município Demonstração", municipalityCode: "DEMO" }).returning();
+  if (!tenant && apply) {
+    [tenant] = await db.insert(tenants).values({ name: "Município Demonstração", municipalityCode: "DEMO", demo: true }).returning();
+  } else if (tenant && apply && !tenant.demo) {
+    await db.update(tenants).set({ demo: true }).where(eq(tenants.id, tenant.id));
+  }
   console.log(`município: ${tenant ? "existe" : "será criado"}`);
 
   let school = tenant ? (await db.select().from(schools).where(eq(schools.slug, "demo-escola")).limit(1))[0] : undefined;
@@ -57,11 +77,27 @@ async function main() {
     if (!apply || !tenant) continue;
     if (!found) {
       await db.insert(users).values({
-        tenantId: tenant.id, schoolId: p.school && school ? school.id : null, email, name: p.name, role: p.role,
-        specialty: "specialty" in p ? p.specialty : null, accessEnabled: true,
+        tenantId: tenant.id,
+        schoolId: p.school && school ? school.id : null,
+        email,
+        name: p.name,
+        role: p.role,
+        specialty: "specialty" in p ? (p as any).specialty : null,
+        accessEnabled: true,
       });
+    } else {
+      await db.update(users).set({
+        accessEnabled: true,
+        schoolId: p.school && school ? school.id : found.schoolId,
+        specialty: "specialty" in p ? (p as any).specialty : found.specialty,
+      }).where(eq(users.id, found.id));
     }
-    await upsertCredential({ email, name: p.name, password: password! });
+    await upsertCredential({
+      email,
+      name: p.name,
+      ...(password ? { password } : { passwordHash: passwordHash! }),
+      isAdmin: p.role === "admin_platform",
+    });
   }
 
   if (apply && tenant && school) {
@@ -81,7 +117,7 @@ async function main() {
       console.log("  12 alunos sintéticos e 1 caso aberto criados");
     }
   }
-  console.log("Concluído. Entre pelo e-mail <perfil>@" + DOMAIN + " com a senha definida em SEED_DEMO_PASSWORD.");
+  console.log("Concluído. Entre pelo e-mail <perfil>@" + DOMAIN + " com a senha configurada no ambiente.");
 }
 
 main().then(() => process.exit(0)).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
