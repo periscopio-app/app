@@ -8,11 +8,16 @@ try {
 }
 
 // Load local configuration before importing modules that initialize database/auth clients.
-const [{ buildApp }, { healCredentialAccounts, seedMasterAccounts }, { incr }, { ensureSchema }] = await Promise.all([
+const [{ ensureSchema }, { incr }] = await Promise.all([
+  import("./services/schema-guard.service"),
+  import("./observability/metrics"),
+]);
+
+await ensureSchema().catch((err) => console.error("[schema-guard] falha ao preparar schema:", err));
+
+const [{ buildApp }, { healCredentialAccounts, seedMasterAccounts }] = await Promise.all([
   import("./app"),
   import("./auth/credentials"),
-  import("./observability/metrics"),
-  import("./services/schema-guard.service"),
 ]);
 
 const app = await buildApp();
