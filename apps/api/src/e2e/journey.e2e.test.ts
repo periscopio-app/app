@@ -91,6 +91,33 @@ describe("jornada clínica (E2E)", { skip }, () => {
       secao_encaminhamento: { observacoes: "Registro sintético de teste.", data: "2026-10-07" },
     });
     assert.equal(sum.status, 200, JSON.stringify(sum.body));
+    await responderItensDoFogap(who, cid);
+  }
+
+  /**
+   * Desde 28/out/2026 os itens de desenvolvimento e os comportamentos do FOGAP (Formulário I) são obrigatórios.
+   * Responde exatamente o que a API lista como lacuna bloqueante, sem repetir aqui a regra de faixa etária.
+   */
+  async function responderItensDoFogap(who: string, cid: string) {
+    const lido = await call("GET", `/api/cases/${cid}/re-journey`, who);
+    assert.equal(lido.status, 200, JSON.stringify(lido.body));
+    const campos: string[] = lido.body.situacao.lacunas.filter((l: any) => l.bloqueante && l.passo === "i").map((l: any) => l.campo);
+    const desenvolvimento: Record<string, string> = {};
+    const comportamentos: Record<string, string> = {};
+    for (const campo of campos) {
+      const [grupo, id] = campo.split(".");
+      if (grupo === "respostas_desenvolvimento") desenvolvimento[id] = "adequada";
+      if (grupo === "respostas_comportamentos") comportamentos[id] = "nao";
+    }
+    const atual = lido.body.forms.i.payload;
+    const put = await call("PUT", `/api/cases/${cid}/re-assessment`, who, {
+      payload: {
+        ...atual,
+        respostas_desenvolvimento: { ...(atual.respostas_desenvolvimento ?? {}), ...desenvolvimento },
+        respostas_comportamentos: { ...(atual.respostas_comportamentos ?? {}), ...comportamentos },
+      },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.body));
   }
 
   /** Percorre a jornada A→I pela API (A–F salvos, G pulado, H aguardando o responsável, I com sumário). */
