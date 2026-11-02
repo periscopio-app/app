@@ -64,6 +64,12 @@ services:
         sync: false
       - key: SEED_MASTER_2_NAME
         sync: false
+      - key: SUPERADMIN_EMAILS
+        sync: false
+      - key: SEED_DEMO_EMAIL_DOMAIN
+        sync: false
+      - key: SEED_DEMO_PASSWORD_HASH
+        sync: false
       # Desativa janela terapêutica de 120 dias (canProceedToMedical). Manter false em produção.
       - key: DISABLE_THERAPEUTIC_WINDOW
         value: false

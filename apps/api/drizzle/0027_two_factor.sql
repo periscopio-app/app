@@ -1,34 +1,53 @@
 -- 0027_two_factor.sql
--- Suporte a autenticação em dois fatores (2FA) via OTP por e-mail.
--- Adiciona a tabela two_factor (Better Auth) e a coluna two_factor_enabled em users.
+-- Suporte a autenticação em dois fatores (2FA) via OTP por e-mail no Better Auth.
+-- Atualiza neon_auth."user" com a coluna "twoFactorEnabled" e recria a view public."user".
+-- Cria a tabela neon_auth."twoFactor" e as views públicas public."twoFactor" e public."two_factor".
+-- Garante two_factor_enabled na tabela public.users do domínio.
 -- Idempotente.
 
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "two_factor_enabled" boolean DEFAULT false;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS two_factor_enabled boolean DEFAULT false;
 --> statement-breakpoint
 
-CREATE TABLE IF NOT EXISTS "two_factor" (
+ALTER TABLE neon_auth."user" ADD COLUMN IF NOT EXISTS "twoFactorEnabled" boolean DEFAULT false;
+--> statement-breakpoint
+
+CREATE OR REPLACE VIEW public."user" AS SELECT * FROM neon_auth."user";
+--> statement-breakpoint
+
+CREATE TABLE IF NOT EXISTS neon_auth."twoFactor" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "secret" text NOT NULL,
-  "backup_codes" text NOT NULL,
+  "backupCodes" text NOT NULL,
+  "userId" uuid NOT NULL REFERENCES neon_auth."user"("id") ON DELETE CASCADE,
   "verified" boolean DEFAULT false NOT NULL,
-  "failed_verification_count" integer DEFAULT 0,
-  "locked_until" timestamp with time zone
+  "failedVerificationCount" integer DEFAULT 0,
+  "lockedUntil" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "two_factor_user_id_unique" ON "two_factor" ("user_id");
+
+CREATE INDEX IF NOT EXISTS "twoFactor_userId_idx" ON neon_auth."twoFactor" ("userId");
+--> statement-breakpoint
+
+CREATE OR REPLACE VIEW public."twoFactor" AS SELECT * FROM neon_auth."twoFactor";
+--> statement-breakpoint
+
+CREATE OR REPLACE VIEW public.two_factor AS SELECT
+  "id",
+  "userId" as user_id,
+  secret,
+  "backupCodes" as backup_codes,
+  verified,
+  "failedVerificationCount" as failed_verification_count,
+  "lockedUntil" as locked_until
+FROM neon_auth."twoFactor";
 --> statement-breakpoint
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'periscopio_app') THEN
-    ALTER TABLE "two_factor" ENABLE ROW LEVEL SECURITY;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'two_factor' AND policyname = 'two_factor_owner') THEN
-      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "two_factor" TO periscopio_app;
-      -- O próprio usuário só lê/escreve o próprio registro; admin_platform usa app_cross_tenant().
-      CREATE POLICY "two_factor_owner" ON "two_factor" FOR ALL TO periscopio_app
-        USING (user_id IN (SELECT id FROM users WHERE tenant_id = public.app_current_tenant()) OR public.app_cross_tenant())
-        WITH CHECK (user_id IN (SELECT id FROM users WHERE tenant_id = public.app_current_tenant()) OR public.app_cross_tenant());
-    END IF;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE neon_auth."twoFactor" TO periscopio_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."twoFactor" TO periscopio_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.two_factor TO periscopio_app;
   END IF;
 END $$;
+
