@@ -121,3 +121,25 @@ O repositório inclui a coleção completa pronta para importação no Postman o
 - **Resend**: Envio de notificações e convites por e-mail (`RESEND_API_KEY`).
 
 
+
+---
+
+## 8. Telemetria: Grafana Cloud Free (sem custo)
+
+A API expõe métricas no formato Prometheus em `GET /metrics` (ver `apps/api/src/observability/metrics.ts`). A rota fica desligada (404) até existir `METRICS_TOKEN` no Render e exige `Authorization: Bearer <METRICS_TOKEN>`.
+
+O Grafana Cloud raspa essa URL sozinho (integração **Metrics Endpoint**), sem agente e sem serviço extra no Render:
+
+1. Em **Connections > Add new connection > Metrics Endpoint**, crie um scrape job.
+2. **URL**: `https://<dominio-da-api>/metrics` (HTTPS válido, sem redirecionamento).
+3. **Autenticação**: Bearer token, com o valor de `METRICS_TOKEN` (no campo do token, sem o prefixo `Bearer`).
+4. **Intervalo**: manter 1 minuto.
+
+Séries expostas (todas sem dado pessoal; rótulos só de método, rota-padrão e classe de status):
+- `periscopio_http_requests_total` e `periscopio_http_request_duration_ms_*` (histograma) por rota.
+- `periscopio_events_total{event}` (falhas de e-mail, limites de taxa etc.).
+- `periscopio_process_resident_memory_bytes`, `periscopio_nodejs_heap_used_bytes`, `periscopio_process_cpu_seconds_total`, `periscopio_nodejs_eventloop_lag_p99_ms`.
+
+Limites do plano Free: 10 mil séries ativas e 14 dias de retenção. O teto de 300 rotas no código mantém a API bem abaixo de 10 mil séries.
+
+Regras: nunca usar `studentCode`, `caseId`, e-mail ou ID de usuário como rótulo ou nome de métrica, e não colocar payload clínico em log.

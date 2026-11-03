@@ -4,8 +4,14 @@
  * Reinicia quando a instância reinicia; para histórico longo, raspar /metrics com um coletor.
  */
 
+import { monitorEventLoopDelay } from "node:perf_hooks";
+
 export const LATENCY_BUCKETS_MS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000] as const;
 const MAX_ROUTES = 300;
+
+/** Atraso do event loop entre duas leituras de /metrics. O timer interno não segura o processo vivo. */
+const loopDelay = monitorEventLoopDelay({ resolution: 20 });
+loopDelay.enable();
 const MAX_RECENT_ERRORS = 50;
 
 interface RouteStat {
@@ -140,6 +146,24 @@ export function toPrometheus(): string {
   out.push("# HELP periscopio_uptime_seconds Tempo desde o início desta instância.");
   out.push("# TYPE periscopio_uptime_seconds gauge");
   out.push(`periscopio_uptime_seconds ${Math.round((Date.now() - startedAt) / 1000)}`);
+  // Memória e CPU do processo: substituem o stream de métricas do Render (exige plano Professional).
+  // Sem label: uma série por métrica, nenhum dado pessoal.
+  const mem = process.memoryUsage();
+  const cpu = process.cpuUsage();
+  const lagMs = loopDelay.count > 0 ? loopDelay.percentile(99) / 1e6 : 0;
+  loopDelay.reset();
+  out.push("# HELP periscopio_process_resident_memory_bytes Memória residente (RSS) do processo.");
+  out.push("# TYPE periscopio_process_resident_memory_bytes gauge");
+  out.push(`periscopio_process_resident_memory_bytes ${mem.rss}`);
+  out.push("# HELP periscopio_nodejs_heap_used_bytes Heap do V8 em uso.");
+  out.push("# TYPE periscopio_nodejs_heap_used_bytes gauge");
+  out.push(`periscopio_nodejs_heap_used_bytes ${mem.heapUsed}`);
+  out.push("# HELP periscopio_process_cpu_seconds_total CPU de usuário e de sistema consumida pelo processo.");
+  out.push("# TYPE periscopio_process_cpu_seconds_total counter");
+  out.push(`periscopio_process_cpu_seconds_total ${((cpu.user + cpu.system) / 1e6).toFixed(3)}`);
+  out.push("# HELP periscopio_nodejs_eventloop_lag_p99_ms Atraso p99 do event loop desde a leitura anterior.");
+  out.push("# TYPE periscopio_nodejs_eventloop_lag_p99_ms gauge");
+  out.push(`periscopio_nodejs_eventloop_lag_p99_ms ${Number.isFinite(lagMs) ? lagMs.toFixed(2) : "0"}`);
   out.push("# HELP periscopio_http_requests_total Requisições por rota e classe de status.");
   out.push("# TYPE periscopio_http_requests_total counter");
   for (const r of routes.values()) {

@@ -42,6 +42,15 @@ test("formato Prometheus traz requisições, latência e eventos", () => {
   assert.match(t, /periscopio_events_total\{event="email_send_failures"\} 1/);
 });
 
+test("formato Prometheus traz memória, CPU e atraso do event loop, sem labels", () => {
+  resetMetrics();
+  const t = toPrometheus();
+  assert.match(t, /^periscopio_process_resident_memory_bytes [0-9]+$/m);
+  assert.match(t, /^periscopio_nodejs_heap_used_bytes [0-9]+$/m);
+  assert.match(t, /^periscopio_process_cpu_seconds_total [0-9.]+$/m);
+  assert.match(t, /^periscopio_nodejs_eventloop_lag_p99_ms [0-9.]+$/m);
+});
+
 test("o log não leva a query string (token de acesso) e o request id é validado", () => {
   assert.equal(stripQuery("/api/access/validate?token=segredo.assinatura"), "/api/access/validate");
   assert.equal(stripQuery(undefined), "");
