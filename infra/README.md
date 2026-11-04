@@ -142,4 +142,21 @@ Séries expostas (todas sem dado pessoal; rótulos só de método, rota-padrão 
 
 Limites do plano Free: 10 mil séries ativas e 14 dias de retenção. O teto de 300 rotas no código mantém a API bem abaixo de 10 mil séries.
 
+### Opção recomendada: a API envia as métricas (OTLP), sem scrape job
+
+Evita ter o mesmo segredo em dois lugares (o `METRICS_TOKEN` do scrape precisa ser idêntico na Render e no Grafana). A API
+envia as mesmas séries ao Grafana Cloud a cada 60 s, em OTLP/HTTP JSON (`apps/api/src/observability/otlp-push.ts`). Fica
+desligada se faltar alguma variável; falha de envio nunca derruba a API.
+
+No Grafana Cloud, em **Connections > OpenTelemetry (OTLP)**: copie o endereço do gateway (`https://otlp-gateway-<região>.grafana.net/otlp`)
+e o **Instance ID** do OTLP, e crie um token (access policy) com o escopo `metrics:write`. Na Render (`periscopio-api` > Environment):
+
+| Variável | Valor |
+|---|---|
+| `GRAFANA_OTLP_ENDPOINT` | endereço do gateway OTLP (https) |
+| `GRAFANA_OTLP_USER` | Instance ID do OTLP |
+| `GRAFANA_OTLP_TOKEN` | token com `metrics:write` |
+
+Conferir em `/admin/saude`: o card "Histórico (Grafana Cloud)" mostra "Envio das métricas pela API: ligado, último envio ok em ...".
+
 Regras: nunca usar `studentCode`, `caseId`, e-mail ou ID de usuário como rótulo ou nome de métrica, e não colocar payload clínico em log.

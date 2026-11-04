@@ -138,6 +138,22 @@ export function snapshot() {
   };
 }
 
+/** Dados brutos desta instância, para exportadores (cópia: quem recebe não altera o estado). */
+export function rawMetrics() {
+  return {
+    startedAt,
+    routes: [...routes.values()].map((r) => ({ ...r, buckets: [...r.buckets] })),
+    counters: [...counters.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  };
+}
+
+/** Atraso p99 do event loop desde a leitura anterior (zera a janela). Compartilhado por /metrics e pelo envio OTLP. */
+export function takeEventLoopLagMs(): number {
+  const ms = loopDelay.count > 0 ? loopDelay.percentile(99) / 1e6 : 0;
+  loopDelay.reset();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 const esc = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
 
 /** Formato de texto do Prometheus (https://prometheus.io/docs/instrumenting/exposition_formats/). */
@@ -150,8 +166,7 @@ export function toPrometheus(): string {
   // Sem label: uma série por métrica, nenhum dado pessoal.
   const mem = process.memoryUsage();
   const cpu = process.cpuUsage();
-  const lagMs = loopDelay.count > 0 ? loopDelay.percentile(99) / 1e6 : 0;
-  loopDelay.reset();
+  const lagMs = takeEventLoopLagMs();
   out.push("# HELP periscopio_process_resident_memory_bytes Memória residente (RSS) do processo.");
   out.push("# TYPE periscopio_process_resident_memory_bytes gauge");
   out.push(`periscopio_process_resident_memory_bytes ${mem.rss}`);
