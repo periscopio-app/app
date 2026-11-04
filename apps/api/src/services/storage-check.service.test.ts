@@ -98,8 +98,36 @@ test("falha no upload da foto é relatada sem derrubar o teste", async () => {
     env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k" },
     putAvatar: async () => { throw new Error("Falha ao criar o bucket de avatares: not allowed"); },
     uploadObject: async () => { throw new Error("Bucket not found"); },
+    fetch: async () => resp(200, Buffer.from("[]"), "application/json"),
   });
   assert.equal(r.ok, false);
   assert.match(r.steps.find((s) => s.id === "avatar_upload")!.detail, /bucket de avatares/);
   assert.equal(r.avatar.publicUrl, null);
+});
+
+const envOk = { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "chave-secreta-de-teste" };
+
+test("host inexistente (fetch failed + ENOTFOUND): para na rede e explica, sem tentar upload", async () => {
+  let tentouUpload = false;
+  const r = await runStorageCheck({
+    env: envOk,
+    putAvatar: async () => { tentouUpload = true; },
+    fetch: async () => { throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ENOTFOUND" } }); },
+  });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.steps.map((s) => s.id), ["config", "network"]);
+  assert.match(r.steps[1].detail, /ENOTFOUND/);
+  assert.match(r.steps[1].detail, /SUPABASE_URL/);
+  assert.equal(tentouUpload, false);
+});
+
+test("projeto responde 401 à chave: acusa chave de outro projeto, sem vazar a chave", async () => {
+  const r = await runStorageCheck({
+    env: envOk,
+    fetch: async (_url, init) => (init?.headers?.Authorization ? resp(401, Buffer.from("{}"), "application/json") : resp(400, Buffer.from("{}"), "application/json")),
+  });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.steps.map((s) => s.id), ["config", "network", "key"]);
+  assert.match(r.steps[2].detail, /outro projeto/);
+  assert.ok(!JSON.stringify(r).includes("chave-secreta-de-teste"));
 });

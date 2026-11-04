@@ -88,7 +88,7 @@ export function StorageCheckCard() {
             </ul>
             {!res.ok && (
               <p className="text-xs text-slate-600">
-                Causas mais comuns: falta <span className="font-mono">SUPABASE_SERVICE_ROLE_KEY</span> no Render, ou a chave pertence a outro projeto do Supabase.
+                Leia a etapa que falhou. “Sem conexão” indica <span className="font-mono">SUPABASE_URL</span> errada ou projeto pausado; “recusou a chave” indica <span className="font-mono">SUPABASE_SERVICE_ROLE_KEY</span> de outro projeto.
               </p>
             )}
           </div>
