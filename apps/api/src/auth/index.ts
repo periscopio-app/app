@@ -3,6 +3,7 @@ import { twoFactor } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendEmail } from "../email/index";
 import { resetPasswordEmail, twoFactorOtpEmail, verificationEmail } from "../email/templates";
+import { assertAuthSecret } from "./secret";
 
 /**
  * Better Auth com Postgres (Neon) como storage de sessão/usuário.
@@ -23,22 +24,8 @@ export function resolveAuthBaseUrl(): string {
   return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
 }
 
-const authSecret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
+const authSecret = assertAuthSecret();
 export const authBaseUrl = resolveAuthBaseUrl();
-
-if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
-  if (!authSecret) {
-    throw new Error("BETTER_AUTH_SECRET é obrigatória fora do ambiente de desenvolvimento.");
-  }
-  if (authSecret === "dev_only_secret_replace_in_production") {
-    throw new Error("BETTER_AUTH_SECRET não pode ser o valor de desenvolvimento.");
-  }
-  if (authSecret.length < 32) {
-    console.warn("[auth] BETTER_AUTH_SECRET tem menos de 32 caracteres; troque por um segredo longo.");
-  }
-} else if (!authSecret) {
-  console.warn("[auth] BETTER_AUTH_SECRET não definida — usando valor padrão inseguro. Defina a variável antes de qualquer ambiente não-local.");
-}
 
 const emailEnabled = Boolean(process.env.RESEND_API_KEY);
 
@@ -70,7 +57,7 @@ export const auth = betterAuth({
         ? { rejectUnauthorized: false }
         : undefined,
   }),
-  secret: authSecret ?? "dev_only_secret_replace_in_production",
+  secret: authSecret,
   baseURL: authBaseUrl,
   basePath: "/api/auth",
   // As tabelas de auth (neon_auth.*) usam colunas uuid; o Better Auth gera ids
