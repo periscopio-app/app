@@ -24,6 +24,12 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         sync: false
+      - key: GRAFANA_PROM_URL
+        sync: false
+      - key: GRAFANA_PROM_USER
+        sync: false
+      - key: GRAFANA_PROM_TOKEN
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: EXPERT_MEET_URL
