@@ -3,6 +3,7 @@ import { CaseTransitionError } from "../services/case-state.service";
 import { STATUS_CODES } from "node:http";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { incr, observeRequest, recordError } from "./metrics";
+import { errorCauseChain } from "./error-cause";
 
 const SLOW_MS = 2000;
 const REQ_ID_RE = /^[A-Za-z0-9._-]{8,64}$/;
@@ -75,8 +76,10 @@ export function registerObservability(app: FastifyInstance): void {
   app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, request, reply) => {
     const status = err.statusCode && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
     if (status >= 500) {
-      (request as unknown as { obsErr?: ObsError }).obsErr = { cls: err.name || "Error", msg: String(err.message) };
-      request.log.error({ err: { name: err.name, message: err.message, stack: err.stack } }, "erro não tratado");
+      const causa = errorCauseChain(err)[0];
+      const resumo = causa ? `${String(err.message).split("\n")[0]} | causa: ${[causa.code, causa.message].filter(Boolean).join(" ")}` : String(err.message);
+      (request as unknown as { obsErr?: ObsError }).obsErr = { cls: err.name || "Error", msg: resumo };
+      request.log.error({ err: { name: err.name, message: err.message, stack: err.stack, causes: errorCauseChain(err) } }, "erro não tratado");
       return reply.status(status).send({
         statusCode: status,
         error: STATUS_CODES[status] ?? "Internal Server Error",
