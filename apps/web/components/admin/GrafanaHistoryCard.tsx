@@ -144,6 +144,30 @@ export function GrafanaHistoryCard() {
         </div>
       )}
 
+      {!erro && deploys && deploys.configured && (
+        <div className="mt-3 rounded-xl border border-[#E1E9ED] bg-white p-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Versões no ar (deploys)</h3>
+          {!deploys.ok ? (
+            <p className="text-xs text-amber-900">{deploys.error}</p>
+          ) : deploys.deploys.length === 0 ? (
+            <p className="text-xs text-slate-500">Nenhuma versão registrada neste período. O Grafana precisa estar raspando /metrics.</p>
+          ) : (
+            <ul className="divide-y divide-[#E1E9ED] text-sm">
+              {deploys.deploys.map((d) => (
+                <li key={d.commit} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span className="font-mono">{d.commit}</span>
+                  <span className="text-xs text-slate-600">
+                    visto desde {dataHora(d.firstSeen)}
+                    {d.current ? " · no ar agora" : ` · até ${dataHora(d.lastSeen)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-[11px] text-slate-500">Horários de Brasília, com precisão de alguns minutos (intervalo de coleta do Grafana).</p>
+        </div>
+      )}
+
       {!erro && !dados && carregando && <p className="text-sm text-slate-500">Carregando histórico…</p>}
     </section>
   );

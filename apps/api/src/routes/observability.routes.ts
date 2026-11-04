@@ -3,12 +3,13 @@ import { sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { requireCapability } from "../security/actor";
 import { snapshot, toPrometheus } from "../observability/metrics";
-import { timingSafeEqual } from "node:crypto";
+import { metricsEnabled, metricsTokenOk } from "../observability/metrics-auth";
 import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
 import { otlpPushStatus, resolveOtlpConfig } from "../observability/otlp-push";
 import { fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
+import { fetchGrafanaDeploys, fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
 
 /** Só booleanos: nunca o valor de segredos. */
 function configChecks() {
@@ -111,14 +112,19 @@ export async function observabilityRoutes(app: FastifyInstance) {
     return fetchGrafanaSeries(parsed.data.metric, parsed.data.range);
   });
 
+  app.get("/api/admin/grafana/deploys", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "system.observability.view");
+    if (!actor) return;
+    const parsed = z.object({ range: z.enum(["24h", "7d"]).default("7d") }).safeParse(request.query);
+    if (!parsed.success) return reply.status(400).send({ error: "Período inválido." });
+    return fetchGrafanaDeploys(parsed.data.range);
+  });
+
   // Coletor externo (Prometheus/Grafana). Desligado enquanto METRICS_TOKEN não existir.
   app.get("/metrics", { logLevel: "warn" }, async (request, reply) => {
     const token = process.env.METRICS_TOKEN;
-    if (!token) return reply.status(404).send({ error: "Não encontrado" });
-    const given = (request.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    const a = Buffer.from(given);
-    const b = Buffer.from(token);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return reply.status(401).send({ error: "Não autorizado" });
+    if (!metricsEnabled(token)) return reply.status(404).send({ error: "Não encontrado" });
+    if (!metricsTokenOk(request.headers.authorization, token)) return reply.status(401).send({ error: "Não autorizado" });
     reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
     return toPrometheus();
   });
