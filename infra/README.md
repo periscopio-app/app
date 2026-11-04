@@ -142,4 +142,19 @@ Séries expostas (todas sem dado pessoal; rótulos só de método, rota-padrão 
 
 Limites do plano Free: 10 mil séries ativas e 14 dias de retenção. O teto de 300 rotas no código mantém a API bem abaixo de 10 mil séries.
 
+- `periscopio_build_info{commit,environment}` (sempre 1) e `periscopio_process_start_time_seconds`: a cada deploy o rótulo `commit` muda, e é assim que o painel `/admin/saude` lista as versões no ar, sem usar a API da Render (a chave dela dá acesso total à conta, inclusive às variáveis de ambiente).
+
+### Onde colocar as chaves (Render, serviço `periscopio-api`)
+
+Painel da Render > `periscopio-api` > **Environment** > **Add Environment Variable**. Salvar reinicia o serviço.
+
+| Variável | De onde vem | Para que serve |
+|---|---|---|
+| `METRICS_TOKEN` | gerado por você: `openssl rand -hex 32` | protege `GET /metrics`; o mesmo valor vai no scrape job do Grafana (Bearer) |
+| `GRAFANA_PROM_URL` | grafana.com > stack > Prometheus > Details (termina em `/api/prom`) | a API consulta o histórico |
+| `GRAFANA_PROM_USER` | mesma página (Instance ID numérico) | usuário da autenticação básica |
+| `GRAFANA_PROM_TOKEN` | Cloud access policy só com `metrics:read` | senha da autenticação básica |
+
+Nunca coloque essas chaves na Vercel nem em variáveis `NEXT_PUBLIC_*`.
+
 Regras: nunca usar `studentCode`, `caseId`, e-mail ou ID de usuário como rótulo ou nome de métrica, e não colocar payload clínico em log.

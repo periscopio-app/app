@@ -146,6 +146,14 @@ export function toPrometheus(): string {
   out.push("# HELP periscopio_uptime_seconds Tempo desde o início desta instância.");
   out.push("# TYPE periscopio_uptime_seconds gauge");
   out.push(`periscopio_uptime_seconds ${Math.round((Date.now() - startedAt) / 1000)}`);
+  // Versão em execução: cada deploy novo troca o valor do label `commit`, o que permite listar deploys no Grafana.
+  const commit = (process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? "").slice(0, 7) || "desconhecido";
+  out.push("# HELP periscopio_build_info Versão (commit) em execução; o valor é sempre 1.");
+  out.push("# TYPE periscopio_build_info gauge");
+  out.push(`periscopio_build_info{commit="${esc(commit)}",environment="${esc(process.env.NODE_ENV ?? "development")}"} 1`);
+  out.push("# HELP periscopio_process_start_time_seconds Início desta instância, em segundos desde 1970.");
+  out.push("# TYPE periscopio_process_start_time_seconds gauge");
+  out.push(`periscopio_process_start_time_seconds ${Math.round(startedAt / 1000)}`);
   // Memória e CPU do processo: substituem o stream de métricas do Render (exige plano Professional).
   // Sem label: uma série por métrica, nenhum dado pessoal.
   const mem = process.memoryUsage();

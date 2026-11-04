@@ -67,3 +67,16 @@ test("limite por janela: bloqueia depois do teto e libera quando a janela passa"
   assert.equal(isLimited("outra", 2, 1000, t0 + 2), false);
   assert.equal(isLimited("k", 2, 1000, t0 + 1500), false);
 });
+
+test("a saída do Prometheus traz a versão em execução e o início do processo", () => {
+  const prev = process.env.RENDER_GIT_COMMIT;
+  process.env.RENDER_GIT_COMMIT = "0123456789abcdef";
+  try {
+    const out = toPrometheus();
+    assert.match(out, /periscopio_build_info\{commit="0123456",environment="[a-z]+"\} 1/);
+    assert.match(out, /periscopio_process_start_time_seconds \d+/);
+  } finally {
+    if (prev === undefined) delete process.env.RENDER_GIT_COMMIT;
+    else process.env.RENDER_GIT_COMMIT = prev;
+  }
+});

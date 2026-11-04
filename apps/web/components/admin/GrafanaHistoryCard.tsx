@@ -37,6 +37,15 @@ function Linha({ points, label }: { points: Point[]; label: string }) {
   );
 }
 
+interface Deploy { commit: string; firstSeen: number; lastSeen: number; current: boolean }
+type RespostaDeploys =
+  | { configured: false }
+  | { configured: true; ok: true; range: string; stepSeconds: number; deploys: Deploy[] }
+  | { configured: true; ok: false; error: string };
+
+const dataHora = (ms: number) =>
+  new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
 const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
 
 /** Histórico das métricas da plataforma, vindo do Grafana Cloud pela API (o token nunca chega ao navegador). */
@@ -45,13 +54,18 @@ export function GrafanaHistoryCard() {
   const [dados, setDados] = useState<Resposta[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [deploys, setDeploys] = useState<RespostaDeploys | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     try {
-      const res = await Promise.all(METRICS.map((m) => api.get<Resposta>(`/api/admin/grafana/series?metric=${m}&range=${range}`)));
+      const [res, dep] = await Promise.all([
+        Promise.all(METRICS.map((m) => api.get<Resposta>(`/api/admin/grafana/series?metric=${m}&range=${range}`))),
+        api.get<RespostaDeploys>(`/api/admin/grafana/deploys?range=${range === "7d" ? "7d" : "24h"}`),
+      ]);
       setDados(res);
+      setDeploys(dep);
     } catch (e) {
       setDados(null);
       setErro(e instanceof ApiError ? e.message : "Não foi possível carregar o histórico.");
@@ -117,6 +131,30 @@ export function GrafanaHistoryCard() {
               </div>
             ),
           )}
+        </div>
+      )}
+
+      {!erro && deploys && deploys.configured && (
+        <div className="mt-3 rounded-xl border border-[#E1E9ED] bg-white p-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Versões no ar (deploys)</h3>
+          {!deploys.ok ? (
+            <p className="text-xs text-amber-900">{deploys.error}</p>
+          ) : deploys.deploys.length === 0 ? (
+            <p className="text-xs text-slate-500">Nenhuma versão registrada neste período. O Grafana precisa estar raspando /metrics.</p>
+          ) : (
+            <ul className="divide-y divide-[#E1E9ED] text-sm">
+              {deploys.deploys.map((d) => (
+                <li key={d.commit} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span className="font-mono">{d.commit}</span>
+                  <span className="text-xs text-slate-600">
+                    visto desde {dataHora(d.firstSeen)}
+                    {d.current ? " · no ar agora" : ` · até ${dataHora(d.lastSeen)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-[11px] text-slate-500">Horários de Brasília, com precisão de alguns minutos (intervalo de coleta do Grafana).</p>
         </div>
       )}
 
