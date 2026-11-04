@@ -1,4 +1,4 @@
-import { and, eq, getTableName, inArray, notInArray, sql } from "drizzle-orm";
+import { and, eq, getTableName, inArray, notInArray, or, sql, type SQL } from "drizzle-orm";
 import {
   boardSupervision,
   caseMedicalForms,
@@ -41,6 +41,9 @@ export const PROTECTED_TENANT_IDS = [
   "00000000-0000-0000-0000-000000000001", // Plataforma Global
   "a6232550-b4f2-4a2f-9fbc-6f8eeb482d0b", // Município de Tarumã (dado real)
 ] as const;
+
+/** Dado real que nenhuma linha de referência cruzada pode atingir (Tarumã), em qualquer tenant. */
+const REAL_DATA_TENANT_ID = "a6232550-b4f2-4a2f-9fbc-6f8eeb482d0b";
 
 /** Nomes protegidos por segurança extra (além dos IDs): Tarumã em qualquer grafia. */
 const PROTECTED_NAME_LIKE = "%tarum%";
@@ -133,6 +136,24 @@ function tableName(t: (typeof WIPE_ORDER)[number]): string {
   return getTableName(t);
 }
 
+/**
+ * Condição de exclusão de uma tabela do reset: as linhas do tenant demo E as linhas de qualquer
+ * outro tenant que apontem para casos ou alunos do demo (ex.: aceite de consentimento criado pelo
+ * Master no tenant "Plataforma Global" sobre um caso de demonstração). Sem isso a chave estrangeira
+ * barra o DELETE de `cases`/`students`. Linhas do tenant de dado real (Tarumã) nunca entram.
+ * `cases` e `students` só são apagados por tenant.
+ */
+export function wipeCondition(t: (typeof WIPE_ORDER)[number], ids: string[]): SQL {
+  const col = t as unknown as Record<string, any>;
+  const parts: SQL[] = [inArray(col.tenantId, ids)];
+  if (t !== cases && t !== students) {
+    if (col.caseId) parts.push(inArray(col.caseId, db.select({ id: cases.id }).from(cases).where(inArray(cases.tenantId, ids))));
+    if (col.studentId) parts.push(inArray(col.studentId, db.select({ id: students.id }).from(students).where(inArray(students.tenantId, ids))));
+  }
+  if (parts.length === 1) return parts[0];
+  return and(or(...parts), sql`${col.tenantId} <> ${REAL_DATA_TENANT_ID}::uuid`) as SQL;
+}
+
 /** Conta, sem apagar, o que o reset removeria dos municípios de demonstração. */
 export async function previewReset(): Promise<ResetPreview> {
   const demoTenants = await listDemoTenants();
@@ -146,7 +167,7 @@ export async function previewReset(): Promise<ResetPreview> {
     const [row] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(t)
-      .where(inArray((t as any).tenantId, ids));
+      .where(wipeCondition(t, ids));
     const rows = row?.n ?? 0;
     total += rows;
     counts.push({ table: name, label: NOMES[name] ?? name, rows });
@@ -192,7 +213,7 @@ export async function wipeInTransaction(
   }
   for (const t of WIPE_ORDER) {
     const name = tableName(t);
-    const res: any = await tx.delete(t).where(inArray((t as any).tenantId, ids));
+    const res: any = await tx.delete(t).where(wipeCondition(t, ids));
     const rows = typeof res?.rowCount === "number" ? res.rowCount : 0;
     total += rows;
     deleted.push({ table: name, label: NOMES[name] ?? name, rows });

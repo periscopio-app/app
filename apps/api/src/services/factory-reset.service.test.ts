@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
-import { wipeInTransaction, type ResetTx } from "./factory-reset.service";
+import { cases, consentAcceptances, students } from "@periscopio/shared";
+import { wipeCondition, wipeInTransaction, type ResetTx } from "./factory-reset.service";
 
 const dialect = new PgDialect();
 
@@ -44,5 +45,26 @@ describe("wipeInTransaction", () => {
     const { tx, ddl } = fakeTx(2);
     await assert.rejects(() => wipeInTransaction(tx, ["tenant-demo"]), /falha original do DELETE/);
     assert.equal(ddl.filter((s) => s.includes("ENABLE TRIGGER USER") && !s.includes("DISABLE")).length, 0);
+  });
+});
+
+describe("wipeCondition", () => {
+  const render = (t: Parameters<typeof wipeCondition>[0]) => dialect.sqlToQuery(wipeCondition(t, ["tenant-demo"]));
+
+  it("inclui linhas de outro tenant que apontam para casos e alunos do demo, sem tocar Tarumã", () => {
+    const { sql } = render(consentAcceptances);
+    assert.match(sql, /"tenant_id" in/);
+    assert.match(sql, /"case_id" in \(select/);
+    assert.match(sql, /"student_id" in \(select/);
+    assert.match(sql, /"tenant_id" <> \$\d+::uuid/);
+    assert.ok(render(consentAcceptances).params.includes("a6232550-b4f2-4a2f-9fbc-6f8eeb482d0b"));
+  });
+
+  it("cases e students são apagados só por tenant", () => {
+    for (const t of [cases, students]) {
+      const { sql } = render(t);
+      assert.doesNotMatch(sql, /select/);
+      assert.doesNotMatch(sql, /<>/);
+    }
   });
 });
