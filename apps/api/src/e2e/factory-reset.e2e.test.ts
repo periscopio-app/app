@@ -110,12 +110,23 @@ describe("Reset de fábrica do piloto (E2E)", { skip }, () => {
     assert.equal(await contarAlunos(ids.demo), 2, "nada foi apagado");
   });
 
+  test("linha de outro tenant que aponta para caso/aluno do demo não trava o reset", async () => {
+    const [caso] = await dbx.select().from(shared.cases).where(eq(shared.cases.tenantId, ids.demo));
+    const [termo] = await dbx.insert(shared.consentTerms).values({ tenantId: ids.real, version: "t-1", title: "Termo sintético", summary: "x", content: "x" }).returning();
+    await dbx.insert(shared.consentAcceptances).values({
+      tenantId: ids.real, termId: termo.id, caseId: caso.id, studentId: caso.studentId,
+      signerName: "Pessoa Sintética", signerRole: "responsavel_legal", evidenceSha256: "0".repeat(64),
+    });
+  });
+
   test("executa: zera o demo e NÃO toca Tarumã nem o real", async () => {
     const r = await call("POST", "/api/admin/factory-reset", "admin", { confirm: "RESETAR DEMO" });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body.tenants.map((t: any) => t.name), ["Município Demonstração"]);
 
     assert.equal(await contarAlunos(ids.demo), 0, "demo ficou vazio");
+    const restantes = await dbx.select().from(shared.consentAcceptances).where(eq(shared.consentAcceptances.tenantId, ids.real));
+    assert.equal(restantes.length, 0, "o aceite de outro tenant que apontava para o demo também saiu");
     assert.equal(await contarAlunos(ids.taruma), 1, "Tarumã intacto");
     assert.equal(await contarAlunos(ids.real), 1, "município real intacto");
 
