@@ -6,6 +6,7 @@ import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } 
 import { api, ApiError } from "@/lib/api";
 import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
 import { FactoryResetCard } from "@/components/admin/FactoryResetCard";
+import { GrafanaHistoryCard } from "@/components/admin/GrafanaHistoryCard";
 import { Button } from "@/components/ui";
 
 // ─── tipos (espelham GET /api/admin/observability) ──────────────────────────
@@ -205,6 +206,8 @@ export default function AdminSaudePage() {
                 ))}
               </ul>
             </section>
+
+            <GrafanaHistoryCard />
 
             <StorageCheckCard />
 
