@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { requireCapability } from "../security/actor";
 import { snapshot, toPrometheus } from "../observability/metrics";
-import { timingSafeEqual } from "node:crypto";
+import { metricsEnabled, metricsTokenOk } from "../observability/metrics-auth";
 import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
@@ -120,11 +120,8 @@ export async function observabilityRoutes(app: FastifyInstance) {
   // Coletor externo (Prometheus/Grafana). Desligado enquanto METRICS_TOKEN não existir.
   app.get("/metrics", { logLevel: "warn" }, async (request, reply) => {
     const token = process.env.METRICS_TOKEN;
-    if (!token) return reply.status(404).send({ error: "Não encontrado" });
-    const given = (request.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    const a = Buffer.from(given);
-    const b = Buffer.from(token);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return reply.status(401).send({ error: "Não autorizado" });
+    if (!metricsEnabled(token)) return reply.status(404).send({ error: "Não encontrado" });
+    if (!metricsTokenOk(request.headers.authorization, token)) return reply.status(401).send({ error: "Não autorizado" });
     reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
     return toPrometheus();
   });
