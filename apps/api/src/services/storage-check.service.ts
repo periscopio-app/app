@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { avatarPublicUrl, putAvatar, removeAvatar, removeObject, uploadObject } from "../storage";
+import { describeNetworkError, resolveSupabaseUrl } from "../storage/config";
 
 /**
  * Autoteste do armazenamento (Supabase), para o Administrador Master ver, no ambiente publicado,
@@ -29,7 +30,7 @@ export interface StorageCheckResult {
   steps: StorageStep[];
 }
 
-type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<{ status: number; headers: { get(n: string): string | null }; arrayBuffer(): Promise<ArrayBuffer> }>;
+type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{ status: number; headers: { get(n: string): string | null }; arrayBuffer(): Promise<ArrayBuffer> }>;
 
 export interface StorageDeps {
   env: Record<string, string | undefined>;
@@ -51,11 +52,11 @@ const defaults: StorageDeps = {
   removeObject,
 };
 
-async function fetchComTimeout(f: FetchLike, url: string) {
+async function fetchComTimeout(f: FetchLike, url: string, headers?: Record<string, string>) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 10_000);
   try {
-    return await f(url, { signal: ctl.signal });
+    return await f(url, { signal: ctl.signal, headers });
   } finally {
     clearTimeout(t);
   }
@@ -92,6 +93,30 @@ export async function runStorageCheck(overrides: Partial<StorageDeps> = {}): Pro
     return result;
   };
   if (!configOk) return finalizar();
+
+  // ── Rede e chave: separam "endereço errado/projeto pausado" de "chave de outro projeto" ──
+  const redeOk = await step("network", "Conexão com o Supabase", async () => {
+    const base = resolveSupabaseUrl(d.env);
+    try {
+      const r = await fetchComTimeout(d.fetch, `${base}/storage/v1/bucket`);
+      return { ok: true, httpStatus: r.status, detail: `O servidor do Supabase respondeu (HTTP ${r.status}).` };
+    } catch (err) {
+      return { ok: false, detail: describeNetworkError(err) };
+    }
+  });
+  if (!redeOk) return finalizar();
+
+  const chaveOk = await step("key", "Chave de serviço aceita pelo projeto", async () => {
+    const base = resolveSupabaseUrl(d.env);
+    const chaveServico = d.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
+    const r = await fetchComTimeout(d.fetch, `${base}/storage/v1/bucket`, { Authorization: `Bearer ${chaveServico}`, apikey: chaveServico });
+    if (r.status === 401 || r.status === 403) {
+      return { ok: false, httpStatus: r.status, detail: `O projeto recusou a chave (HTTP ${r.status}): SUPABASE_SERVICE_ROLE_KEY é de outro projeto, está errada ou foi rotacionada.` };
+    }
+    if (r.status !== 200) return { ok: false, httpStatus: r.status, detail: `O projeto respondeu HTTP ${r.status} ao listar buckets.` };
+    return { ok: true, httpStatus: 200, detail: "A chave de serviço foi aceita." };
+  });
+  if (!chaveOk) return finalizar();
 
   // ── Bucket de fotos (público) ─────────────────────────────────────────────
   const chave = `diagnostico/${crypto.randomUUID()}.png`;

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { describeNetworkError, isNetworkFailure, resolveSupabaseUrl } from "./config";
 
 /**
  * Cliente Supabase configurado para gerenciamento de arquivos e buckets.
@@ -9,11 +10,7 @@ let _client: ReturnType<typeof createClient> | null = null;
 export function getSupabase() {
   if (_client) return _client;
 
-  const supabaseUrl =
-    process.env.SUPABASE_URL ||
-    (process.env.SUPABASE_PROJECT_REF
-      ? `https://${process.env.SUPABASE_PROJECT_REF}.supabase.co`
-      : undefined);
+  const supabaseUrl = resolveSupabaseUrl();
 
   if (!supabaseUrl) {
     throw new Error("SUPABASE_URL ou SUPABASE_PROJECT_REF não configurada para armazenamento.");
@@ -43,7 +40,8 @@ let clinicalBucketReady: Promise<void> | null = null;
 export function ensureClinicalBucket(): Promise<void> {
   if (!clinicalBucketReady) {
     clinicalBucketReady = (async () => {
-      const { data: existente } = await supabase.storage.getBucket(BUCKET);
+      const { data: existente, error: leitura } = await supabase.storage.getBucket(BUCKET);
+      if (leitura && isNetworkFailure(leitura)) throw new Error(describeNetworkError(leitura));
       if (existente) {
         if (existente.public) {
           const { error } = await supabase.storage.updateBucket(BUCKET, { public: false });
@@ -53,7 +51,7 @@ export function ensureClinicalBucket(): Promise<void> {
       }
       const { error } = await supabase.storage.createBucket(BUCKET, { public: false, fileSizeLimit: 10 * 1024 * 1024, allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"] });
       if (error && !/already exists|duplicate/i.test(error.message)) {
-        throw new Error(`Falha ao criar o bucket clínico: ${error.message}`);
+        throw new Error(isNetworkFailure(error) ? describeNetworkError(error) : `Falha ao criar o bucket clínico: ${error.message}`);
       }
     })().catch((err) => {
       clinicalBucketReady = null;
@@ -123,7 +121,8 @@ let avatarBucketReady: Promise<void> | null = null;
 export function ensureAvatarBucket(): Promise<void> {
   if (!avatarBucketReady) {
     avatarBucketReady = (async () => {
-      const { data: existente } = await supabase.storage.getBucket(AVATAR_BUCKET);
+      const { data: existente, error: leitura } = await supabase.storage.getBucket(AVATAR_BUCKET);
+      if (leitura && isNetworkFailure(leitura)) throw new Error(describeNetworkError(leitura));
       if (existente) {
         if (!existente.public) {
           const { error } = await supabase.storage.updateBucket(AVATAR_BUCKET, {
@@ -141,7 +140,7 @@ export function ensureAvatarBucket(): Promise<void> {
         allowedMimeTypes: AVATAR_MIME,
       });
       if (error && !/already exists|duplicate/i.test(error.message)) {
-        throw new Error(`Falha ao criar o bucket de avatares: ${error.message}`);
+        throw new Error(isNetworkFailure(error) ? describeNetworkError(error) : `Falha ao criar o bucket de avatares: ${error.message}`);
       }
     })().catch((err) => {
       avatarBucketReady = null; // tenta de novo na próxima foto
