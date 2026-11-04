@@ -169,26 +169,36 @@ export async function executeReset(): Promise<ResetResult> {
   const ids = demoTenants.map((t) => t.id);
   if (ids.length === 0) return { tenants: [], deleted: [], total: 0 };
 
+  const { deleted, total } = await db.transaction((tx) => wipeInTransaction(tx, ids));
+  return { tenants: demoTenants, deleted, total };
+}
+
+export type ResetTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Corpo da transação do reset. Os gatilhos append-only são religados só no caminho de sucesso,
+ * antes do commit. Se algo falhar, o ROLLBACK desfaz o DISABLE (DDL é transacional no Postgres)
+ * e o erro original sobe intacto: religar num `finally` falharia com "transação abortada" e
+ * esconderia a causa real.
+ */
+export async function wipeInTransaction(
+  tx: ResetTx,
+  ids: string[],
+): Promise<{ deleted: ResetResult["deleted"]; total: number }> {
   const deleted: ResetResult["deleted"] = [];
   let total = 0;
-  await db.transaction(async (tx) => {
-    // Desliga os gatilhos append-only só para esta limpeza (religados no finally, antes do commit).
-    for (const name of APPEND_ONLY_TABLES) {
-      await tx.execute(sql.raw(`ALTER TABLE ${name} DISABLE TRIGGER USER`));
-    }
-    try {
-      for (const t of WIPE_ORDER) {
-        const name = tableName(t);
-        const res: any = await tx.delete(t).where(inArray((t as any).tenantId, ids));
-        const rows = typeof res?.rowCount === "number" ? res.rowCount : 0;
-        total += rows;
-        deleted.push({ table: name, label: NOMES[name] ?? name, rows });
-      }
-    } finally {
-      for (const name of APPEND_ONLY_TABLES) {
-        await tx.execute(sql.raw(`ALTER TABLE ${name} ENABLE TRIGGER USER`));
-      }
-    }
-  });
-  return { tenants: demoTenants, deleted, total };
+  for (const name of APPEND_ONLY_TABLES) {
+    await tx.execute(sql.raw(`ALTER TABLE ${name} DISABLE TRIGGER USER`));
+  }
+  for (const t of WIPE_ORDER) {
+    const name = tableName(t);
+    const res: any = await tx.delete(t).where(inArray((t as any).tenantId, ids));
+    const rows = typeof res?.rowCount === "number" ? res.rowCount : 0;
+    total += rows;
+    deleted.push({ table: name, label: NOMES[name] ?? name, rows });
+  }
+  for (const name of APPEND_ONLY_TABLES) {
+    await tx.execute(sql.raw(`ALTER TABLE ${name} ENABLE TRIGGER USER`));
+  }
+  return { deleted, total };
 }
