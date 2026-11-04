@@ -12,6 +12,7 @@ type Raw = {
   startedAt: number;
   routes: { method: string; route: string; count: number; s2xx: number; s3xx: number; s4xx: number; s5xx: number; sumMs: number; buckets: number[] }[];
   counters: [string, number][];
+  ai?: { feature: string; provider: string; model: string; ok: number; failed: number; inputTokens: number; outputTokens: number }[];
 };
 
 export interface OtlpContext {
@@ -80,6 +81,18 @@ export function buildOtlpPayload(c: OtlpContext) {
   if (hist.length) metrics.push({ name: "periscopio_http_request_duration_ms", histogram: { aggregationTemporality: 2, dataPoints: hist } });
 
   if (c.raw.counters.length) metrics.push(counter("periscopio_events", c.raw.counters.map(([event, value]) => ({ value, attrs: { event } }))));
+
+  const ai = c.raw.ai ?? [];
+  if (ai.length) {
+    const tokens: { value: number; attrs: Attrs }[] = [];
+    const calls: { value: number; attrs: Attrs }[] = [];
+    for (const a of ai) {
+      const base = { feature: a.feature, provider: a.provider, model: a.model };
+      tokens.push({ value: a.inputTokens, attrs: { ...base, direction: "input" } }, { value: a.outputTokens, attrs: { ...base, direction: "output" } });
+      calls.push({ value: a.ok, attrs: { ...base, status: "ok" } }, { value: a.failed, attrs: { ...base, status: "error" } });
+    }
+    metrics.push(counter("periscopio_ai_tokens", tokens), counter("periscopio_ai_requests", calls));
+  }
 
   return {
     resourceMetrics: [

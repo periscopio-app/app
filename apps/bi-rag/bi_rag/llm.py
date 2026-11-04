@@ -10,6 +10,8 @@ import os
 import urllib.error
 import urllib.request
 
+from bi_rag import usage
+
 GLOSSARIO = (
     "Guia do domínio (base populacional de Tarumã e jornada do Periscópio): "
     "• Perguntas sobre queixa, motivo de encaminhamento, agressividade, falta de atenção, hiperatividade, indisciplina, "
@@ -53,6 +55,10 @@ def provider() -> str | None:
     return None
 
 
+def _model_name(which: str) -> str:
+    return os.environ.get("BI_LLM_MODEL", "claude-haiku-4-5-20251001" if which == "anthropic" else "desconhecido")
+
+
 def enabled() -> bool:
     return provider() is not None
 
@@ -85,6 +91,9 @@ def _call_gemini(prompt: str, system: str = SYSTEM, max_tokens: int = 400) -> st
     )
     with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310 - URL fixa
         data = json.loads(resp.read())
+    meta = data.get("usageMetadata") or {}
+    # tokens de raciocínio (thoughts) também são cobrados como saída
+    usage.record("gemini", model, meta.get("promptTokenCount"), (meta.get("candidatesTokenCount") or 0) + (meta.get("thoughtsTokenCount") or 0))
     parts = data["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts)
 
@@ -122,6 +131,8 @@ def _call_groq(prompt: str, system: str = SYSTEM, max_tokens: int = 1500) -> str
             raise
         body.pop("response_format")  # modelo sem modo JSON: o _parse extrai o JSON do texto
         data = post(body)
+    u = data.get("usage") or {}
+    usage.record("groq", model, u.get("prompt_tokens"), u.get("completion_tokens"))
     return data["choices"][0]["message"].get("content") or ""
 
 
@@ -135,6 +146,8 @@ def _call_anthropic(prompt: str, system: str = SYSTEM, max_tokens: int = 400) ->
         messages=[{"role": "user", "content": prompt}],
         timeout=20,
     )
+    u = getattr(msg, "usage", None)
+    usage.record("anthropic", getattr(msg, "model", None) or os.environ.get("BI_LLM_MODEL", "claude-haiku-4-5-20251001"), getattr(u, "input_tokens", 0), getattr(u, "output_tokens", 0))
     return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
 
@@ -148,6 +161,7 @@ def plan_with_llm(question: str, catalog: dict, examples: list[dict]) -> dict | 
         text = call(prompt)
         return _parse(text)
     except Exception:
+        usage.record(which, _model_name(which), 0, 0, ok=False)
         return None  # qualquer falha cai nas regras; nunca derruba a pergunta
 
 
@@ -162,4 +176,5 @@ def complete_json(prompt: str, system: str, max_tokens: int = 1200) -> dict | No
         limit = max_tokens * 2 if which == "groq" else max_tokens
         return _parse(call(prompt, system, limit))
     except Exception:
+        usage.record(which, _model_name(which), 0, 0, ok=False)
         return None

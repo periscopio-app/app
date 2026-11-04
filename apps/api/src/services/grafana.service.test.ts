@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { clearGrafanaCache, fetchGrafanaDeploys, fetchGrafanaSeries, GRAFANA_SERIES } from "./grafana.service";
+import { clearGrafanaCache, describePromError, fetchGrafanaDeploys, fetchGrafanaSeries, fetchGrafanaStats, GRAFANA_SERIES } from "./grafana.service";
 
 const env = {
   GRAFANA_PROM_URL: "https://prometheus-prod-00.example.net/api/prom/",
@@ -115,6 +115,83 @@ describe("fetchGrafanaDeploys", () => {
 
   it("token recusado vira erro sem vazar o token", async () => {
     const r = await fetchGrafanaDeploys("24h", { env, now: () => NOW, fetch: async () => ({ status: 403, json: async () => ({}) }) });
+    assert.equal(r.configured && !r.ok, true);
+    assert.ok(!JSON.stringify(r).includes("token-secreto-de-teste"));
+  });
+});
+
+describe("describePromError", () => {
+  it("aponta a variável provável conforme a causa", () => {
+    assert.match(describePromError(Object.assign(new TypeError("fetch failed"), { cause: { code: "ENOTFOUND" } })), /GRAFANA_PROM_URL não existe|não existe \(DNS\)/);
+    assert.match(describePromError(Object.assign(new Error("x"), { name: "AbortError" })), /a tempo/);
+    assert.match(describePromError(new SyntaxError("Unexpected token <")), /\/api\/prom/);
+    assert.match(describePromError(new Error("boom")), /GRAFANA_PROM_URL/);
+  });
+
+  it("uma resposta que não é JSON vira dica de endereço, não 'rede ou tempo esgotado'", async () => {
+    const r = await fetchGrafanaSeries("memory_mb", "1h", { env, now: () => NOW, fetch: async () => ({ status: 200, json: async () => { throw new SyntaxError("Unexpected token <"); } }) });
+    assert.equal(r.configured && !r.ok, true);
+    if (r.configured && !r.ok) assert.match(r.error, /\/api\/prom/);
+  });
+});
+
+describe("fetchGrafanaStats", () => {
+  beforeEach(() => clearGrafanaCache());
+
+  const vec = (rows: { m?: Record<string, string>; v: string }[]) => ({ status: "success", data: { result: rows.map((r) => ({ metric: r.m ?? {}, value: [1_800_000_000, r.v] })) } });
+  const answers = (q: string) => {
+    if (q.includes("periscopio_uptime_seconds")) return vec([{ v: "86400" }]);
+    if (q.includes('status_class="5xx"')) return vec([{ v: "3.2" }]);
+    if (q.includes("periscopio_http_requests_total")) return vec([{ v: "1500.4" }]);
+    if (q.includes("histogram_quantile")) return vec([{ v: "480" }]);
+    if (q.includes("resident_memory")) return vec([{ v: "210.6" }]);
+    if (q.includes('direction="input"')) return vec([{ v: "10000" }]);
+    if (q.includes('direction="output"')) return vec([{ v: "2500" }]);
+    if (q.includes('status="error"')) return vec([{ v: "1" }]);
+    if (q.includes("by (provider, model)")) return vec([{ m: { provider: "groq", model: "m1" }, v: "9000" }, { m: { provider: "gemini", model: "m2" }, v: "3500" }, { m: { provider: "x", model: "y" }, v: "0" }]);
+    if (q.includes("by (feature)")) return vec([{ m: { feature: "assistente_bi" }, v: "12000" }, { m: { feature: "resumo_tea" }, v: "500" }]);
+    if (q.includes("periscopio_ai_requests_total")) return vec([{ v: "14" }]);
+    return vec([]);
+  };
+  const fakeFetch = async (u: string) => ({ status: 200, json: async () => answers(decodeURIComponent(new URL(u).searchParams.get("query")!.replace(/\+/g, " "))) });
+
+  it("sem configuração devolve configured=false", async () => {
+    assert.deepEqual(await fetchGrafanaStats("24h", { env: {}, now: () => NOW }), { configured: false });
+  });
+
+  it("junta os números e ordena o uso de IA por modelo e por recurso", async () => {
+    const r = await fetchGrafanaStats("24h", { env, now: () => NOW, fetch: fakeFetch });
+    assert.equal(r.configured && r.ok, true);
+    if (r.configured && r.ok) {
+      assert.equal(r.stats.requests, 1500);
+      assert.equal(r.stats.errors5xx, 3);
+      assert.equal(r.stats.p95Ms, 480);
+      assert.equal(r.stats.memoryMb, 211);
+      assert.equal(r.stats.uptimeSeconds, 86400);
+      assert.deepEqual([r.stats.ai.inputTokens, r.stats.ai.outputTokens, r.stats.ai.calls, r.stats.ai.errors], [10000, 2500, 14, 1]);
+      assert.deepEqual(r.stats.ai.byModel.map((m) => m.model), ["m1", "m2"]);
+      assert.deepEqual(r.stats.ai.byFeature.map((f) => f.feature), ["assistente_bi", "resumo_tea"]);
+      assert.deepEqual(r.pricing, { inputPerMtok: null, outputPerMtok: null, currency: "US$" });
+    }
+  });
+
+  it("os preços só aparecem se o administrador os definir", async () => {
+    const r = await fetchGrafanaStats("7d", { env: { ...env, AI_PRICE_INPUT_PER_MTOK: "0.5", AI_PRICE_OUTPUT_PER_MTOK: "1.5", AI_PRICE_CURRENCY: "R$" }, now: () => NOW, fetch: fakeFetch });
+    if (r.configured && r.ok) assert.deepEqual(r.pricing, { inputPerMtok: 0.5, outputPerMtok: 1.5, currency: "R$" });
+    else assert.fail("esperava ok");
+  });
+
+  it("série sem dados vira null, não zero inventado", async () => {
+    const r = await fetchGrafanaStats("24h", { env, now: () => NOW, fetch: async () => ({ status: 200, json: async () => vec([]) }) });
+    if (r.configured && r.ok) {
+      assert.equal(r.stats.requests, null);
+      assert.equal(r.stats.ai.inputTokens, null);
+      assert.deepEqual(r.stats.ai.byModel, []);
+    } else assert.fail("esperava ok");
+  });
+
+  it("token recusado devolve erro sem vazar o token", async () => {
+    const r = await fetchGrafanaStats("24h", { env, now: () => NOW, fetch: async () => ({ status: 401, json: async () => ({}) }) });
     assert.equal(r.configured && !r.ok, true);
     assert.ok(!JSON.stringify(r).includes("token-secreto-de-teste"));
   });

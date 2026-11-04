@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
 import { FactoryResetCard } from "@/components/admin/FactoryResetCard";
 import { GrafanaHistoryCard } from "@/components/admin/GrafanaHistoryCard";
+import { SaudeSimples } from "@/components/admin/SaudeSimples";
 import { Button } from "@/components/ui";
 
 // ─── tipos (espelham GET /api/admin/observability) ──────────────────────────
@@ -207,7 +208,12 @@ export default function AdminSaudePage() {
               </ul>
             </section>
 
-            <GrafanaHistoryCard />
+            <SaudeSimples />
+
+            <details className="rounded-xl border border-[#E1E9ED] bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">Detalhes técnicos (gráficos, envio das métricas e versões no ar)</summary>
+              <div className="px-4 pb-4"><GrafanaHistoryCard /></div>
+            </details>
 
             <StorageCheckCard />
 

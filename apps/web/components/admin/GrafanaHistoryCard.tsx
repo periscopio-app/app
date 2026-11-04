@@ -4,25 +4,33 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 
-type Range = "1h" | "24h" | "7d";
-const RANGES: { id: Range; label: string }[] = [
+export type Range = "1h" | "24h" | "7d";
+export const RANGES: { id: Range; label: string }[] = [
   { id: "1h", label: "1 hora" },
   { id: "24h", label: "24 horas" },
   { id: "7d", label: "7 dias" },
 ];
 const METRICS = ["requests_per_min", "errors_5xx_per_min", "latency_p95_ms", "memory_mb", "cpu_percent", "eventloop_lag_p99_ms"] as const;
 
-interface Point { t: number; v: number }
-type Resposta =
+export interface Point { t: number; v: number }
+export type Resposta =
   | { configured: false }
   | { configured: true; ok: true; metric: string; label: string; unit: string; range: Range; points: Point[] }
   | { configured: true; ok: false; metric: string; error: string };
 
+interface Deploy { commit: string; firstSeen: number; lastSeen: number; current: boolean }
+type RespostaDeploys =
+  | { configured: false }
+  | { configured: true; ok: true; range: string; stepSeconds: number; deploys: Deploy[] }
+  | { configured: true; ok: false; error: string };
+
+export interface PushStatus { enabled: boolean; intervalSeconds: number; lastAttemptAt: string | null; lastOkAt: string | null; lastError: string | null }
+
 const W = 320;
 const H = 90;
 
-function Linha({ points, label }: { points: Point[]; label: string }) {
-  if (points.length < 2) return <p className="text-xs text-slate-500 py-6">Sem dados neste período.</p>;
+export function Linha({ points, label, height = "h-24" }: { points: Point[]; label: string; height?: string }) {
+  if (points.length < 2) return <p className="text-xs text-slate-500 py-4">Ainda sem dados neste período.</p>;
   const ts = points.map((p) => p.t);
   const vs = points.map((p) => p.v);
   const [t0, t1] = [Math.min(...ts), Math.max(...ts)];
@@ -31,36 +39,37 @@ function Linha({ points, label }: { points: Point[]; label: string }) {
   const y = (v: number) => H - 4 - (v / (vmax || 1)) * (H - 8);
   const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className="w-full h-24">
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className={`w-full ${height}`}>
       <path d={d} fill="none" stroke="#0e7490" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   );
 }
 
-interface PushStatus { enabled: boolean; intervalSeconds: number; lastAttemptAt: string | null; lastOkAt: string | null; lastError: string | null }
-
-const dataHora = (ms: number) =>
+export const dataHora = (ms: number) =>
   new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
 
-/** Histórico das métricas da plataforma, vindo do Grafana Cloud pela API (o token nunca chega ao navegador). */
+/** Detalhes técnicos (gráficos, envio das métricas e versões no ar). Os cards simples ficam em SaudeSimples. */
 export function GrafanaHistoryCard() {
   const [range, setRange] = useState<Range>("24h");
   const [dados, setDados] = useState<Resposta[] | null>(null);
+  const [deploys, setDeploys] = useState<RespostaDeploys | null>(null);
+  const [push, setPush] = useState<PushStatus | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [push, setPush] = useState<PushStatus | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     try {
-      const [res, envio] = await Promise.all([
+      const [res, dep, envio] = await Promise.all([
         Promise.all(METRICS.map((m) => api.get<Resposta>(`/api/admin/grafana/series?metric=${m}&range=${range}`))),
+        api.get<RespostaDeploys>(`/api/admin/grafana/deploys?range=${range === "7d" ? "7d" : "24h"}`),
         api.get<PushStatus>("/api/admin/grafana/push"),
       ]);
       setDados(res);
+      setDeploys(dep);
       setPush(envio);
     } catch (e) {
       setDados(null);
@@ -77,9 +86,9 @@ export function GrafanaHistoryCard() {
   const naoConfigurado = dados?.every((d) => !d.configured);
 
   return (
-    <section aria-label="Histórico de métricas do Grafana">
+    <section aria-label="Detalhes técnicos do Grafana">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Histórico (Grafana Cloud)</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Detalhes técnicos (Grafana Cloud)</h2>
         <div className="flex items-center gap-2">
           <div role="group" aria-label="Período" className="flex rounded-lg border border-[#E1E9ED] overflow-hidden">
             {RANGES.map((r) => (
@@ -94,7 +103,7 @@ export function GrafanaHistoryCard() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => void carregar()} disabled={carregando} aria-label="Atualizar histórico" className="rounded-lg border border-[#E1E9ED] bg-white p-2 text-slate-700 disabled:opacity-50">
+          <button type="button" onClick={() => void carregar()} disabled={carregando} aria-label="Atualizar detalhes técnicos" className="rounded-lg border border-[#E1E9ED] bg-white p-2 text-slate-700 disabled:opacity-50">
             {carregando ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RefreshCw className="h-4 w-4" aria-hidden />}
           </button>
         </div>
@@ -150,7 +159,7 @@ export function GrafanaHistoryCard() {
           {!deploys.ok ? (
             <p className="text-xs text-amber-900">{deploys.error}</p>
           ) : deploys.deploys.length === 0 ? (
-            <p className="text-xs text-slate-500">Nenhuma versão registrada neste período. O Grafana precisa estar raspando /metrics.</p>
+            <p className="text-xs text-slate-500">Nenhuma versão registrada neste período. O Grafana precisa já ter recebido as métricas.</p>
           ) : (
             <ul className="divide-y divide-[#E1E9ED] text-sm">
               {deploys.deploys.map((d) => (
@@ -168,7 +177,7 @@ export function GrafanaHistoryCard() {
         </div>
       )}
 
-      {!erro && !dados && carregando && <p className="text-sm text-slate-500">Carregando histórico…</p>}
+      {!erro && !dados && carregando && <p className="text-sm text-slate-500">Carregando…</p>}
     </section>
   );
 }

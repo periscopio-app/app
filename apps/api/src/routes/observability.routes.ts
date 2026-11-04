@@ -8,8 +8,7 @@ import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
 import { otlpPushStatus, resolveOtlpConfig } from "../observability/otlp-push";
-import { fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
-import { fetchGrafanaDeploys, fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
+import { fetchGrafanaDeploys, fetchGrafanaSeries, fetchGrafanaStats, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
 
 /** Só booleanos: nunca o valor de segredos. */
 function configChecks() {
@@ -110,6 +109,15 @@ export async function observabilityRoutes(app: FastifyInstance) {
     const parsed = grafanaQuery.safeParse(request.query);
     if (!parsed.success) return reply.status(400).send({ error: "Métrica ou período inválido." });
     return fetchGrafanaSeries(parsed.data.metric, parsed.data.range);
+  });
+
+  // Resumo em números simples para quem gere o sistema (acessos, erros, velocidade, memória e uso de IA).
+  app.get("/api/admin/grafana/stats", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "system.observability.view");
+    if (!actor) return;
+    const parsed = z.object({ range: z.enum(["24h", "7d"]).default("24h") }).safeParse(request.query);
+    if (!parsed.success) return reply.status(400).send({ error: "Período inválido." });
+    return fetchGrafanaStats(parsed.data.range);
   });
 
   app.get("/api/admin/grafana/deploys", async (request, reply) => {

@@ -1,3 +1,4 @@
+import { recordAiUsageFromReply } from "../observability/ai-usage";
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -293,7 +294,9 @@ async function callRag(body: unknown): Promise<RagReply | null> {
       console.error(`[bi-rag] Chamada a ${base}/plan falhou: HTTP ${res.status} ${res.statusText} - ${errText}`);
       return null;
     }
-    return (await res.json()) as RagReply;
+    const reply = (await res.json()) as RagReply;
+    recordAiUsageFromReply("assistente_bi", reply);
+    return reply;
   } catch (err) {
     console.error(`[bi-rag] Erro na conexão com ${base}:`, err);
     return null;

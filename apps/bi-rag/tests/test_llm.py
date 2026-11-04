@@ -145,3 +145,61 @@ def test_complete_json_usa_o_system_informado_e_nunca_levanta(monkeypatch):
     def boom(*a, **k): raise OSError("rede")
     monkeypatch.setattr(llm.urllib.request, "urlopen", boom)
     assert llm.complete_json("dados", "S") is None
+
+
+def test_gasto_de_tokens_e_registrado_por_chamada_sem_guardar_texto(monkeypatch):
+    from bi_rag import usage
+    _clear(monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "q"); monkeypatch.setenv("BI_LLM_MODEL", "modelo-x")
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self):
+            return json.dumps({"choices": [{"message": {"content": '{"metric":"cases"}'}}], "usage": {"prompt_tokens": 120, "completion_tokens": 30}}).encode()
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", lambda req, timeout=0: Resp())
+    usage.begin()
+    assert llm.plan_with_llm("pergunta secreta", {}, []) == {"metric": "cases"}
+    got = usage.collect()
+    assert got == [{"provider": "groq", "model": "modelo-x", "input_tokens": 120, "output_tokens": 30, "ok": True}]
+    assert "secreta" not in json.dumps(got)
+    assert usage.collect() == []  # depois de coletar, a contagem é zerada
+
+
+def test_gemini_soma_tokens_de_raciocinio_na_saida(monkeypatch):
+    from bi_rag import usage
+    _clear(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g"); monkeypatch.setenv("BI_LLM_MODEL", "models/gemini-x")
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self):
+            return json.dumps({"candidates": [{"content": {"parts": [{"text": '{"ok":1}'}]}}],
+                               "usageMetadata": {"promptTokenCount": 50, "candidatesTokenCount": 10, "thoughtsTokenCount": 5}}).encode()
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", lambda req, timeout=0: Resp())
+    usage.begin()
+    assert llm.complete_json("dados", "SISTEMA") == {"ok": 1}
+    assert usage.collect() == [{"provider": "gemini", "model": "gemini-x", "input_tokens": 50, "output_tokens": 15, "ok": True}]
+
+
+def test_falha_do_provedor_conta_como_erro_com_zero_tokens(monkeypatch):
+    from bi_rag import usage
+    _clear(monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "q"); monkeypatch.setenv("BI_LLM_MODEL", "modelo-x")
+
+    def boom(req, timeout=0):
+        raise OSError("rede")
+
+    monkeypatch.setattr(llm.urllib.request, "urlopen", boom)
+    usage.begin()
+    assert llm.plan_with_llm("x", {}, []) is None
+    assert usage.collect() == [{"provider": "groq", "model": "modelo-x", "input_tokens": 0, "output_tokens": 0, "ok": False}]
+
+
+def test_sem_begin_o_registro_nao_acumula_nada():
+    from bi_rag import usage
+    usage.record("groq", "m", 1, 1)
+    assert usage.collect() == []

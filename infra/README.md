@@ -164,4 +164,14 @@ Alternativa: `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_USER` e `GRAFANA_OTLP_TOKEN`
 
 Conferir em `/admin/saude`: o card "Histórico (Grafana Cloud)" mostra "Envio das métricas pela API: ligado, último envio ok em ...".
 
+### Painel "Resumo para quem gere o sistema" e gasto de IA
+
+`/admin/saude` mostra seis cartões em linguagem simples (no ar, uso, falhas, velocidade, memória e uso de IA). Eles leem o Grafana
+pela API, com `GRAFANA_PROM_URL` (endereço **público** do Prometheus, termina em `/api/prom`; o endereço `...internal.grafana.net` do
+datasource não serve), `GRAFANA_PROM_USER` (ID numérico da instância do Prometheus) e `GRAFANA_PROM_TOKEN` (política só com `metrics:read`).
+
+O gasto de IA vem do serviço `bi-rag`: cada resposta traz `usage` (provedor, modelo, tokens de entrada e de saída, sucesso ou erro) e a
+API soma em `periscopio_ai_tokens_total` e `periscopio_ai_requests_total`. Só contagens: nunca o texto enviado nem o recebido.
+Para o custo em dinheiro, defina `AI_PRICE_INPUT_PER_MTOK`, `AI_PRICE_OUTPUT_PER_MTOK` e `AI_PRICE_CURRENCY` com o preço do provedor.
+
 Regras: nunca usar `studentCode`, `caseId`, e-mail ou ID de usuário como rótulo ou nome de métrica, e não colocar payload clínico em log.
