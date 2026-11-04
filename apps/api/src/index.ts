@@ -48,6 +48,14 @@ app
     } catch (err: any) {
       app.log.error({ err: err?.message ?? String(err) }, "falha ao sincronizar usuários master");
     }
+    // Envio das métricas ao Grafana Cloud (desligado sem GRAFANA_OTLP_*). Nunca derruba a API.
+    try {
+      const { startOtlpPush, otlpPushStatus } = await import("./observability/otlp-push");
+      startOtlpPush();
+      if (otlpPushStatus().enabled) app.log.info("envio de métricas ao Grafana ligado");
+    } catch (err: any) {
+      app.log.error({ err: err?.message ?? String(err) }, "falha ao ligar o envio de métricas");
+    }
   })
   .catch((err) => {
     app.log.error(err);

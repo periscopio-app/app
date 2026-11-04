@@ -37,11 +37,7 @@ function Linha({ points, label }: { points: Point[]; label: string }) {
   );
 }
 
-interface Deploy { commit: string; firstSeen: number; lastSeen: number; current: boolean }
-type RespostaDeploys =
-  | { configured: false }
-  | { configured: true; ok: true; range: string; stepSeconds: number; deploys: Deploy[] }
-  | { configured: true; ok: false; error: string };
+interface PushStatus { enabled: boolean; intervalSeconds: number; lastAttemptAt: string | null; lastOkAt: string | null; lastError: string | null }
 
 const dataHora = (ms: number) =>
   new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -54,18 +50,18 @@ export function GrafanaHistoryCard() {
   const [dados, setDados] = useState<Resposta[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [deploys, setDeploys] = useState<RespostaDeploys | null>(null);
+  const [push, setPush] = useState<PushStatus | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     try {
-      const [res, dep] = await Promise.all([
+      const [res, envio] = await Promise.all([
         Promise.all(METRICS.map((m) => api.get<Resposta>(`/api/admin/grafana/series?metric=${m}&range=${range}`))),
-        api.get<RespostaDeploys>(`/api/admin/grafana/deploys?range=${range === "7d" ? "7d" : "24h"}`),
+        api.get<PushStatus>("/api/admin/grafana/push"),
       ]);
       setDados(res);
-      setDeploys(dep);
+      setPush(envio);
     } catch (e) {
       setDados(null);
       setErro(e instanceof ApiError ? e.message : "Não foi possível carregar o histórico.");
@@ -103,6 +99,20 @@ export function GrafanaHistoryCard() {
           </button>
         </div>
       </div>
+
+      {push && (
+        <p className="mb-2 rounded-xl border border-[#E1E9ED] bg-white p-3 text-xs text-slate-600" aria-live="polite">
+          <span className="font-semibold text-slate-800">Envio das métricas pela API: </span>
+          {!push.enabled
+            ? "desligado (faltam OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS no servidor)."
+            : push.lastOkAt
+              ? `ligado, último envio ok em ${dataHora(Date.parse(push.lastOkAt))} (a cada ${push.intervalSeconds} s).`
+              : push.lastError
+                ? `ligado, mas falhou: ${push.lastError}`
+                : "ligado, aguardando o primeiro envio."}
+          {push.enabled && push.lastError && push.lastOkAt ? ` Última falha: ${push.lastError}` : ""}
+        </p>
+      )}
 
       {erro && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
 

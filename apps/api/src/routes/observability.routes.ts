@@ -7,6 +7,8 @@ import { metricsEnabled, metricsTokenOk } from "../observability/metrics-auth";
 import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
+import { otlpPushStatus, resolveOtlpConfig } from "../observability/otlp-push";
+import { fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
 import { fetchGrafanaDeploys, fetchGrafanaSeries, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
 
 /** Só booleanos: nunca o valor de segredos. */
@@ -23,6 +25,7 @@ function configChecks() {
     { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },
     { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), optional: true, hint: "Armazenamento de anexos clínicos (Supabase Storage para laudos e exames)." },
     { key: "SUPABASE_SERVICE_ROLE_KEY", ok: has("SUPABASE_SERVICE_ROLE_KEY"), optional: true, hint: "Chave de serviço do Supabase: necessária para gravar fotos de perfil e anexos clínicos." },
+    { key: "GRAFANA_OTLP_TOKEN", ok: resolveOtlpConfig(process.env) !== null, optional: true, hint: "Opcional: a API envia as métricas ao Grafana Cloud (OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS, ou GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_USER e GRAFANA_OTLP_TOKEN)." },
     { key: "GRAFANA_PROM_TOKEN", ok: has("GRAFANA_PROM_URL") && has("GRAFANA_PROM_USER") && has("GRAFANA_PROM_TOKEN"), optional: true, hint: "Opcional: histórico de métricas do Grafana Cloud no painel de saúde (GRAFANA_PROM_URL, GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." },
     { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), optional: true, hint: "Opcional: libera rota /metrics para coletor externo (Prometheus/Grafana)." },
   ];
@@ -58,7 +61,7 @@ export async function observabilityRoutes(app: FastifyInstance) {
     if (m.http.total >= 20 && (m.http.p95Ms ?? 0) > 2500) {
       alerts.push({ level: "medio", text: `Lentidão: 95% das requisições levam até ${m.http.p95Ms} ms ou mais.` });
     }
-    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "GRAFANA_PROM_TOKEN" && c.key !== "BI_RAG_URL" && c.key !== "SUPABASE_URL" && c.key !== "SUPABASE_SERVICE_ROLE_KEY");
+    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "GRAFANA_PROM_TOKEN" && c.key !== "GRAFANA_OTLP_TOKEN" && c.key !== "BI_RAG_URL" && c.key !== "SUPABASE_URL" && c.key !== "SUPABASE_SERVICE_ROLE_KEY");
     if (missing.length) alerts.push({ level: "alto", text: `Configuração faltando: ${missing.map((c) => c.key).join(", ")}.` });
 
     return {
