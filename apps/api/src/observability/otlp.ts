@@ -23,6 +23,7 @@ export interface OtlpContext {
   commit: string;
   environment: string;
   instanceId: string;
+  serviceName?: string;
 }
 
 const attrList = (a: Attrs) => Object.entries(a).map(([key, v]) => ({ key, value: { stringValue: v } }));
@@ -83,7 +84,7 @@ export function buildOtlpPayload(c: OtlpContext) {
   return {
     resourceMetrics: [
       {
-        resource: { attributes: attrList({ "service.name": "periscopio-api", "service.instance.id": c.instanceId, "deployment.environment": c.environment }) },
+        resource: { attributes: attrList({ "service.name": c.serviceName || "periscopio-api", "service.instance.id": c.instanceId, "deployment.environment": c.environment }) },
         scopeMetrics: [{ scope: { name: "periscopio.observability" }, metrics }],
       },
     ],

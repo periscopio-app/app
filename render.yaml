@@ -24,6 +24,14 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         sync: false
+      - key: OTEL_SERVICE_NAME
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
       - key: GRAFANA_OTLP_ENDPOINT
         sync: false
       - key: GRAFANA_OTLP_USER

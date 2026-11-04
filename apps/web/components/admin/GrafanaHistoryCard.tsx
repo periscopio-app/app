@@ -104,7 +104,7 @@ export function GrafanaHistoryCard() {
         <p className="mb-2 rounded-xl border border-[#E1E9ED] bg-white p-3 text-xs text-slate-600" aria-live="polite">
           <span className="font-semibold text-slate-800">Envio das métricas pela API: </span>
           {!push.enabled
-            ? "desligado (faltam GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_USER ou GRAFANA_OTLP_TOKEN no servidor)."
+            ? "desligado (faltam OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS no servidor)."
             : push.lastOkAt
               ? `ligado, último envio ok em ${dataHora(Date.parse(push.lastOkAt))} (a cada ${push.intervalSeconds} s).`
               : push.lastError

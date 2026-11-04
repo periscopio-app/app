@@ -151,11 +151,16 @@ desligada se faltar alguma variável; falha de envio nunca derruba a API.
 No Grafana Cloud, em **Connections > OpenTelemetry (OTLP)**: copie o endereço do gateway (`https://otlp-gateway-<região>.grafana.net/otlp`)
 e o **Instance ID** do OTLP, e crie um token (access policy) com o escopo `metrics:write`. Na Render (`periscopio-api` > Environment):
 
+Use as variáveis padrão do OpenTelemetry que o Grafana entrega prontas nessa página (a API as lê direto):
+
 | Variável | Valor |
 |---|---|
-| `GRAFANA_OTLP_ENDPOINT` | endereço do gateway OTLP (https) |
-| `GRAFANA_OTLP_USER` | Instance ID do OTLP |
-| `GRAFANA_OTLP_TOKEN` | token com `metrics:write` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | endereço do gateway OTLP (https, termina em `/otlp`) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | `Authorization=Basic <base64 de instanceId:token>` |
+| `OTEL_SERVICE_NAME` | `periscopio-api` (opcional) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` (informativo: a API envia JSON, que o gateway aceita) |
+
+Alternativa: `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_USER` e `GRAFANA_OTLP_TOKEN` (a API monta o Basic sozinha).
 
 Conferir em `/admin/saude`: o card "Histórico (Grafana Cloud)" mostra "Envio das métricas pela API: ligado, último envio ok em ...".
 

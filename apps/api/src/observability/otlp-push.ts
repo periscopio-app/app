@@ -39,20 +39,43 @@ const TIMEOUT_MS = 8000;
 const WARN_EVERY_MS = 10 * 60_000;
 let lastWarnAt = 0;
 
+/** Lê o cabeçalho Authorization de OTEL_EXPORTER_OTLP_HEADERS (formato `chave=valor,chave2=valor2`, valor às vezes com %20). */
+function authFromOtelHeaders(raw: string | undefined): string | null {
+  for (const pair of (raw ?? "").split(",")) {
+    const i = pair.indexOf("=");
+    if (i < 1) continue;
+    if (pair.slice(0, i).trim().toLowerCase() !== "authorization") continue;
+    let v = pair.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+    try { v = decodeURIComponent(v); } catch {}
+    return v.trim() || null;
+  }
+  return null;
+}
+
+/**
+ * Configuração do envio. Aceita as variáveis padrão do OpenTelemetry que o Grafana entrega prontas
+ * (OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS com `Authorization=Basic ...`) ou, se preferir,
+ * GRAFANA_OTLP_ENDPOINT + GRAFANA_OTLP_USER + GRAFANA_OTLP_TOKEN. Só https.
+ */
 export function resolveOtlpConfig(env: PushDeps["env"]): { url: string; auth: string } | null {
-  const endpoint = env.GRAFANA_OTLP_ENDPOINT?.trim();
+  let endpoint = env.GRAFANA_OTLP_ENDPOINT?.trim() || env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
+  let auth: string | null = null;
   const user = env.GRAFANA_OTLP_USER?.trim();
   const token = env.GRAFANA_OTLP_TOKEN?.trim();
-  if (!endpoint || !user || !token) return null;
+  if (env.GRAFANA_OTLP_ENDPOINT?.trim() && user && token) auth = `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}`;
+  else auth = authFromOtelHeaders(env.OTEL_EXPORTER_OTLP_HEADERS);
+  const full = env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT?.trim();
+  if (!auth || (!endpoint && !full)) return null;
+
   let u: URL;
   try {
-    u = new URL(endpoint);
+    u = new URL(full && !env.GRAFANA_OTLP_ENDPOINT?.trim() ? full : (endpoint as string));
   } catch {
     return null;
   }
   if (u.protocol !== "https:") return null;
   const base = `${u.origin}${u.pathname.replace(/\/+$/, "")}`.replace(/\/v1\/metrics$/, "");
-  return { url: `${base}/v1/metrics`, auth: `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` };
+  return { url: `${base}/v1/metrics`, auth };
 }
 
 /** Uma tentativa de envio. Resolve sempre; o resultado fica em `otlpPushStatus()`. */
@@ -77,6 +100,7 @@ export async function pushMetricsOnce(overrides: Partial<PushDeps> = {}): Promis
         commit: (d.env.RENDER_GIT_COMMIT ?? d.env.GIT_COMMIT ?? "").slice(0, 7) || "desconhecido",
         environment: d.env.NODE_ENV ?? "development",
         instanceId: d.env.RENDER_INSTANCE_ID || hostname(),
+        serviceName: d.env.OTEL_SERVICE_NAME?.trim() || "periscopio-api",
       }),
     );
     const res = await d.fetch(cfg.url, { method: "POST", headers: { Authorization: cfg.auth, "Content-Type": "application/json" }, body, signal: ctl.signal });
@@ -85,7 +109,7 @@ export async function pushMetricsOnce(overrides: Partial<PushDeps> = {}): Promis
       status.lastError = null;
       return true;
     }
-    status.lastError = res.status === 401 || res.status === 403 ? "O Grafana recusou as credenciais (confira GRAFANA_OTLP_USER e GRAFANA_OTLP_TOKEN)." : `O Grafana respondeu HTTP ${res.status}.`;
+    status.lastError = res.status === 401 || res.status === 403 ? "O Grafana recusou as credenciais (confira o cabeçalho Authorization em OTEL_EXPORTER_OTLP_HEADERS)." : `O Grafana respondeu HTTP ${res.status}.`;
   } catch {
     status.lastError = "Não foi possível falar com o Grafana (rede ou tempo esgotado).";
   } finally {

@@ -24,6 +24,33 @@ describe("resolveOtlpConfig", () => {
   });
 });
 
+describe("variáveis padrão do OpenTelemetry", () => {
+  const otel = {
+    OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-teste.example.net/otlp",
+    OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic YWJjOnh5eg==",
+  };
+
+  it("lê endereço e cabeçalho Authorization", () => {
+    assert.deepEqual(resolveOtlpConfig(otel), { url: "https://otlp-gateway-teste.example.net/otlp/v1/metrics", auth: "Basic YWJjOnh5eg==" });
+  });
+
+  it("aceita o espaço codificado como %20 e outros cabeçalhos na lista", () => {
+    const r = resolveOtlpConfig({ ...otel, OTEL_EXPORTER_OTLP_HEADERS: "x-a=1,Authorization=Basic%20YWJjOnh5eg==" });
+    assert.equal(r?.auth, "Basic YWJjOnh5eg==");
+  });
+
+  it("fica desligado sem Authorization ou sem endereço, ou fora de https", () => {
+    assert.equal(resolveOtlpConfig({ ...otel, OTEL_EXPORTER_OTLP_HEADERS: "x-a=1" }), null);
+    assert.equal(resolveOtlpConfig({ OTEL_EXPORTER_OTLP_HEADERS: otel.OTEL_EXPORTER_OTLP_HEADERS }), null);
+    assert.equal(resolveOtlpConfig({ ...otel, OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318" }), null);
+  });
+
+  it("o endereço específico de métricas é usado como está", () => {
+    const r = resolveOtlpConfig({ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "https://otlp-gateway-teste.example.net/otlp/v1/metrics", OTEL_EXPORTER_OTLP_HEADERS: otel.OTEL_EXPORTER_OTLP_HEADERS });
+    assert.equal(r?.url, "https://otlp-gateway-teste.example.net/otlp/v1/metrics");
+  });
+});
+
 describe("pushMetricsOnce", () => {
   it("sem configuração não chama a rede", async () => {
     let chamou = false;
