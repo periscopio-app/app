@@ -77,7 +77,7 @@ const defaults: GrafanaDeps = {
 
 const CACHE_TTL_MS = 30_000;
 const TIMEOUT_MS = 8_000;
-const cache = new Map<string, { at: number; value: GrafanaSeriesResult }>();
+const cache = new Map<string, { at: number; value: GrafanaSeriesResult | GrafanaDeploysResult }>();
 
 export function clearGrafanaCache() {
   cache.clear();
@@ -100,7 +100,34 @@ function resolveConfig(env: GrafanaDeps["env"]): { base: string; auth: string } 
   return { base, auth: `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` };
 }
 
-type PromMatrix = { status?: string; data?: { result?: { values?: [number, string][] }[] } };
+type PromSeries = { metric?: Record<string, string>; values?: [number, string][] };
+type PromMatrix = { status?: string; data?: { result?: PromSeries[] } };
+type PromOutcome = { ok: true; series: PromSeries[] } | { ok: false; error: string };
+
+/** Uma consulta `query_range` ao Grafana. Erros viram mensagem genérica, sem token nem corpo da resposta. */
+async function promQueryRange(cfg: { base: string; auth: string }, query: string, range: GrafanaRange, d: GrafanaDeps): Promise<PromOutcome> {
+  const { seconds, step } = GRAFANA_RANGES[range];
+  const end = Math.floor(d.now() / 1000);
+  const params = new URLSearchParams({ query, start: String(end - seconds), end: String(end), step: String(step) });
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  try {
+    const res = await d.fetch(`${cfg.base}/api/v1/query_range?${params}`, {
+      headers: { Authorization: cfg.auth, Accept: "application/json" },
+      signal: ctl.signal,
+    });
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, error: "O Grafana recusou o token (confira GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." };
+    }
+    if (res.status !== 200) return { ok: false, error: `O Grafana respondeu HTTP ${res.status}.` };
+    const body = (await res.json()) as PromMatrix;
+    return { ok: true, series: body.status === "success" ? (body.data?.result ?? []) : [] };
+  } catch {
+    return { ok: false, error: "Não foi possível falar com o Grafana (rede ou tempo esgotado)." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function fetchGrafanaSeries(
   metric: GrafanaMetric,
@@ -113,39 +140,65 @@ export async function fetchGrafanaSeries(
 
   const key = `${metric}:${range}`;
   const hit = cache.get(key);
-  if (hit && d.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  if (hit && d.now() - hit.at < CACHE_TTL_MS) return hit.value as GrafanaSeriesResult;
 
   const def = GRAFANA_SERIES[metric];
-  const { seconds, step } = GRAFANA_RANGES[range];
-  const end = Math.floor(d.now() / 1000);
-  const params = new URLSearchParams({ query: def.query, start: String(end - seconds), end: String(end), step: String(step) });
-
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  const out = await promQueryRange(cfg, def.query, range, d);
   let value: GrafanaSeriesResult;
-  try {
-    const res = await d.fetch(`${cfg.base}/api/v1/query_range?${params}`, {
-      headers: { Authorization: cfg.auth, Accept: "application/json" },
-      signal: ctl.signal,
-    });
-    if (res.status === 401 || res.status === 403) {
-      value = { configured: true, ok: false, metric, error: "O Grafana recusou o token (confira GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." };
-    } else if (res.status !== 200) {
-      value = { configured: true, ok: false, metric, error: `O Grafana respondeu HTTP ${res.status}.` };
-    } else {
-      const body = (await res.json()) as PromMatrix;
-      const values = body.status === "success" ? (body.data?.result?.[0]?.values ?? []) : [];
-      const points = values
-        .map(([ts, v]) => ({ t: Number(ts) * 1000, v: Number(v) }))
-        .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v));
-      value = { configured: true, ok: true, metric, label: def.label, unit: def.unit, range, points };
-    }
-  } catch {
-    value = { configured: true, ok: false, metric, error: "Não foi possível falar com o Grafana (rede ou tempo esgotado)." };
-  } finally {
-    clearTimeout(timer);
+  if (!out.ok) {
+    value = { configured: true, ok: false, metric, error: out.error };
+  } else {
+    const points = (out.series[0]?.values ?? [])
+      .map(([ts, v]) => ({ t: Number(ts) * 1000, v: Number(v) }))
+      .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v));
+    value = { configured: true, ok: true, metric, label: def.label, unit: def.unit, range, points };
   }
-
   if (value.configured && value.ok) cache.set(key, { at: d.now(), value });
+  return value;
+}
+
+export interface GrafanaDeploy {
+  commit: string;
+  firstSeen: number; // epoch ms; precisão = passo da consulta
+  lastSeen: number;
+  current: boolean;
+}
+
+export type GrafanaDeploysResult =
+  | { configured: false }
+  | { configured: true; ok: true; range: GrafanaRange; stepSeconds: number; deploys: GrafanaDeploy[] }
+  | { configured: true; ok: false; error: string };
+
+/**
+ * Deploys vistos pelo Grafana: cada commit diferente em `periscopio_build_info` é uma versão que
+ * esteve no ar. Não usa a API da Render (a chave dela tem acesso total à conta, inclusive às variáveis).
+ */
+export async function fetchGrafanaDeploys(range: GrafanaRange, overrides: Partial<GrafanaDeps> = {}): Promise<GrafanaDeploysResult> {
+  const d = { ...defaults, ...overrides };
+  const cfg = resolveConfig(d.env);
+  if (!cfg) return { configured: false };
+
+  const key = `deploys:${range}`;
+  const hit = cache.get(key);
+  if (hit && d.now() - hit.at < CACHE_TTL_MS) return hit.value as GrafanaDeploysResult;
+
+  const out = await promQueryRange(cfg, "max by (commit) (periscopio_build_info)", range, d);
+  if (!out.ok) return { configured: true, ok: false, error: out.error };
+
+  const { step } = GRAFANA_RANGES[range];
+  const nowMs = d.now();
+  const deploys: GrafanaDeploy[] = out.series
+    .map((s) => {
+      const times = (s.values ?? []).map(([ts]) => Number(ts) * 1000).filter(Number.isFinite);
+      if (!s.metric?.commit || times.length === 0) return null;
+      const firstSeen = Math.min(...times);
+      const lastSeen = Math.max(...times);
+      return { commit: s.metric.commit.slice(0, 12), firstSeen, lastSeen, current: nowMs - lastSeen <= step * 2 * 1000 };
+    })
+    .filter((x): x is GrafanaDeploy => x !== null)
+    .sort((a, b) => b.firstSeen - a.firstSeen);
+
+  const value: GrafanaDeploysResult = { configured: true, ok: true, range, stepSeconds: step, deploys };
+  cache.set(key, { at: d.now(), value });
   return value;
 }

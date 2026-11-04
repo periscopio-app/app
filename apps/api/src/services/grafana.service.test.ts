@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { clearGrafanaCache, fetchGrafanaSeries, GRAFANA_SERIES } from "./grafana.service";
+import { clearGrafanaCache, fetchGrafanaDeploys, fetchGrafanaSeries, GRAFANA_SERIES } from "./grafana.service";
 
 const env = {
   GRAFANA_PROM_URL: "https://prometheus-prod-00.example.net/api/prom/",
@@ -75,5 +75,47 @@ describe("fetchGrafanaSeries", () => {
     t += 31_000;
     await fetchGrafanaSeries("cpu_percent", "1h", deps);
     assert.equal(chamadas, 2);
+  });
+});
+
+describe("fetchGrafanaDeploys", () => {
+  beforeEach(() => clearGrafanaCache());
+
+  const deployBody = {
+    status: "success",
+    data: {
+      result: [
+        { metric: { commit: "aaaaaaa" }, values: [[1_799_000_000, "1"], [1_799_500_000, "1"]] },
+        { metric: { commit: "bbbbbbb" }, values: [[1_799_700_000, "1"], [1_799_999_900, "1"]] },
+        { metric: {}, values: [[1_799_999_900, "1"]] },
+      ],
+    },
+  };
+
+  it("sem configuração devolve configured=false", async () => {
+    assert.deepEqual(await fetchGrafanaDeploys("7d", { env: {}, now: () => NOW }), { configured: false });
+  });
+
+  it("lista commits do mais novo ao mais antigo e marca o atual", async () => {
+    let url = "";
+    const r = await fetchGrafanaDeploys("7d", {
+      env,
+      now: () => NOW,
+      fetch: async (u) => { url = u; return { status: 200, json: async () => deployBody }; },
+    });
+    assert.match(decodeURIComponent(url.replace(/\+/g, " ")), /max by \(commit\) \(periscopio_build_info\)/);
+    assert.equal(r.configured && r.ok, true);
+    if (r.configured && r.ok) {
+      assert.deepEqual(r.deploys.map((d) => d.commit), ["bbbbbbb", "aaaaaaa"]);
+      assert.equal(r.deploys[0].current, true);
+      assert.equal(r.deploys[1].current, false);
+      assert.equal(r.deploys[0].firstSeen, 1_799_700_000_000);
+    }
+  });
+
+  it("token recusado vira erro sem vazar o token", async () => {
+    const r = await fetchGrafanaDeploys("24h", { env, now: () => NOW, fetch: async () => ({ status: 403, json: async () => ({}) }) });
+    assert.equal(r.configured && !r.ok, true);
+    assert.ok(!JSON.stringify(r).includes("token-secreto-de-teste"));
   });
 });
