@@ -6,6 +6,7 @@
  * o mesmo conteúdo; (4) revalida a saída do modelo (formato, tamanho, termos proibidos, números inventados) e, se qualquer
  * coisa falhar, devolve a versão por regras. A IA organiza o que a equipe marcou; não diagnostica nem recomenda conduta.
  */
+import { recordAiUsageFromReply } from "../observability/ai-usage";
 import {
   ABC_DOMAINS,
   ABC_TEA_ITEMS,
@@ -221,6 +222,7 @@ async function callTeaRag(digest: TeaDigest): Promise<unknown | null> {
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { summary?: unknown };
+    recordAiUsageFromReply("resumo_tea", data);
     return data.summary ?? null;
   } catch {
     return null;

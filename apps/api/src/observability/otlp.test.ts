@@ -70,4 +70,19 @@ describe("buildOtlpPayload", () => {
     const txt = JSON.stringify(buildOtlpPayload(ctx()));
     assert.ok(!/studentCode|email@|cpf|token/i.test(txt));
   });
+
+  it("leva o uso de IA como contadores de tokens e de chamadas, sem texto", () => {
+    const m = byName(buildOtlpPayload(ctx({ raw: { ...ctx().raw, ai: [{ feature: "assistente_bi", provider: "groq", model: "m1", ok: 4, failed: 1, inputTokens: 900, outputTokens: 120 }] } })));
+    const tok = m.periscopio_ai_tokens.sum.dataPoints.map((d: any) => [d.attributes.find((a: any) => a.key === "direction").value.stringValue, d.asDouble]);
+    assert.deepEqual(tok, [["input", 900], ["output", 120]]);
+    const calls = m.periscopio_ai_requests.sum.dataPoints.map((d: any) => [d.attributes.find((a: any) => a.key === "status").value.stringValue, d.asDouble]);
+    assert.deepEqual(calls, [["ok", 4], ["error", 1]]);
+    assert.equal(m.periscopio_ai_tokens.sum.isMonotonic, true);
+  });
+
+  it("sem uso de IA não emite as séries de IA", () => {
+    const m = byName(buildOtlpPayload(ctx()));
+    assert.equal(m.periscopio_ai_tokens, undefined);
+    assert.equal(m.periscopio_ai_requests, undefined);
+  });
 });

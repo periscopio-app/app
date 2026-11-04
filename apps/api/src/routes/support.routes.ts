@@ -1,3 +1,4 @@
+import { recordAiUsageFromReply } from "../observability/ai-usage";
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import crypto from "node:crypto";
@@ -94,6 +95,7 @@ export async function supportRoutes(app: FastifyInstance) {
         });
         if (res.ok) {
           const data = (await res.json()) as any;
+          recordAiUsageFromReply("suporte", data);
           if (data && typeof data.summary === "string") {
             ragSummary = data.summary;
           }

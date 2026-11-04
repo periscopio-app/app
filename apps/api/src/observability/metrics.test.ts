@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { incr, observeRequest, recordError, resetMetrics, snapshot, toPrometheus } from "./metrics";
+import { incr, observeRequest, recordAiUsage, rawMetrics, recordError, resetMetrics, snapshot, toPrometheus } from "./metrics";
 import { genRequestId, stripQuery } from "./http";
 import { isLimited } from "../security/rate-limit";
 
@@ -79,4 +79,26 @@ test("a saída do Prometheus traz a versão em execução e o início do process
     if (prev === undefined) delete process.env.RENDER_GIT_COMMIT;
     else process.env.RENDER_GIT_COMMIT = prev;
   }
+});
+
+test("uso de IA soma tokens e chamadas por recurso, provedor e modelo, sem texto", () => {
+  resetMetrics();
+  recordAiUsage("assistente_bi", [{ provider: "groq", model: "m1", inputTokens: 100, outputTokens: 20, ok: true }]);
+  recordAiUsage("assistente_bi", [{ provider: "groq", model: "m1", inputTokens: 50, outputTokens: 10, ok: true }, { provider: "groq", model: "m1", inputTokens: 0, outputTokens: 0, ok: false }]);
+  const ai = rawMetrics().ai;
+  assert.equal(ai.length, 1);
+  assert.deepEqual([ai[0].inputTokens, ai[0].outputTokens, ai[0].ok, ai[0].failed], [150, 30, 2, 1]);
+  const out = toPrometheus();
+  assert.match(out, /periscopio_ai_tokens_total\{feature="assistente_bi",provider="groq",model="m1",direction="input"\} 150/);
+  assert.match(out, /periscopio_ai_requests_total\{feature="assistente_bi",provider="groq",model="m1",status="error"\} 1/);
+});
+
+test("rótulos de IA são limpos e o número de combinações tem teto", () => {
+  resetMetrics();
+  recordAiUsage('f"x\n', [{ provider: "p", model: 'm"{}', inputTokens: -5, outputTokens: Number.NaN, ok: true }]);
+  const [a] = rawMetrics().ai;
+  assert.ok(!/["{}\n]/.test(a.feature + a.model));
+  assert.deepEqual([a.inputTokens, a.outputTokens], [0, 0]);
+  for (let i = 0; i < 150; i++) recordAiUsage("f", [{ provider: "p", model: `m${i}`, inputTokens: 1, outputTokens: 1, ok: true }]);
+  assert.ok(rawMetrics().ai.length <= 100);
 });

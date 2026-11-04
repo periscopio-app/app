@@ -1,3 +1,5 @@
+import { networkErrorCode } from "../storage/config";
+
 /**
  * Histórico de métricas vindo do Grafana Cloud (Prometheus), só para o Administrador Master.
  *
@@ -30,6 +32,11 @@ export const GRAFANA_SERIES = {
     label: "CPU do processo",
     unit: "%",
     query: "sum(rate(periscopio_process_cpu_seconds_total[5m])) * 100",
+  },
+  ai_tokens_per_hour: {
+    label: "Tokens de IA por hora",
+    unit: "tokens/h",
+    query: "sum(increase(periscopio_ai_tokens_total[1h]))",
   },
   eventloop_lag_p99_ms: {
     label: "Atraso do event loop (p99)",
@@ -77,7 +84,7 @@ const defaults: GrafanaDeps = {
 
 const CACHE_TTL_MS = 30_000;
 const TIMEOUT_MS = 8_000;
-const cache = new Map<string, { at: number; value: GrafanaSeriesResult | GrafanaDeploysResult }>();
+const cache = new Map<string, { at: number; value: GrafanaSeriesResult | GrafanaDeploysResult | GrafanaStatsResult }>();
 
 export function clearGrafanaCache() {
   cache.clear();
@@ -98,6 +105,16 @@ function resolveConfig(env: GrafanaDeps["env"]): { base: string; auth: string } 
   if (parsed.protocol !== "https:") return null;
   const base = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
   return { base, auth: `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` };
+}
+
+/** Mensagem curta, sem token nem corpo da resposta, que aponta a variável provável. */
+export function describePromError(err: unknown): string {
+  const code = networkErrorCode(err);
+  if (code === "ABORT_ERR") return "O Grafana não respondeu a tempo. Confira se GRAFANA_PROM_URL é o endereço público do Prometheus (termina em /api/prom).";
+  if (err instanceof SyntaxError) return "O endereço de leitura não devolveu dados do Prometheus. Confira se GRAFANA_PROM_URL termina em /api/prom.";
+  if (code === "ENOTFOUND" || code === "EAI_AGAIN") return "O endereço de GRAFANA_PROM_URL não existe (DNS). Use o endereço público do Prometheus, não o interno.";
+  if (code) return `Não foi possível falar com o Grafana (${code}). Confira GRAFANA_PROM_URL.`;
+  return "Não foi possível falar com o Grafana (rede). Confira GRAFANA_PROM_URL.";
 }
 
 type PromSeries = { metric?: Record<string, string>; values?: [number, string][] };
@@ -122,8 +139,8 @@ async function promQueryRange(cfg: { base: string; auth: string }, query: string
     if (res.status !== 200) return { ok: false, error: `O Grafana respondeu HTTP ${res.status}.` };
     const body = (await res.json()) as PromMatrix;
     return { ok: true, series: body.status === "success" ? (body.data?.result ?? []) : [] };
-  } catch {
-    return { ok: false, error: "Não foi possível falar com o Grafana (rede ou tempo esgotado)." };
+  } catch (err) {
+    return { ok: false, error: describePromError(err) };
   } finally {
     clearTimeout(timer);
   }
@@ -199,6 +216,124 @@ export async function fetchGrafanaDeploys(range: GrafanaRange, overrides: Partia
     .sort((a, b) => b.firstSeen - a.firstSeen);
 
   const value: GrafanaDeploysResult = { configured: true, ok: true, range, stepSeconds: step, deploys };
+  cache.set(key, { at: d.now(), value });
+  return value;
+}
+
+// ─── Resumo para quem gere o sistema ───────────────────────────────────────
+
+type PromVector = { status?: string; data?: { result?: { metric?: Record<string, string>; value?: [number, string] }[] } };
+type InstantOutcome = { ok: true; rows: { labels: Record<string, string>; value: number }[] } | { ok: false; error: string };
+
+async function promInstant(cfg: { base: string; auth: string }, query: string, d: GrafanaDeps): Promise<InstantOutcome> {
+  const params = new URLSearchParams({ query, time: String(Math.floor(d.now() / 1000)) });
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  try {
+    const res = await d.fetch(`${cfg.base}/api/v1/query?${params}`, { headers: { Authorization: cfg.auth, Accept: "application/json" }, signal: ctl.signal });
+    if (res.status === 401 || res.status === 403) return { ok: false, error: "O Grafana recusou o token (confira GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." };
+    if (res.status !== 200) return { ok: false, error: `O Grafana respondeu HTTP ${res.status}.` };
+    const body = (await res.json()) as PromVector;
+    const rows = (body.status === "success" ? (body.data?.result ?? []) : [])
+      .map((r) => ({ labels: r.metric ?? {}, value: Number(r.value?.[1]) }))
+      .filter((r) => Number.isFinite(r.value));
+    return { ok: true, rows };
+  } catch (err) {
+    return { ok: false, error: describePromError(err) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export interface GrafanaStats {
+  uptimeSeconds: number | null;
+  requests: number | null;
+  errors5xx: number | null;
+  p95Ms: number | null;
+  memoryMb: number | null;
+  ai: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    calls: number | null;
+    errors: number | null;
+    byModel: { provider: string; model: string; tokens: number }[];
+    byFeature: { feature: string; tokens: number }[];
+  };
+}
+
+export type GrafanaStatsResult =
+  | { configured: false }
+  | {
+      configured: true;
+      ok: true;
+      range: GrafanaRange;
+      stats: GrafanaStats;
+      /** Preços por milhão de tokens, só se o administrador definir AI_PRICE_*; nenhum valor é inventado. */
+      pricing: { inputPerMtok: number | null; outputPerMtok: number | null; currency: string };
+    }
+  | { configured: true; ok: false; error: string };
+
+const WINDOW: Record<GrafanaRange, string> = { "1h": "1h", "24h": "24h", "7d": "7d" };
+const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+
+export async function fetchGrafanaStats(range: GrafanaRange, overrides: Partial<GrafanaDeps> = {}): Promise<GrafanaStatsResult> {
+  const d = { ...defaults, ...overrides };
+  const cfg = resolveConfig(d.env);
+  if (!cfg) return { configured: false };
+
+  const key = `stats:${range}`;
+  const hit = cache.get(key);
+  if (hit && d.now() - hit.at < CACHE_TTL_MS) return hit.value as GrafanaStatsResult;
+
+  const w = WINDOW[range];
+  const q = (expr: string) => promInstant(cfg, expr, d);
+  const [up, req, err5, p95, mem, aiIn, aiOut, aiCalls, aiErr, byModel, byFeature] = await Promise.all([
+    q("max(periscopio_uptime_seconds)"),
+    q(`sum(increase(periscopio_http_requests_total[${w}]))`),
+    q(`sum(increase(periscopio_http_requests_total{status_class="5xx"}[${w}]))`),
+    q(`histogram_quantile(0.95, sum by (le) (rate(periscopio_http_request_duration_ms_bucket[${w}])))`),
+    q("max(periscopio_process_resident_memory_bytes) / 1048576"),
+    q(`sum(increase(periscopio_ai_tokens_total{direction="input"}[${w}]))`),
+    q(`sum(increase(periscopio_ai_tokens_total{direction="output"}[${w}]))`),
+    q(`sum(increase(periscopio_ai_requests_total[${w}]))`),
+    q(`sum(increase(periscopio_ai_requests_total{status="error"}[${w}]))`),
+    q(`sum by (provider, model) (increase(periscopio_ai_tokens_total[${w}]))`),
+    q(`sum by (feature) (increase(periscopio_ai_tokens_total[${w}]))`),
+  ]);
+
+  const first = [up, req, err5, p95, mem, aiIn, aiOut, aiCalls, aiErr, byModel, byFeature].find((o) => !o.ok);
+  if (first && !first.ok) return { configured: true, ok: false, error: first.error };
+
+  const one = (o: InstantOutcome) => (o.ok && o.rows.length ? o.rows[0].value : null);
+  const rounded = (v: number | null) => (v === null ? null : Math.round(v));
+  const stats: GrafanaStats = {
+    uptimeSeconds: rounded(one(up)),
+    requests: rounded(one(req)),
+    errors5xx: rounded(one(err5)),
+    p95Ms: rounded(one(p95)),
+    memoryMb: rounded(one(mem)),
+    ai: {
+      inputTokens: rounded(one(aiIn)),
+      outputTokens: rounded(one(aiOut)),
+      calls: rounded(one(aiCalls)),
+      errors: rounded(one(aiErr)),
+      byModel: (byModel.ok ? byModel.rows : [])
+        .map((r) => ({ provider: r.labels.provider ?? "desconhecido", model: r.labels.model ?? "desconhecido", tokens: Math.round(r.value) }))
+        .filter((r) => r.tokens > 0)
+        .sort((a, b) => b.tokens - a.tokens),
+      byFeature: (byFeature.ok ? byFeature.rows : [])
+        .map((r) => ({ feature: r.labels.feature ?? "desconhecido", tokens: Math.round(r.value) }))
+        .filter((r) => r.tokens > 0)
+        .sort((a, b) => b.tokens - a.tokens),
+    },
+  };
+  const value: GrafanaStatsResult = {
+    configured: true,
+    ok: true,
+    range,
+    stats,
+    pricing: { inputPerMtok: num(d.env.AI_PRICE_INPUT_PER_MTOK), outputPerMtok: num(d.env.AI_PRICE_OUTPUT_PER_MTOK), currency: d.env.AI_PRICE_CURRENCY?.trim() || "US$" },
+  };
   cache.set(key, { at: d.now(), value });
   return value;
 }

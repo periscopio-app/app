@@ -43,11 +43,33 @@ const routes = new Map<string, RouteStat>();
 const counters = new Map<string, number>();
 const recentErrors: RecentError[] = [];
 
+/** Uso de IA por recurso, provedor e modelo (somente contagens: nunca o texto enviado nem o recebido). */
+interface AiStat { feature: string; provider: string; model: string; ok: number; failed: number; inputTokens: number; outputTokens: number }
+const aiStats = new Map<string, AiStat>();
+const AI_MAX_KEYS = 100;
+const aiLabel = (v: string) => v.replace(/[^\w.:/\- ]/g, "").slice(0, 80) || "desconhecido";
+
+export function recordAiUsage(feature: string, items: { provider: string; model: string; inputTokens: number; outputTokens: number; ok: boolean }[]): void {
+  for (const it of items) {
+    const key = `${aiLabel(feature)}|${aiLabel(it.provider)}|${aiLabel(it.model)}`;
+    let st = aiStats.get(key);
+    if (!st) {
+      if (aiStats.size >= AI_MAX_KEYS) continue;
+      st = { feature: aiLabel(feature), provider: aiLabel(it.provider), model: aiLabel(it.model), ok: 0, failed: 0, inputTokens: 0, outputTokens: 0 };
+      aiStats.set(key, st);
+    }
+    if (it.ok) st.ok++; else st.failed++;
+    st.inputTokens += Math.max(0, Math.round(it.inputTokens) || 0);
+    st.outputTokens += Math.max(0, Math.round(it.outputTokens) || 0);
+  }
+}
+
 export function resetMetrics(): void {
   startedAt = Date.now();
   routes.clear();
   counters.clear();
   recentErrors.length = 0;
+  aiStats.clear();
 }
 
 export function incr(name: string, by = 1): void {
@@ -144,6 +166,7 @@ export function rawMetrics() {
     startedAt,
     routes: [...routes.values()].map((r) => ({ ...r, buckets: [...r.buckets] })),
     counters: [...counters.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    ai: [...aiStats.values()].map((a) => ({ ...a })),
   };
 }
 
@@ -207,5 +230,18 @@ export function toPrometheus(): string {
   out.push("# HELP periscopio_events_total Eventos internos (falhas de e-mail, limites de taxa, redefinições).");
   out.push("# TYPE periscopio_events_total counter");
   for (const [name, n] of [...counters.entries()].sort()) out.push(`periscopio_events_total{event="${esc(name)}"} ${n}`);
+  if (aiStats.size) {
+    out.push("# HELP periscopio_ai_tokens_total Tokens gastos pela IA, por recurso, provedor, modelo e direção.");
+    out.push("# TYPE periscopio_ai_tokens_total counter");
+    out.push("# HELP periscopio_ai_requests_total Chamadas à IA, por recurso, provedor, modelo e resultado.");
+    out.push("# TYPE periscopio_ai_requests_total counter");
+    for (const a of aiStats.values()) {
+      const l = `feature="${esc(a.feature)}",provider="${esc(a.provider)}",model="${esc(a.model)}"`;
+      out.push(`periscopio_ai_tokens_total{${l},direction="input"} ${a.inputTokens}`);
+      out.push(`periscopio_ai_tokens_total{${l},direction="output"} ${a.outputTokens}`);
+      out.push(`periscopio_ai_requests_total{${l},status="ok"} ${a.ok}`);
+      out.push(`periscopio_ai_requests_total{${l},status="error"} ${a.failed}`);
+    }
+  }
   return out.join("\n") + "\n";
 }

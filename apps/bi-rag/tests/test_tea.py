@@ -33,7 +33,7 @@ def test_endpoint_sem_provedor_informa_disabled(monkeypatch):
     _clear(monkeypatch)
     monkeypatch.setenv("BI_RAG_TOKEN", "t")
     r = client.post("/summarize-tea", json={"digest": {"instrumentos": []}}, headers={"x-service-token": "t"})
-    assert r.status_code == 200 and r.json() == {"summary": None, "source": "disabled"}
+    assert r.status_code == 200 and r.json() == {"summary": None, "source": "disabled", "usage": []}
 
 
 def test_endpoint_com_provedor_simulado_envia_so_o_digest(monkeypatch):

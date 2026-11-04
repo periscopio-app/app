@@ -1,3 +1,4 @@
+import { recordAiUsageFromReply } from "../observability/ai-usage";
 import { RE_FORMS, RE_TEXTO_MAX, camposDoForm, type ReCampo, type ReFormId, type ReOpcao, lerGenograma, resumoDoGenograma } from "@periscopio/shared";
 import { BANNED } from "./tea-summary.service";
 
@@ -163,6 +164,7 @@ async function chamarAssistente(ctx: ContextoObservacoes): Promise<unknown | nul
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { draft?: unknown };
+    recordAiUsageFromReply("observacoes_re", data);
     return data.draft ?? null;
   } catch {
     return null;

@@ -38,6 +38,12 @@ services:
         sync: false
       - key: GRAFANA_OTLP_TOKEN
         sync: false
+      - key: AI_PRICE_INPUT_PER_MTOK
+        sync: false
+      - key: AI_PRICE_OUTPUT_PER_MTOK
+        sync: false
+      - key: AI_PRICE_CURRENCY
+        sync: false
       - key: GRAFANA_PROM_URL
         sync: false
       - key: GRAFANA_PROM_USER
