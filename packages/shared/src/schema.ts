@@ -670,6 +670,23 @@ export const consentAcceptances = pgTable("consent_acceptances", {
 });
 
 /**
+ * Condição verdadeiro/falso do Termo de Responsabilidade Clínica e LGPD de cada profissional.
+ * `accepted = false` (ou ausência de linha) NÃO libera o uso dos dados clínicos. A prova do aceite
+ * (hash, IP, navegador, versão) fica em consent_acceptances e na trilha de auditoria; aqui só o estado atual.
+ */
+export const professionalTermStatus = pgTable("professional_term_status", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  accepted: boolean("accepted").default(false).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  termId: uuid("term_id").references(() => consentTerms.id),
+  termVersion: varchar("term_version", { length: 20 }),
+  /** Aceite que originou o estado (sem chave estrangeira: o reset de fábrica apaga os aceites). */
+  acceptanceId: uuid("acceptance_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Anexos e documentos clínicos vinculados ao prontuário.
  * Armazenamento opaco em bucket S3/Supabase sem PII no path (Task 02B).
  */

@@ -3,7 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/client";
 import { users } from "@periscopio/shared";
 import { auth } from "../auth";
-import { hasRole, isRole, isSuperAdminEmail, type Role } from "./roles";
+import { VIRTUAL_ADMIN_ID, hasRole, isRole, isSuperAdminEmail, type Role } from "./roles";
+import { termoPendente } from "../services/professional-term.service";
 import { decideCapability } from "../services/privilege.service";
 import type { CapabilityKey } from "./capabilities";
 
@@ -55,7 +56,7 @@ export async function requireActor(
     // Super admins are identified solely by env var — skip the DB entirely.
     if (isSuper) {
       const actor: Actor = {
-        id: "00000000-0000-0000-0000-000000000001",
+        id: VIRTUAL_ADMIN_ID,
         name: "Admin Master",
         email,
         tenantId: "00000000-0000-0000-0000-000000000001",
@@ -114,6 +115,12 @@ export async function requireActor(
 
     if (allowedRoles && !hasRole(actor.role, allowedRoles, actor.email)) {
       await reply.status(403).send({ error: "Seu perfil não possui permissão para esta ação" });
+      return null;
+    }
+
+    // Termo de Responsabilidade Clínica e LGPD: sem aceite (false) o perfil clínico não usa os dados.
+    if (await termoPendente(actor, request.url)) {
+      await reply.status(403).send({ error: "Aceite o Termo de Responsabilidade Clínica e LGPD para continuar.", code: "TERMO_PENDENTE" });
       return null;
     }
 
