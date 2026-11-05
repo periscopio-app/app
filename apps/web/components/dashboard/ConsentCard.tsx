@@ -5,7 +5,8 @@ import { ShieldCheck, CheckCircle2, AlertTriangle, FileText, UserCheck } from "l
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
 import { consentAcceptSchema, cpfFieldError, formatCpf } from "@periscopio/shared";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { CartaoProtecao } from "./CartaoProtecao";
 
 interface ConsentAcceptance {
   id: string;
@@ -37,6 +38,7 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
   const [signerDocument, setSignerDocument] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [erroTermo, setErroTermo] = useState<string | null>(null);
   const [cpfTouched, setCpfTouched] = useState(false);
   const cpfErro = cpfFieldError(signerDocument);
   const cpfCompleto = signerDocument.replace(/\D/g, "").length === 11;
@@ -61,12 +63,13 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
   }, [fetchConsent]);
 
   const openSignModal = async () => {
+    setErroTermo(null);
     try {
       const { term: latestTerm } = await api.get<{ term: any }>("/api/consent/terms/latest?type=responsavel_legal");
       setTerm(latestTerm);
       setModalOpen(true);
-    } catch (e: any) {
-      alert("Erro ao carregar o termo vigente.");
+    } catch {
+      setErroTermo("Não foi possível carregar o termo vigente. Tente de novo em instantes.");
     }
   };
 
@@ -105,60 +108,48 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
     }
   };
 
-  if (loading) return null;
-
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-200">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-black flex items-center gap-2">
-              Consentimento do Responsável (TCLE - LGPD)
-              {hasActiveConsent ? (
-                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Concedido
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Pendente de Registro
-                </span>
-              )}
-            </h3>
-            <p className="text-xs text-slate-500">
-              Autorização livre e esclarecida dos responsáveis legais para triagem e acompanhamento de saúde.
-            </p>
-          </div>
-        </div>
-
-        <Button type="submit"
-          onClick={openSignModal}
-          variant="outline" size="sm"
-        >
-          {hasActiveConsent ? "Ver / Adicionar Prova de Aceite" : "Registrar Consentimento"}
+    <CartaoProtecao
+      icone={<ShieldCheck className="h-5 w-5" />}
+      titulo="Consentimento do Responsável (TCLE - LGPD)"
+      selos={
+        loading ? (
+          <Badge variant="secondary" className="whitespace-nowrap text-[11px]">Verificando…</Badge>
+        ) : hasActiveConsent ? (
+          <Badge variant="success" className="whitespace-nowrap text-[11px]"><CheckCircle2 className="h-3 w-3" aria-hidden /> Concedido</Badge>
+        ) : (
+          <Badge variant="warning" className="whitespace-nowrap text-[11px]"><AlertTriangle className="h-3 w-3" aria-hidden /> Pendente de registro</Badge>
+        )
+      }
+      descricao="Autorização livre e esclarecida dos responsáveis legais para triagem e acompanhamento de saúde."
+      acoes={
+        <Button type="button" onClick={openSignModal} variant="outline" size="sm" disabled={loading}>
+          {hasActiveConsent ? "Ver / adicionar prova de aceite" : "Registrar consentimento"}
         </Button>
-      </div>
+      }
+    >
+      {erroTermo && (
+        <p role="alert" className="rounded-xl border border-erro/30 bg-erro/5 px-3 py-2 text-xs text-black">{erroTermo}</p>
+      )}
 
       {acceptances.length > 0 && (
-        <div className="pt-2 border-t border-slate-100 space-y-2">
+        <ul className="space-y-2 border-t border-linha pt-3">
           {acceptances.map((acc) => (
-            <div key={acc.id} className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-black">
+            <li key={acc.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-linha bg-fundo p-3 text-xs text-neutral-800">
+              <div className="min-w-0">
+                <p className="break-words font-semibold text-black">
                   Signatário(a): {acc.signerName} ({acc.signerRole})
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-neutral-700">
                   {acc.termTitle} ({acc.termVersion}) • Assinado em {new Date(acc.acceptedAt).toLocaleDateString("pt-BR")}
                 </p>
               </div>
-              <span className="font-mono text-[10px] bg-white px-2 py-1 rounded border border-slate-200 text-slate-500" title={`Evidência SHA-256: ${acc.evidenceSha256}`}>
-                Hash: {acc.evidenceSha256.slice(0, 8)}...
+              <span className="shrink-0 rounded border border-linha bg-white px-2 py-1 font-mono text-[10px] text-neutral-700" title={`Evidência SHA-256: ${acc.evidenceSha256}`}>
+                Hash: {acc.evidenceSha256.slice(0, 8)}…
               </span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {/* Modal de Registro de Aceite */}
@@ -264,6 +255,6 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
           </form>
         )}
       </Modal>
-    </div>
+    </CartaoProtecao>
   );
 }
