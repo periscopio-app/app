@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
+import { inserirAuditoria } from "../services/audit.service";
 import {
   auditLogs,
   caseMedicalForms,
+  caseSpecialtyForms,
   caseSummaries,
   caseTimeline,
   caseTransitions,
@@ -1065,6 +1067,85 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     return reply.status(201).send({ success: true, delegationsCount: delegations.length });
   });
 
+  /**
+   * Troca o profissional de uma seção delegada. Existe porque o médico pode escolher, sem querer, o profissional de outra
+   * especialidade (a seção "neuropsicologia" foi parar na conta da psicopedagogia e não aparecia para a neuropsicóloga).
+   * Só vale enquanto a seção está pendente e sem nada preenchido: depois que o profissional começa, trocar apagaria o
+   * trabalho dele. Fica na trilha do caso e na auditoria.
+   */
+  const reassignSchema = z.object({ professionalId: z.string().uuid("Escolha o profissional.") });
+
+  app.post("/api/cases/sections/:sectionId/reassign", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "case.delegate");
+    if (!actor) return;
+
+    const { sectionId } = request.params as { sectionId: string };
+    const parse = reassignSchema.safeParse(request.body);
+    if (!parse.success) return reply.status(400).send({ error: parse.error.issues[0]?.message ?? "Dados inválidos" });
+
+    const [section] = await db
+      .select()
+      .from(caseSummaries)
+      .where(and(eq(caseSummaries.id, sectionId), eq(caseSummaries.tenantId, actor.tenantId)))
+      .limit(1);
+    if (!section) return reply.status(404).send({ error: "Seção não encontrada" });
+    const visible = await caseVisibleTo(actor, section.caseId);
+    if (!visible) return reply.status(404).send({ error: "Seção não encontrada" });
+
+    if (section.status !== "pendente" || (section.notes ?? "").trim() !== "") {
+      return reply.status(409).send({ error: "Só dá para trocar o profissional enquanto a seção está pendente e sem anotações." });
+    }
+    const [{ total }] = await db.select({ total: count() }).from(caseSpecialtyForms).where(eq(caseSpecialtyForms.sectionId, section.id));
+    if (Number(total) > 0) {
+      return reply.status(409).send({ error: "O profissional já começou a preencher os formulários desta seção; não dá para trocar." });
+    }
+
+    const [novo] = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(eq(users.id, parse.data.professionalId), eq(users.tenantId, actor.tenantId), eq(users.role, "specialist"), eq(users.accessEnabled, true)))
+      .limit(1);
+    if (!novo) return reply.status(400).send({ error: "Profissional inválido para este município." });
+    if (novo.id === section.assignedProfessionalId) return reply.send({ success: true, unchanged: true });
+
+    await db.transaction(async (tx) => {
+      const txDb = tx as unknown as AnyDb;
+      await txDb.update(caseSummaries).set({ assignedProfessionalId: novo.id, updatedAt: new Date() }).where(eq(caseSummaries.id, section.id));
+      await txDb.insert(caseTimeline).values({
+        tenantId: actor.tenantId,
+        caseId: section.caseId,
+        actorId: actor.id,
+        event: "case:delegation_reassigned",
+        payload: { specialty: section.specialty, from: section.assignedProfessionalId, to: novo.id, actorRole: actor.role },
+      });
+    });
+
+    await recordAudit(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "case.delegation_reassigned",
+        entityType: "case",
+        entityId: section.caseId,
+        payload: { specialty: section.specialty },
+      },
+      request
+    );
+    await notificar({
+      tenantId: actor.tenantId,
+      eventId: `delegacao.criada:${section.caseId}:${section.specialty}:${novo.id}`,
+      eventType: "delegacao.criada",
+      recipientId: novo.id,
+      caseId: section.caseId,
+      specialty: section.specialty,
+      studentCode: visible.student.studentCode,
+      transient: false,
+    });
+
+    return reply.send({ success: true });
+  });
+
   // ── Devolução ao RE (md1 apenas) ────────────────────────────────────────
 
   const returnSchema = z.object({
@@ -1207,7 +1288,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       )
       .limit(1);
 
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "specialist-view:read",
@@ -1382,7 +1463,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       .where(and(eq(caseSummaries.caseId, caseId), eq(caseSummaries.tenantId, actor.tenantId)));
 
     // Auditoria de leitura do consolidado (append-only)
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "consolidated:read",
