@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos de teste automáticos** em 94 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **649 casos de teste automáticos** em 95 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -25,8 +25,15 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos 
 | REG-005 | RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-006 | com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 | REG-008 | gravar laudo grande que FALHA não infla a memória: o erro é curto e sem o arquivo (o Drizzle põe os parâmetros na mensagem) | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-009a | sem aceitar o termo o especialista é barrado com o motivo certo; a janela do termo continua acessível | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-009b | depois de aceitar, cada especialista puxa o encaminhamento que o médico fez para ele | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-009c | a fono salva, o status deixa de ser 'não iniciado' e a Conduta aparece como item próprio | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-009d | o médico troca o profissional de uma seção pendente: a neuropsicóloga passa a ver a dela | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-009e | não troca quando o profissional já começou (nada é perdido) nem quando a seção não está pendente | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-009f | varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 381
+## API — unitários — 385
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -421,7 +428,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/fono-conformidade-pdf.test.ts</code> — 16 · [REG-007] fonoaudiologia conforme o PDF — linguagem oral</summary>
+<details><summary><code>apps/api/src/services/fono-conformidade-pdf.test.ts</code> — 20 · [REG-007] fonoaudiologia conforme o PDF — linguagem oral</summary>
 
 - F1 TNI: pontuação bruta /60, pontuação-padrão com as faixas do PDF e as 6 marcações
 - F2 FV: nº de palavras, percentil, repetições, intrusões e clusters + as 6 classes, sem observação
@@ -435,6 +442,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos 
 - F9 sínteses da escrita e da fala têm a coluna Aplicação e Sim/Não
 - F10 anamnese: sem 'Conclusão da anamnese' e sem 'Observações'; dados antigos não bloqueiam
 - F6 o sumário que vai ao médico é o item 4 (plano terapêutico), não a síntese 2.9
+- a Conduta é um formulário próprio, entre o SRS-2 (3) e o plano terapêutico (4)
+- as 4 áreas do PDF, com o texto literal, e Conclusão/Conduta ao final
+- a síntese 2.9 não carrega mais a conduta; dados antigos dela não bloqueiam o salvamento
+- não é sumário: só o plano terapêutico (item 4) vai ao médico
 - o número antigo (n) e os novos (nums) são aceitos e mostrados com o rótulo
 - dados salvos antes (resposta + n + observação) continuam válidos
 - número não previsto, valor inválido ou fora do limite são recusados
@@ -737,7 +748,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 215
+## API — E2E (banco de teste, fluxo pela API real) — 222
 
 <details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 11 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
@@ -992,6 +1003,18 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos 
 - leads: o site público só insere; ler exige cross_tenant
 - catálogo do LMS: leitura para todos, escrita só cross_tenant
 - o papel da aplicação não lê as views de autenticação (hash de senha e sessões)
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/rotas-e-termo.e2e.test.ts</code> — 7 · [REG-009] jornada dos especialistas com a trava do termo ligada</summary>
+
+- [REG-009a] sem aceitar o termo o especialista é barrado com o motivo certo; a janela do termo continua acessível
+- [REG-009b] depois de aceitar, cada especialista puxa o encaminhamento que o médico fez para ele
+- [REG-009c] a fono salva, o status deixa de ser 'não iniciado' e a Conduta aparece como item próprio
+- [REG-009d] o médico troca o profissional de uma seção pendente: a neuropsicóloga passa a ver a dela
+- [REG-009e] não troca quando o profissional já começou (nada é perdido) nem quando a seção não está pendente
+- [REG-009f] varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master
+- [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
 
 </details>
 
