@@ -5,17 +5,46 @@ import { ShieldAlert, CheckCircle2, FileText, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
 
+interface TermoVigente {
+  id: string;
+  version: string;
+  title: string;
+  summary: string;
+  content: string;
+}
+
+/** "1. Sigilo e Reserva Profissional: texto" → título em negrito e texto normal. A primeira linha é o cabeçalho. */
+function Linha({ texto, cabecalho }: { texto: string; cabecalho: boolean }) {
+  if (cabecalho) return <p className="font-bold text-slate-900">{texto}</p>;
+  const m = texto.match(/^(\d+\.\s[^:]+:)\s*(.*)$/);
+  return m ? (
+    <p>
+      <strong>{m[1]}</strong> {m[2]}
+    </p>
+  ) : (
+    <p>{texto}</p>
+  );
+}
+
+/**
+ * Termo de Responsabilidade Clínica e LGPD. Um aceite por conta: depois de aceito, o servidor guarda `true` e esta janela
+ * nunca mais aparece para a conta. O texto exibido vem do servidor (é o mesmo que entra no hash da prova de aceite).
+ */
 export function ProfessionalConsentModal() {
   const [hasAccepted, setHasAccepted] = useState<boolean | null>(null);
+  const [termo, setTermo] = useState<TermoVigente | null>(null);
   const [acceptedCheckbox, setAcceptedCheckbox] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .get<{ hasAccepted: boolean }>("/api/me/professional-consent")
-      .then((res) => setHasAccepted(res.hasAccepted))
-      .catch(() => setHasAccepted(true)); // Se falhar rota não trava a interface
+      .get<{ hasAccepted: boolean; term?: TermoVigente }>("/api/me/professional-consent")
+      .then((res) => {
+        setTermo(res.term ?? null);
+        setHasAccepted(res.hasAccepted);
+      })
+      .catch(() => setHasAccepted(true)); // a trava de verdade é no servidor; se esta consulta falhar a janela não bloqueia a tela
   }, []);
 
   if (hasAccepted === null || hasAccepted === true) {
@@ -30,10 +59,10 @@ export function ProfessionalConsentModal() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/api/me/professional-consent/accept", {});
+      await api.post("/api/me/professional-consent/accept", { accepted: true, termId: termo?.id, termVersion: termo?.version });
       setHasAccepted(true);
     } catch (err: any) {
-      setError(err?.message || "Erro ao registrar aceite.");
+      setError(err?.message || "Não foi possível registrar o aceite agora. Nada foi gravado; tente de novo.");
     } finally {
       setLoading(false);
     }
@@ -48,10 +77,10 @@ export function ProfessionalConsentModal() {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              Termo de Responsabilidade Clínica & LGPD
+              {termo?.title ?? "Termo de Responsabilidade Clínica & LGPD"}
             </h2>
             <p className="text-xs text-slate-500">
-              Obrigatório para acesso e manuseio de prontuários de saúde mental infantil
+              {termo?.summary ?? "Obrigatório para acesso e manuseio de prontuários de saúde mental infantil"}
             </p>
           </div>
         </div>
@@ -63,22 +92,12 @@ export function ProfessionalConsentModal() {
           </div>
         )}
 
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 max-h-56 overflow-y-auto text-xs text-slate-700 space-y-2 leading-relaxed font-mono">
-          <p className="font-bold text-slate-900">
-            COMPROMISSO ÉTICO, DEONTOLÓGICO E DE PROTEÇÃO DE DADOS (LEI 13.709/2018):
-          </p>
-          <p>
-            1. <strong>Sigilo e Reserva Profissional:</strong> Declaro observar estritamente as resoluções do meu Conselho de Classe Profissional (CFM, CFP, CREFONO, ABPp, CFESS, etc.) pertinentes ao sigilo de prontuários clínicos.
-          </p>
-          <p>
-            2. <strong>Minimização de Dados (Art. 6º, III):</strong> Comprometo-me a acessar e registrar unicamente as informações pertinentes à minha especialidade técnica e à conduta assistencial do estudante.
-          </p>
-          <p>
-            3. <strong>Proibição de Vazamento e Cópia:</strong> É estritamente vedado copiar, fotografar, exportar ou compartilhar dados clínicos de menores com terceiros não autorizados ou por canais de mensageria não oficiais.
-          </p>
-          <p>
-            4. <strong>Imutabilidade e Auditoria:</strong> Estou ciente de que cada visualização e preenchimento de prontuário é auditada com carimbo de tempo, IP e assinatura eletrônica rastreável.
-          </p>
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 max-h-56 overflow-y-auto text-xs text-slate-700 space-y-2 leading-relaxed font-mono" tabIndex={0} aria-label="Texto do termo">
+          {termo ? (
+            termo.content.split("\n").map((linha, i) => <Linha key={i} texto={linha} cabecalho={i === 0} />)
+          ) : (
+            <p>Carregando o termo…</p>
+          )}
         </div>
 
         <label className="flex items-start gap-3 p-3.5 bg-purple-50/50 rounded-xl border border-purple-200/60 cursor-pointer">
@@ -95,7 +114,7 @@ export function ProfessionalConsentModal() {
 
         <Button
           type="button"
-          disabled={loading || !acceptedCheckbox}
+          disabled={loading || !acceptedCheckbox || !termo}
           onClick={handleAccept}
           variant="primary" size="md" className="w-full"
         >
