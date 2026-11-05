@@ -5,6 +5,8 @@ on:
     branches: [main, feat/**]
   pull_request:
     branches: [main]
+  # Fila de merge do GitHub: testa o PR já combinado com o que entrou antes dele (evita "verde sozinho, vermelho junto").
+  merge_group:
 
 jobs:
   typecheck-and-build:
@@ -23,6 +25,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Catálogo de regressão atualizado e todos os testes são executados
+        run: pnpm qa:catalogo:check
 
       - name: Typecheck shared
         run: pnpm --filter @periscopio/shared typecheck
@@ -105,3 +110,19 @@ jobs:
       - name: Testes do planejador e do serviço
         run: python -m pytest -q
         working-directory: apps/bi-rag
+
+  exigir-teste:
+    name: Trava - mudança de produto traz teste
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Exigir teste (rótulo `sem-teste` dispensa, com motivo no PR)
+        run: node qa/exigir-teste.mjs origin/${{ github.base_ref }}
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}

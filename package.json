@@ -11,7 +11,9 @@
     "typecheck": "pnpm -r typecheck",
     "seed:masters": "pnpm --filter @periscopio/api seed:masters",
     "seed:demo": "pnpm --filter @periscopio/api seed:demo",
-    "seed:journey": "pnpm --filter @periscopio/api seed:journey"
+    "seed:journey": "pnpm --filter @periscopio/api seed:journey",
+    "qa:catalogo": "node qa/gerar-catalogo.mjs",
+    "qa:catalogo:check": "node qa/gerar-catalogo.mjs --check"
   },
   "dependencies": {
     "next": "^15.5.28"
