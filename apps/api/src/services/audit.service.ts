@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import { auditLogs } from "@periscopio/shared";
 import type { FastifyRequest } from "fastify";
 import { ensureSchema } from "./schema-guard.service";
+import { VIRTUAL_ADMIN_ID } from "../security/roles";
 
 export interface AuditLogEntry {
   tenantId?: string | null;
@@ -36,7 +37,8 @@ export async function recordAudit(entry: AuditLogEntry, request?: FastifyRequest
 
     await db.insert(auditLogs).values({
       tenantId: entry.tenantId || undefined,
-      actorId: entry.userId || undefined,
+      // O Admin Master é virtual (sem linha em users): a chave estrangeira recusaria o registro inteiro. O e-mail fica gravado.
+      actorId: entry.userId && entry.userId !== VIRTUAL_ADMIN_ID ? entry.userId : undefined,
       userEmail: entry.userEmail || undefined,
       action: entry.action.slice(0, 80),
       entity: entry.entityType.slice(0, 60),
@@ -45,7 +47,13 @@ export async function recordAudit(entry: AuditLogEntry, request?: FastifyRequest
       durationMs: entry.durationMs ?? undefined,
       ipAddress: ip,
       userAgent: userAgent ? userAgent.slice(0, 500) : null,
-      metadata: entry.entityId && !entityId ? { ref: entry.entityId } : undefined,
+      metadata:
+        (entry.entityId && !entityId) || entry.userId === VIRTUAL_ADMIN_ID
+          ? {
+              ...(entry.entityId && !entityId ? { ref: entry.entityId } : {}),
+              ...(entry.userId === VIRTUAL_ADMIN_ID ? { actor: "admin_master_virtual" } : {}),
+            }
+          : undefined,
     });
   } catch (err) {
     console.error("[audit] Falha ao registrar log de auditoria:", err);

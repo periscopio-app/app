@@ -198,6 +198,12 @@ export const ADMINISTRATIVE_ONLY_ROLES: readonly Role[] = [
   "diretor",
 ] as const;
 
+/**
+ * Id do Admin Master (super admin identificado só pelo e-mail em SUPERADMIN_EMAILS). Não existe linha em `users`,
+ * então nenhuma chave estrangeira para users pode receber este id.
+ */
+export const VIRTUAL_ADMIN_ID = "00000000-0000-0000-0000-000000000001";
+
 /** Papéis clínicos autorizados a acessar/editar registros clínicos. */
 export const CLINICAL_ROLES: readonly Role[] = [
   "teacher",
