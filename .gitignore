@@ -16,3 +16,4 @@ coverage/
 __pycache__/
 mapping.json
 *.ndjson
+graphify-out/

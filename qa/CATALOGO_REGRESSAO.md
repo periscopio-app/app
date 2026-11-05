@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos de teste automáticos** em 92 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **621 casos de teste automáticos** em 93 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -15,9 +15,17 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 | REG-001e | depois do envio os comportamentos ficam em somente leitura (409) | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-002 | com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele) | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-002 | laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-003a | sem aceite (false) o perfil clínico é barrado no servidor, mas pode ler e aceitar o termo | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003b | aceitar sem marcar a caixa é recusado e não grava nada | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003c | com a caixa marcada grava prova, estado true e auditoria, e libera o uso | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003d | um aceite por conta: repetir não duplica prova nem auditoria | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003e | Admin Master (ator virtual, sem linha em users) consegue aceitar e não vê mais a janela | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003f | a auditoria de qualquer ação do Admin Master é gravada (antes a chave estrangeira derrubava o registro) | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-003g | termo desatualizado na tela é recusado (409) e nada é gravado | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 | REG-005 | RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-006 | com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 
-## API — unitários — 362
+## API — unitários — 365
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -440,7 +448,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/grafana.service.test.ts</code> — 16 · fetchGrafanaSeries</summary>
+<details><summary><code>apps/api/src/services/grafana.service.test.ts</code> — 19 · fetchGrafanaSeries</summary>
 
 - sem configuração devolve configured=false e não chama o Grafana
 - recusa URL que não seja https
@@ -458,6 +466,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 - os preços só aparecem se o administrador os definir
 - série sem dados vira null, não zero inventado
 - token recusado devolve erro sem vazar o token
+- lista só os NOMES das variáveis que faltam, nunca valores
+- endereço sem https:// ou inválido é apontado
+- série, deploys e resumo devolvem o motivo quando não estão configurados
 
 </details>
 
@@ -704,7 +715,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 206
+## API — E2E (banco de teste, fluxo pela API real) — 214
 
 <details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 10 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
@@ -1013,7 +1024,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/termo-profissional.e2e.test.ts</code> — 7 · [REG-003] termo profissional (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/termo-profissional.e2e.test.ts</code> — 8 · [REG-003] termo profissional (E2E)</summary>
 
 - [REG-003a] sem aceite (false) o perfil clínico é barrado no servidor, mas pode ler e aceitar o termo
 - [REG-003b] aceitar sem marcar a caixa é recusado e não grava nada
@@ -1022,6 +1033,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 - [REG-003e] Admin Master (ator virtual, sem linha em users) consegue aceitar e não vê mais a janela
 - [REG-003f] a auditoria de qualquer ação do Admin Master é gravada (antes a chave estrangeira derrubava o registro)
 - [REG-003g] termo desatualizado na tela é recusado (409) e nada é gravado
+- [REG-006] com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro
 
 </details>
 

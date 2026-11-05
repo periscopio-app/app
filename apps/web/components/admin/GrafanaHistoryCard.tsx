@@ -14,7 +14,7 @@ const METRICS = ["requests_per_min", "errors_5xx_per_min", "latency_p95_ms", "me
 
 export interface Point { t: number; v: number }
 export type Resposta =
-  | { configured: false }
+  | { configured: false; reason?: string }
   | { configured: true; ok: true; metric: string; label: string; unit: string; range: Range; points: Point[] }
   | { configured: true; ok: false; metric: string; error: string };
 
@@ -84,6 +84,8 @@ export function GrafanaHistoryCard() {
   }, [carregar]);
 
   const naoConfigurado = dados?.every((d) => !d.configured);
+  const semConfig = dados?.find((d) => !d.configured);
+  const motivo = semConfig && !semConfig.configured ? semConfig.reason : undefined;
 
   return (
     <section aria-label="Detalhes técnicos do Grafana">
@@ -129,6 +131,7 @@ export function GrafanaHistoryCard() {
         <div className="rounded-xl border border-[#E1E9ED] bg-white p-4 text-sm text-slate-600">
           O histórico ainda não está ligado. Defina <span className="font-mono">GRAFANA_PROM_URL</span>, <span className="font-mono">GRAFANA_PROM_USER</span> e{" "}
           <span className="font-mono">GRAFANA_PROM_TOKEN</span> no servidor (Render). O token deve ter só a permissão <span className="font-mono">metrics:read</span>.
+          {motivo && <span className="mt-2 block font-semibold text-slate-800" data-testid="motivo-grafana">{motivo}</span>}
         </div>
       )}
 

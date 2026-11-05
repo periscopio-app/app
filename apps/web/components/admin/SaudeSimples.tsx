@@ -27,7 +27,7 @@ interface Stats {
   };
 }
 type RespostaStats =
-  | { configured: false }
+  | { configured: false; reason?: string }
   | { configured: true; ok: true; range: Periodo; stats: Stats; pricing: { inputPerMtok: number | null; outputPerMtok: number | null; currency: string } }
   | { configured: true; ok: false; error: string };
 
@@ -138,6 +138,7 @@ export function SaudeSimples() {
       {!erro && resp && !resp.configured && (
         <div className="rounded-xl border border-[#E1E9ED] bg-white p-4 text-sm text-slate-600">
           O resumo ainda não está ligado. A equipe técnica precisa definir, no servidor (Render), <span className="font-mono">GRAFANA_PROM_URL</span>, <span className="font-mono">GRAFANA_PROM_USER</span> e <span className="font-mono">GRAFANA_PROM_TOKEN</span>.
+          {resp.reason && <span className="mt-2 block font-semibold text-slate-800" data-testid="motivo-grafana">{resp.reason}</span>}
         </div>
       )}
 
