@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **621 casos de teste automáticos** em 93 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **637 casos de teste automáticos** em 94 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -25,7 +25,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **621 casos 
 | REG-005 | RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-006 | com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 
-## API — unitários — 365
+## API — unitários — 381
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -417,6 +417,27 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **621 casos 
 - registros antigos ganham os campos do Formulário I vazios
 - data futura no encaminhamento é aceita (agendamento); formato inválido continua recusado
 - datas dos destinos do Formulário I podem ser futuras; formato e textos têm limite
+
+</details>
+
+<details><summary><code>apps/api/src/services/fono-conformidade-pdf.test.ts</code> — 16 · [REG-007] fonoaudiologia conforme o PDF — linguagem oral</summary>
+
+- F1 TNI: pontuação bruta /60, pontuação-padrão com as faixas do PDF e as 6 marcações
+- F2 FV: nº de palavras, percentil, repetições, intrusões e clusters + as 6 classes, sem observação
+- F3 TRPP: pontuação bruta antes, com /10, /10 e /20, e as 5 faixas de pontuação-padrão
+- F4 TDF e total do TCFPO: bruta /23 e pontuação-padrão com as faixas
+- F8 ADL e DNO: escore bruto/padrão e pontuação/percentil como no PDF
+- F5/F9 síntese da linguagem oral: só Sim/Não, com Aplicação e Áreas avaliadas em cada instrumento
+- F5 rascunho antigo com 'Não avaliado' continua salvando e a resposta vira branco
+- F7 TDE II: resultados + percentis, classificação 1 a 9 e a legenda do PDF (literal)
+- F8 DNE: tempo em segundos e percentil; pontuação e percentil; sem observação
+- F9 sínteses da escrita e da fala têm a coluna Aplicação e Sim/Não
+- F10 anamnese: sem 'Conclusão da anamnese' e sem 'Observações'; dados antigos não bloqueiam
+- F6 o sumário que vai ao médico é o item 4 (plano terapêutico), não a síntese 2.9
+- o número antigo (n) e os novos (nums) são aceitos e mostrados com o rótulo
+- dados salvos antes (resposta + n + observação) continuam válidos
+- número não previsto, valor inválido ou fora do limite são recusados
+- uma linha só com percentil já conta como respondida (em branco continua em branco)
 
 </details>
 
