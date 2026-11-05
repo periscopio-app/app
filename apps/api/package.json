@@ -19,7 +19,8 @@
     "db:security-audit": "tsx scripts/audit-db-security.ts",
     "taruma:load": "tsx scripts/taruma/load-aggregates.ts",
     "taruma:seed-bi": "tsx scripts/taruma/seed-bi-examples.ts",
-    "seed:journey": "tsx scripts/seed-journey.ts"
+    "seed:journey": "tsx scripts/seed-journey.ts",
+    "seed:professores": "tsx scripts/seed-professores.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",

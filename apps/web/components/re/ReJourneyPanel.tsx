@@ -43,6 +43,7 @@ import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { OpcoesUnica, ReFormLeitura, ReFormRenderer, type ProfessorOpcao } from "./ReFormRenderer";
 import { AlunoEdicaoModal } from "./AlunoEdicaoModal";
 import { FogapDesenvolvimento, type RespostasDesenvolvimento } from "./FogapDesenvolvimento";
+import { FogapComportamentos, type RespostasComportamentos } from "./FogapComportamentos";
 
 type Payload = Record<string, any>;
 interface Linha {
@@ -185,6 +186,13 @@ function useTempoAtivo(caseId: string, ativo: boolean) {
   return { definirAtual: (id: RePassoId) => (atual.current = id) };
 }
 
+/** Idade em meses a partir do ano e mês de nascimento do cadastro (mesma conta do servidor, sem a data completa). */
+function mesesDeIdade(birthYear: number | null, birthMonth: number | null): number | null {
+  if (!birthYear) return null;
+  const hoje = new Date();
+  return hoje.getFullYear() * 12 + hoje.getMonth() + 1 - (birthYear * 12 + (birthMonth ?? 1));
+}
+
 export function ReJourneyPanel({ caseId, professionalName, professionalRole, onSent, onStudentChanged, onVerNome, somenteLeitura = false }: Props) {
   const base = `/api/cases/${caseId}`;
   const nomeAluno = useNomeDoAluno(caseId);
@@ -196,6 +204,8 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const [sum, setSum] = useState<FogapSecaoSumario>(sumarioComPadroes(null));
   const [dev, setDev] = useState<{ faixa: FaixaFogap | null; respostas: RespostasDesenvolvimento }>({ faixa: null, respostas: {} });
   const devAlterado = useRef(false);
+  const [comp, setComp] = useState<RespostasComportamentos>({});
+  const compAlterado = useRef(false);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -211,8 +221,8 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const [, forcar] = useState(0);
 
   const dirty = useRef<Set<RePassoId>>(new Set());
-  const latest = useRef({ drafts, snap, sum, j, dev });
-  latest.current = { drafts, snap, sum, j, dev };
+  const latest = useRef({ drafts, snap, sum, j, dev, comp });
+  latest.current = { drafts, snap, sum, j, dev, comp };
   const topo = useRef<HTMLDivElement>(null);
 
   const readOnly = somenteLeitura || (j ? j.caseState !== "rascunho" : true);
@@ -244,6 +254,10 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       if (p && ("faixa_fogap" in p || "respostas_desenvolvimento" in p)) {
         setDev({ faixa: p.faixa_fogap ?? null, respostas: p.respostas_desenvolvimento ?? {} });
       }
+    }
+    if (!d.somenteSumario && !compAlterado.current) {
+      const p = d.forms.i?.payload as { respostas_comportamentos?: RespostasComportamentos } | undefined;
+      if (p && "respostas_comportamentos" in p) setComp(p.respostas_comportamentos ?? {});
     }
   }, []);
 
@@ -278,15 +292,24 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   // Situação ao vivo (mesma regra do servidor): atualiza a cada tecla, sem esperar o salvamento.
   const situacao = useMemo<JornadaSituacao | null>(() => {
     if (!j || j.somenteSumario) return null;
+    // Mesma regra do servidor: os itens de desenvolvimento e os comportamentos do FOGAP também contam como pendência.
+    const persistido = (j.forms.i?.payload ?? {}) as { historico_insuficiente?: unknown };
     return situacaoDaJornada({
       meta: j.meta!,
       payloads: drafts,
       snap4: snap,
       sumario: sum,
+      fogapPayload: {
+        faixa_fogap: dev.faixa,
+        total_meses: mesesDeIdade(j.student.birthYear, j.student.birthMonth),
+        respostas_desenvolvimento: dev.respostas,
+        respostas_comportamentos: comp,
+        historico_insuficiente: persistido.historico_insuficiente,
+      },
       ata: { existe: j.ata!.existe, enviada: j.ata!.enviada },
       serieDoAluno: j.student.grade,
     });
-  }, [j, drafts, snap, sum]);
+  }, [j, drafts, snap, sum, dev, comp]);
 
   const estadoDe = (id: RePassoId): RePassoEstado => situacao?.passos.find((p) => p.id === id)?.estado ?? "vazio";
 
@@ -304,7 +327,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
 
   const salvar = useCallback(
     async (id: RePassoId, forcarSalvar = false): Promise<boolean> => {
-      const { drafts: dr, snap: sn, sum: su, j: jj, dev: dv } = latest.current;
+      const { drafts: dr, snap: sn, sum: su, j: jj, dev: dv, comp: cp } = latest.current;
       if (!jj || jj.caseState !== "rascunho") return true;
       if (!forcarSalvar && !dirty.current.has(id)) return true;
       if (id === "h") return true;
@@ -318,7 +341,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
         } else if (id === "i") {
           await api.put(`${base}/re-journey/sumario`, { secao_sumario: su });
           if (devAlterado.current) {
-            const meses = jj.student.birthYear ? new Date().getFullYear() * 12 + new Date().getMonth() + 1 - (jj.student.birthYear * 12 + (jj.student.birthMonth ?? 1)) : null;
+            const meses = mesesDeIdade(jj.student.birthYear, jj.student.birthMonth);
             const faixa = faixaEmUso({ faixa_fogap: dv.faixa, total_meses: meses });
             if (faixa) {
               const ids = new Set(itensDaFaixa(faixa).map((i) => i.id));
@@ -326,6 +349,10 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
               await api.put(`${base}/re-journey/fogap-desenvolvimento`, { faixa, respostas });
             }
             devAlterado.current = false;
+          }
+          if (compAlterado.current) {
+            await api.put(`${base}/re-journey/fogap-comportamentos`, { respostas: cp });
+            compAlterado.current = false;
           }
         }
         dirty.current.delete(id);
@@ -362,7 +389,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     if (readOnly || dirty.current.size === 0) return;
     const t = setTimeout(() => void salvarTudo(), 1500);
     return () => clearTimeout(t);
-  }, [drafts, snap, sum, dev, readOnly, salvarTudo]);
+  }, [drafts, snap, sum, dev, comp, readOnly, salvarTudo]);
 
   const marcarAlterado = (id: RePassoId) => {
     dirty.current.add(id);
@@ -452,9 +479,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const respondidosForms = situacao?.passos.reduce((acc, p) => acc + p.respondidos, 0) ?? 0;
   const totalForms = situacao?.passos.reduce((acc, p) => acc + p.total, 0) ?? 0;
   const porPasso = (id: RePassoId) => situacao?.lacunas.filter((l) => l.passo === id).length ?? 0;
-  const idadeMeses = aluno.birthYear
-    ? new Date().getFullYear() * 12 + new Date().getMonth() + 1 - (aluno.birthYear * 12 + (aluno.birthMonth ?? 1))
-    : null;
+  const idadeMeses = mesesDeIdade(aluno.birthYear, aluno.birthMonth);
   const faixaSugerida = faixaPadraoPorMeses(idadeMeses);
   const faixaAtual = faixaEmUso({ faixa_fogap: dev.faixa, total_meses: idadeMeses });
   const idade = (() => {
@@ -628,6 +653,19 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                     <p className="rounded-xl border border-linha bg-fundo p-3 text-xs text-neutral-800" role="status" data-testid="fogap-fora-do-piloto">
                       Os itens de desenvolvimento do FOGAP cobrem alunos de 4 a 9 anos. Confira o nascimento do aluno nos dados do cadastro.
                     </p>
+                  )}
+                  {!j.somenteSumario && (
+                    <div className="mt-4">
+                      <FogapComportamentos
+                        respostas={comp}
+                        readOnly={!emEdicao}
+                        onResponder={(id, valor) => {
+                          compAlterado.current = true;
+                          marcarAlterado("i");
+                          setComp((c) => ({ ...c, [id]: valor }));
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               )}

@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import {
+  FOGAP_COMPORTAMENTOS,
   FOGAP_FORM_CODE,
   faixaPadraoPorMeses,
   fogapSomenteSumario,
@@ -35,6 +36,7 @@ import {
   montarPayloadFogap,
   salvarMeta,
   versaoDoCodigo,
+  type ReRow,
 } from "../services/re-journey.service";
 import { recordAudit } from "../services/audit.service";
 
@@ -49,11 +51,34 @@ const desenvolvimentoBody = z.object({
   faixa: z.string(),
   respostas: z.record(z.string(), z.union([z.literal("adequada"), z.literal("inadequada"), z.null()])),
 });
+const comportamentosBody = z.object({
+  respostas: z.record(z.string(), z.union([z.literal("sim"), z.literal("nao"), z.null()])),
+});
 const timingBody = z.object({
   step: z.enum(["a", "b", "c", "d", "e", "f", "g", "h", "i"]),
   seconds: z.number().int().min(1).max(3600),
   novaSessao: z.boolean().optional(),
 });
+
+/** Grava o rascunho do Formulário I (FOGAP): atualiza a linha existente ou cria a primeira. */
+async function gravarFogapRascunho(params: {
+  tenantId: string;
+  caseId: string;
+  userId: string;
+  atual: ReRow | undefined;
+  payload: object;
+}): Promise<ReRow> {
+  const { tenantId, caseId, userId, atual, payload } = params;
+  if (atual) {
+    const [row] = await db.update(reAssessments).set({ payload, updatedAt: new Date() }).where(eq(reAssessments.id, atual.id)).returning();
+    return row;
+  }
+  const [row] = await db
+    .insert(reAssessments)
+    .values({ tenantId, caseId, formCode: FOGAP_FORM_CODE, formVersion: versaoDoCodigo(FOGAP_FORM_CODE), status: "rascunho", payload, createdBy: userId })
+    .returning();
+  return row;
+}
 
 const SOMENTE_LEITURA = "Avaliação já enviada ao médico — somente leitura até a devolução.";
 
@@ -222,23 +247,7 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     const erro = validarPayloadFogap(payload);
     if (erro) return reply.status(400).send({ error: erro });
 
-    let row;
-    if (atual) {
-      [row] = await db.update(reAssessments).set({ payload, updatedAt: new Date() }).where(eq(reAssessments.id, atual.id)).returning();
-    } else {
-      [row] = await db
-        .insert(reAssessments)
-        .values({
-          tenantId,
-          caseId,
-          formCode: FOGAP_FORM_CODE,
-          formVersion: versaoDoCodigo(FOGAP_FORM_CODE),
-          status: "rascunho",
-          payload,
-          createdBy: actor.id,
-        })
-        .returning();
-    }
+    const row = await gravarFogapRascunho({ tenantId, caseId, userId: actor.id, atual, payload });
     const depois = await carregarJornada(tenantId, caseId);
     return { success: true, form: { status: row.status, payload: row.payload, updatedAt: row.updatedAt }, situacao: depois.situacao };
   });
@@ -289,23 +298,7 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     const erro = validarPayloadFogap(payload);
     if (erro) return reply.status(400).send({ error: erro });
 
-    let row;
-    if (atual) {
-      [row] = await db.update(reAssessments).set({ payload, updatedAt: new Date() }).where(eq(reAssessments.id, atual.id)).returning();
-    } else {
-      [row] = await db
-        .insert(reAssessments)
-        .values({
-          tenantId,
-          caseId,
-          formCode: FOGAP_FORM_CODE,
-          formVersion: versaoDoCodigo(FOGAP_FORM_CODE),
-          status: "rascunho",
-          payload,
-          createdBy: actor.id,
-        })
-        .returning();
-    }
+    const row = await gravarFogapRascunho({ tenantId, caseId, userId: actor.id, atual, payload });
     // Auditoria guarda só metadados (faixa e quantos itens), nunca o conteúdo das respostas.
     await recordAudit(
       {
@@ -316,6 +309,55 @@ export async function reJourneyRoutes(app: FastifyInstance) {
         entityType: "case",
         entityId: caseId,
         payload: { studentCode: visible.student.studentCode, faixa, itens: Object.keys(parse.data.respostas).length },
+      },
+      request
+    );
+    return { success: true, form: { status: row.status, payload: row.payload, updatedAt: row.updatedAt } };
+  });
+
+  /**
+   * FOGAP — comportamentos (Sim / Não / em branco). Desde 28/out/2026 todos são obrigatórios para enviar ao médico
+   * (salvo "histórico insuficiente"), então precisam de um lugar para serem gravados: esta rota. Fica no bloco de notas
+   * do RE; o médico recebe só o sumário. Resposta em branco continua em branco: nunca vira "Não".
+   */
+  app.put("/api/cases/:caseId/re-journey/fogap-comportamentos", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "fogap.fill");
+    if (!actor) return;
+    const { caseId } = request.params as { caseId: string };
+    const visible = await caseVisibleTo(actor, caseId);
+    if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+    if (visible.caseItem.journeyState !== "rascunho") return reply.status(409).send({ error: SOMENTE_LEITURA });
+
+    const parse = comportamentosBody.safeParse(request.body);
+    if (!parse.success) return reply.status(400).send({ error: "Payload inválido", issues: parse.error.issues });
+
+    const idsValidos = new Set(FOGAP_COMPORTAMENTOS.map((c) => c.id));
+    const fora = Object.keys(parse.data.respostas).find((id) => !idsValidos.has(id));
+    if (fora) return reply.status(400).send({ error: `Comportamento ${fora} não existe no FOGAP.` });
+
+    const tenantId = visible.caseItem.tenantId;
+    const j = await carregarJornada(tenantId, caseId);
+    const atual = j.linhas.i;
+    if (atual && atual.status !== "rascunho" && atual.status !== "devolvido") {
+      return reply.status(409).send({ error: "Sumário já enviado — somente leitura." });
+    }
+
+    const base = montarPayloadFogap({ student: visible.student, atual: atual?.payload });
+    const payload = { ...base, respostas_comportamentos: { ...(base.respostas_comportamentos ?? {}), ...parse.data.respostas } };
+    const erro = validarPayloadFogap(payload);
+    if (erro) return reply.status(400).send({ error: erro });
+
+    const row = await gravarFogapRascunho({ tenantId, caseId, userId: actor.id, atual, payload });
+    // Auditoria guarda só metadados (quantos itens), nunca o conteúdo das respostas.
+    await recordAudit(
+      {
+        tenantId,
+        userId: actor.id,
+        userEmail: actor.email,
+        action: "re_journey.fogap_comportamentos_saved",
+        entityType: "case",
+        entityId: caseId,
+        payload: { studentCode: visible.student.studentCode, itens: Object.keys(parse.data.respostas).length },
       },
       request
     );
