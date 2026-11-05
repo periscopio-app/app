@@ -14,6 +14,7 @@ import {
   smallint,
   primaryKey,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -21,6 +22,13 @@ import { sql } from "drizzle-orm";
  * Núcleo multi-tenant. Toda tabela de domínio carrega tenant_id (RLS no Postgres).
  * Ver "Periscópio Saúde — Hub do Produto v2.0" no Notion para o modelo completo.
  */
+
+/** Conteúdo binário (PDF/foto do laudo) guardado no próprio Postgres. */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -678,6 +686,8 @@ export const clinicalAttachments = pgTable("clinical_attachments", {
   sha256: varchar("sha256", { length: 64 }).notNull(),
   category: varchar("category", { length: 50 }).default("relatorio_clinico").notNull(),
   description: text("description"),
+  /** O arquivo em si. Nulo só em laudos antigos que ficaram no bucket do Supabase (lidos de lá, se ainda existirem). */
+  content: bytea("content"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

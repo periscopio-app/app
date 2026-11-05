@@ -20,8 +20,9 @@ const RE_LIKE = new Set(["ppi", "re", "responsavel_escolar"]);
 
 /**
  * Laudos que os pais levam (Bloco 5): PDF e foto do celular (JPG/PNG). Só o RE e o médico enviam e abrem; especialistas, gestão e Board nunca
- * (a regra mora nas capacidades attachments.write/read). O arquivo vai para o bucket PRIVADO do Supabase e é
- * servido pelo próprio servidor, depois de conferir sessão, município e escola. Não existe link público.
+ * (a regra mora nas capacidades attachments.write/read). O laudo é OPCIONAL: nada no fluxo o exige. O arquivo fica no
+ * próprio banco (coluna content) e é servido pelo servidor, depois de conferir sessão, município e escola. Não existe
+ * link público. Laudos antigos que ficaram no bucket do Supabase continuam sendo lidos de lá.
  */
 export async function attachmentsRoutes(app: FastifyInstance) {
   /** Carrega o caso e confere município (e escola, quando quem pede é do RE). Responde 404 sem vazar nada. */
@@ -87,16 +88,6 @@ export async function attachmentsRoutes(app: FastifyInstance) {
       return { error: validation.error || "Arquivo não atende aos requisitos de segurança." };
     }
 
-    const storage = await getAttachmentStorage().catch(() => null);
-    try {
-      if (!storage) throw new Error("storage indisponível");
-      await storage.put(validation.objectKey, bytes, formato.mime);
-    } catch (err) {
-      request.log.error({ err }, "falha ao enviar laudo ao armazenamento");
-      reply.status(503);
-      return { error: "O armazenamento de laudos não está disponível agora. Tente de novo em instantes; se persistir, avise o suporte." };
-    }
-
     let attachment;
     try {
       [attachment] = await db
@@ -113,13 +104,22 @@ export async function attachmentsRoutes(app: FastifyInstance) {
           sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
           category: "laudo_externo",
           description: description?.trim().slice(0, 500) || null,
+          content: bytes,
         })
-        .returning();
+        .returning({
+          id: clinicalAttachments.id,
+          originalName: clinicalAttachments.originalName,
+          category: clinicalAttachments.category,
+          fileSizeBytes: clinicalAttachments.fileSizeBytes,
+          mimeType: clinicalAttachments.mimeType,
+          description: clinicalAttachments.description,
+          sha256: clinicalAttachments.sha256,
+          createdAt: clinicalAttachments.createdAt,
+        });
     } catch (err) {
       request.log.error({ err }, "falha ao registrar o laudo");
-      await storage!.remove(validation.objectKey).catch(() => undefined);
       reply.status(503);
-      return { error: "Não foi possível registrar o laudo agora. Tente de novo." };
+      return { error: "Não foi possível registrar o laudo agora. O laudo é opcional: você pode continuar e tentar de novo depois." };
     }
 
     await recordAudit(
@@ -224,7 +224,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
 
       let bytes: Buffer;
       try {
-        bytes = await (await getAttachmentStorage()).get(attachment.storageKey);
+        bytes = attachment.content ? Buffer.from(attachment.content) : await (await getAttachmentStorage()).get(attachment.storageKey);
       } catch (err) {
         request.log.error({ err }, "falha ao ler laudo do armazenamento");
         reply.status(503);
