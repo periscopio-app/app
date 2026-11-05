@@ -1013,6 +1013,18 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/e2e/termo-profissional.e2e.test.ts</code> — 7 · [REG-003] termo profissional (E2E)</summary>
+
+- [REG-003a] sem aceite (false) o perfil clínico é barrado no servidor, mas pode ler e aceitar o termo
+- [REG-003b] aceitar sem marcar a caixa é recusado e não grava nada
+- [REG-003c] com a caixa marcada grava prova, estado true e auditoria, e libera o uso
+- [REG-003d] um aceite por conta: repetir não duplica prova nem auditoria
+- [REG-003e] Admin Master (ator virtual, sem linha em users) consegue aceitar e não vê mais a janela
+- [REG-003f] a auditoria de qualquer ação do Admin Master é gravada (antes a chave estrangeira derrubava o registro)
+- [REG-003g] termo desatualizado na tela é recusado (409) e nada é gravado
+
+</details>
+
 <details><summary><code>apps/api/src/e2e/visibilidade-rotas.e2e.test.ts</code> — 4 · Validação de rotas por perfil (E2E)</summary>
 
 - médico: vê tudo o que a escola registrou (A a I, itens do FOGAP) e só a seção concluída dos especialistas; nunca rascunhos

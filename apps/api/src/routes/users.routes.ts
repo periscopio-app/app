@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { eq, desc, and } from "drizzle-orm";
 import crypto from "crypto";
+import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "../db/client";
 import { users, schools, tenants, consentTerms, consentAcceptances } from "@periscopio/shared";
@@ -8,6 +9,8 @@ import { requireActor, requireCapability } from "../security/actor";
 import { effectiveCapabilities } from "../services/privilege.service";
 import { isRole, type Role } from "../security/roles";
 import { recordAudit } from "../services/audit.service";
+import { TermoDesatualizadoError, registrarAceiteProfissional, situacaoDoTermo } from "../services/professional-term.service";
+import { errorCauseChain } from "../observability/error-cause";
 import { urlDoAvatar } from "../services/avatar.service";
 
 export const SYSTEM_ROLES_CATALOG = [
@@ -360,93 +363,40 @@ export async function usersRoutes(app: FastifyInstance) {
   });
 
   /**
-   * Consulta status de termo profissional e LGPD do usuário autenticado
+   * Situação do Termo de Responsabilidade Clínica e LGPD da conta + o termo vigente (a tela exibe este texto).
+   * Um aceite por conta: com `hasAccepted = true` a tela nunca mais mostra a janela.
    */
   app.get("/api/me/professional-consent", async (request, reply) => {
     const actor = await requireActor(request, reply);
     if (!actor) return;
-
-    const [acceptance] = await db
-      .select({ id: consentAcceptances.id, acceptedAt: consentAcceptances.acceptedAt })
-      .from(consentAcceptances)
-      .where(and(eq(consentAcceptances.userId, actor.id), eq(consentAcceptances.status, "accepted")))
-      .limit(1);
-
-    return {
-      hasAccepted: !!acceptance,
-      acceptedAt: acceptance?.acceptedAt || null,
-    };
+    reply.header("Cache-Control", "no-store");
+    return situacaoDoTermo(actor);
   });
 
   /**
-   * Registra aceite do termo profissional e LGPD pelo próprio usuário conectado
+   * Registra o aceite da própria conta. A caixa marcada chega como `accepted: true`; sem ela nada é gravado (400).
+   * Grava prova (hash, IP, navegador, versão), estado `true` e auditoria na mesma transação.
    */
   app.post("/api/me/professional-consent/accept", async (request, reply) => {
     const actor = await requireActor(request, reply);
     if (!actor) return;
 
-    let [profTerm] = await db
-      .select()
-      .from(consentTerms)
-      .where(and(eq(consentTerms.tenantId, actor.tenantId), eq(consentTerms.type, "termo_profissional_lgpd")))
-      .limit(1);
-
-    if (!profTerm) {
-      [profTerm] = await db
-        .insert(consentTerms)
-        .values({
-          tenantId: actor.tenantId,
-          version: "v1.0",
-          type: "termo_profissional_lgpd",
-          title: "Termo de Responsabilidade Clínica e Proteção de Dados (LGPD e CFM/CFP)",
-          summary: "Compromisso formal de observância do sigilo profissional de saúde e proteção integral de dados sensíveis de crianças e adolescentes.",
-          content: "TERMO DE RESPONSABILIDADE CLÍNICA E PROTEÇÃO DE DADOS (LGPD):\n1. Observância integral do sigilo profissional (CFM/CFP).\n2. Tratamento exclusivo para a finalidade de apoio pedagógico e encaminhamento responsável.\n3. Proibição de compartilhamento não autorizado de prontuários e dados de saúde de menores.",
-          active: true,
-        })
-        .onConflictDoNothing()
-        .returning();
+    const corpo = z
+      .object({ accepted: z.boolean().optional(), termId: z.string().uuid().optional(), termVersion: z.string().max(20).optional() })
+      .safeParse(request.body ?? {});
+    if (!corpo.success || corpo.data.accepted !== true) {
+      return reply.status(400).send({ error: "Marque a caixa declarando que leu e aceita o termo para continuar." });
     }
 
-    if (!profTerm) {
-      return reply.status(500).send({ error: "Termo padrão não pôde ser inicializado." });
+    const ip = (request.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || request.ip || "127.0.0.1";
+    try {
+      const r = await registrarAceiteProfissional(actor, corpo.data, { ip, userAgent: (request.headers["user-agent"] as string) || "Desconhecido" });
+      return { success: true, alreadyAccepted: r.jaAceito, acceptedAt: r.acceptedAt, termVersion: r.version, message: "Termo aceito. Este aceite vale para a sua conta." };
+    } catch (err) {
+      if (err instanceof TermoDesatualizadoError) return reply.status(409).send({ error: err.message });
+      request.log.error({ err, causes: errorCauseChain(err) }, "falha ao registrar aceite do termo profissional");
+      return reply.status(503).send({ error: "Não foi possível registrar o aceite agora. Nada foi gravado; tente de novo em instantes." });
     }
-
-    const rawEvidence = `${profTerm.content}|${actor.name || actor.email}|${actor.role}|${request.ip || "127.0.0.1"}|${new Date().toISOString()}`;
-    const evidenceSha256 = crypto.createHash("sha256").update(rawEvidence).digest("hex");
-
-    const [acceptance] = await db
-      .insert(consentAcceptances)
-      .values({
-        tenantId: actor.tenantId,
-        termId: profTerm.id,
-        userId: actor.id,
-        signerName: actor.name || actor.email,
-        signerRole: actor.role,
-        signerEmail: actor.email,
-        ipAddress: request.ip || "127.0.0.1",
-        userAgent: (request.headers["user-agent"] as string) || "Navegador",
-        evidenceSha256,
-        status: "accepted",
-      })
-      .returning();
-
-    await recordAudit(
-      {
-        tenantId: actor.tenantId,
-        userId: actor.id,
-        userEmail: actor.email,
-        action: "consent.professional_accepted",
-        entityType: "consent_acceptance",
-        entityId: acceptance.id,
-      },
-      request
-    );
-
-    return {
-      success: true,
-      message: "Termo de responsabilidade clínica e LGPD aceito com sucesso.",
-      acceptedAt: acceptance.acceptedAt,
-    };
   });
 
   /**

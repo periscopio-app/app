@@ -204,6 +204,13 @@
       "when": 1792888800000,
       "tag": "0028_laudos_no_banco",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792975200000,
+      "tag": "0029_termo_profissional_status",
+      "breakpoints": true
     }
   ]
 }
