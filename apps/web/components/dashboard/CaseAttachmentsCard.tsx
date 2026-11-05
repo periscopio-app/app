@@ -21,15 +21,6 @@ interface CaseAttachmentsCardProps {
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-function lerComoBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
-    r.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
-    r.readAsDataURL(file);
-  });
-}
-
 /**
  * Laudos que os pais levam (Bloco 5). É um complemento OPCIONAL: nada no envio ao médico depende dele.
  * Só RE e médico enviam e abrem; especialistas nunca veem este cartão. PDF, JPG ou PNG, até 10 MB.
@@ -74,8 +65,7 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
         const ehAceito = /^(application\/pdf|image\/jpeg|image\/png)$/.test(file.type) || /\.(pdf|jpe?g|png)$/i.test(file.name);
         if (!ehAceito) { setErro(`"${file.name}" não é PDF, JPG ou PNG. Envie o laudo em um desses formatos.`); continue; }
         if (file.size > MAX_BYTES) { setErro(`"${file.name}" passa de 10 MB.`); continue; }
-        const dataBase64 = await lerComoBase64(file);
-        await api.post(`/api/cases/${caseId}/attachments`, { fileName: file.name, dataBase64 });
+        await api.upload(`/api/cases/${caseId}/attachments`, file);
       }
       await fetchAttachments();
     } catch (e) {

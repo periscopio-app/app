@@ -630,8 +630,8 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(v.body.sumarioExecutivoMedico.status, "concluido");
     assert.equal(v.body.sumarioExecutivoMedico.campos.length, 5);
     assert.deepEqual(v.body.sumarioExecutivoMedico.campos.find((c: any) => c.id === "conduta")?.itens, [
-      "6. sim, está sob farmacoterapia",
-      "8. Fez avaliação neuropsicológica",
+      "6. sim, está sob farmacoterapia: Sim",
+      "8. Fez avaliação neuropsicológica: Sim",
     ]);
     assert.deepEqual(v.body.sumarioExecutivoMedico.campos.find((c: any) => c.id === "data"), {
       id: "data", rotulo: "Data", tipo: "data", valor: "2026-10-27",

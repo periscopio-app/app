@@ -37,7 +37,7 @@ test("sumário concluído devolve campos normalizados, conduta marcada na ordem 
       rotulo: "4. Conduta",
       tipo: "lista",
       valor: null,
-      itens: ["6. sim, está sob farmacoterapia", "8. Fez avaliação neuropsicológica"],
+      itens: ["6. sim, está sob farmacoterapia: Sim", "8. Fez avaliação neuropsicológica: Sim"],
     },
     { id: "data", rotulo: "Data", tipo: "data", valor: "2026-10-27" },
   ]);

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronsDownUp, ChevronsUpDown, ClipboardList, Lock, MessageSquareText, Pencil, RotateCcw, Save, School, Send } from "lucide-react";
-import { MD_FORMS, MD_TEXTO_MAX, type MdCampo, type MdFormId } from "@periscopio/shared";
+import { MD_FORMS, MD_TEXTO_MAX, lerSimNao, type MdCampo, type MdFormId } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { Button } from "@/components/ui";
@@ -438,6 +438,62 @@ function CampoMd({ campo, idCampo, valor, travado, mudar, ocultarRotulo = false 
             <button type="button" onClick={() => mudar("")} className="text-[11px] text-neutral-700 underline">limpar</button>
           )}
         </div>
+      </fieldset>
+    );
+  }
+  if (campo.tipo === "simnao") {
+    const respostas = lerSimNao(valor);
+    const responder = (v: string, r: "1" | "0") => {
+      const n = new Map(respostas);
+      if (n.get(v) === r) n.delete(v); // clicar de novo na resposta marcada volta para "em branco"
+      else n.set(v, r);
+      mudar((campo.opcoes ?? []).filter((o) => n.has(o.valor)).map((o) => `${o.valor}=${n.get(o.valor)}`).join(","));
+    };
+    const total = campo.opcoes?.length ?? 0;
+    return (
+      <fieldset className="space-y-2" data-testid={`simnao-${campo.id}`}>
+        <legend className="mb-1">{rotulo}</legend>
+        <p className="text-[11px] text-neutral-700" aria-live="polite">
+          {respostas.size} de {total} itens respondidos. Escolha Sim ou Não em cada item; item sem escolha fica em branco.
+        </p>
+        <ul className="divide-y divide-linha rounded-xl border border-linha">
+          {campo.opcoes?.map((o) => {
+            const atual = respostas.get(o.valor) ?? null;
+            return (
+              <li key={o.valor} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-xs text-black">
+                  {o.rotulo}
+                  {travado && !atual && <span className="ml-2 rounded-full bg-fundo px-2 py-0.5 text-[10px] font-semibold text-neutral-700">em branco</span>}
+                </span>
+                <div role="group" aria-label={`Resposta: ${o.rotulo}`} className="flex shrink-0 gap-2">
+                  {(
+                    [
+                      ["1", "Sim"],
+                      ["0", "Não"],
+                    ] as const
+                  ).map(([r, nome]) => {
+                    const marcado = atual === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        aria-pressed={marcado}
+                        disabled={travado}
+                        onClick={() => responder(o.valor, r)}
+                        data-testid={`simnao-${campo.id}-${o.valor}-${r}`}
+                        className={`min-h-[40px] min-w-[64px] rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed ${
+                          marcado ? "border-roxo bg-roxo text-white" : travado ? "border-linha bg-white text-neutral-600 opacity-60" : "border-linha bg-white text-black hover:bg-roxo-50"
+                        }`}
+                      >
+                        {marcado && travado ? `✓ ${nome}` : nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </fieldset>
     );
   }

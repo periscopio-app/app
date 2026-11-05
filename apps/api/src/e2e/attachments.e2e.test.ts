@@ -86,8 +86,20 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     await (db as any).$client.end();
   });
 
-  const enviar = (who: string, bytes: Buffer = PDF, fileName = "laudo.pdf") =>
-    call("POST", `/api/cases/${caseId}/attachments`, who, { fileName, dataBase64: bytes.toString("base64") });
+  /** Envia como a tela faz: corpo binário com o tipo do arquivo e o nome em X-File-Name (sem base64). */
+  const enviar = async (who: string, bytes: Buffer = PDF, fileName = "laudo.pdf") => {
+    const tipo = bytes.subarray(0, 5).toString("latin1").startsWith("%PDF-") ? "application/pdf"
+      : bytes[0] === 0x89 ? "image/png" : bytes[0] === 0xff ? "image/jpeg" : "application/octet-stream";
+    const r = await app.inject({
+      method: "POST",
+      url: `/api/cases/${caseId}/attachments`,
+      headers: { origin: "http://localhost:3000", "x-test-email": `${who}@teste.local`.toLowerCase(), "content-type": tipo, "x-file-name": encodeURIComponent(fileName) },
+      payload: bytes,
+    });
+    let parsed: any = null;
+    try { parsed = r.json(); } catch { parsed = r.body; }
+    return { status: r.statusCode, body: parsed };
+  };
 
   test("RE do caso envia PDF; o arquivo fica no banco, não no armazenamento externo, e a chave não carrega o nome", async () => {
     const r = await enviar("re", PDF, "Laudo_Joao_Silva.pdf");
@@ -162,7 +174,8 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     const gif = Buffer.from("GIF89a\x01\x00\x01\x00");
     assert.equal((await enviar("re", gif, "animado.png")).status, 400);
     assert.equal((await enviar("re", Buffer.from("texto qualquer"), "falso.pdf")).status, 400);
-    assert.equal((await call("POST", `/api/cases/${caseId}/attachments`, "re", { fileName: "v.pdf", dataBase64: "" })).status, 400);
+    assert.equal((await enviar("re", Buffer.alloc(0), "v.pdf")).status, 400);
+    assert.equal((await call("POST", `/api/cases/${caseId}/attachments`, "re", { fileName: "v.pdf", dataBase64: "AAAA" })).status, 415, "o antigo envio em JSON/base64 não existe mais");
     const grande = Buffer.concat([PDF, Buffer.alloc(10 * 1024 * 1024)]);
     assert.equal((await enviar("re", grande, "grande.pdf")).status, 413);
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2, "nada novo foi gravado");
@@ -202,5 +215,24 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     objetos.delete("legado/antigo.pdf");
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re")).status, 503);
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${attId}/file`, "re")).status, 200, "os laudos novos seguem abrindo");
+  });
+
+  test("[REG-005] RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho", async () => {
+    const { and: e } = await import("drizzle-orm");
+    const [caso] = await dbx.select().from(shared.cases).where(eq(shared.cases.id, caseId));
+    const [aluno] = await dbx.select().from(shared.students).where(eq(shared.students.id, caso.studentId));
+    const reEnvio = await enviar("re", PDF, "Maria_da_Silva_laudo.pdf");
+    const mdEnvio = await enviar("md", PDF, "Maria_da_Silva_laudo.pdf");
+    assert.equal(reEnvio.status, 200, JSON.stringify(reEnvio.body));
+    assert.equal(mdEnvio.status, 200, JSON.stringify(mdEnvio.body));
+    // Só os laudos novos (com conteúdo no banco); o "legado" do teste anterior tem chave antiga de propósito.
+    const linhas = (await dbx.select().from(shared.clinicalAttachments).where(e(eq(shared.clinicalAttachments.caseId, caseId), eq(shared.clinicalAttachments.studentId, aluno.id)))).filter((l) => l.content);
+    assert.ok(linhas.length >= 2);
+    const pasta = `schools/${aluno.schoolId}/${aluno.id}/`;
+    for (const l of linhas) {
+      assert.ok(l.storageKey.startsWith(pasta), `${l.storageKey} deveria começar com ${pasta}`);
+      assert.doesNotMatch(l.storageKey, /maria|silva/i, "o nome do arquivo não entra no caminho");
+    }
+    assert.ok(new Set(linhas.map((l) => l.uploaderId)).size >= 2, "RE e médico enviaram para o mesmo aluno");
   });
 });
