@@ -36,7 +36,7 @@ export function FogapDesenvolvimento({ faixa, faixaSugerida, respostas, readOnly
       <p className="text-xs text-neutral-800">
         {readOnly
           ? "Respostas do RE, item a item (somente leitura). A opção marcada aparece em roxo, com ✓. Item sem marca é item que o RE deixou em branco."
-          : "Escolha a faixa de idade e marque, item a item, o que o professor observa. Pode deixar itens em branco. O médico que receber o caso vê estas marcas, em somente leitura."}
+          : "Escolha a faixa de idade e marque, item a item, o que o professor observa. Para enviar ao médico, todos os itens precisam de resposta. O médico que receber o caso vê estas marcas, em somente leitura."}
       </p>
 
       <div role="radiogroup" aria-label="Faixa de idade do FOGAP" className="flex flex-wrap gap-2">
