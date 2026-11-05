@@ -45,7 +45,7 @@ export function ExpertMeetingsCard({ caseId, studentCode }: ExpertMeetingsCardPr
     try {
       const [slotsRes, meetingsRes] = await Promise.all([
         api.get<{ slots: ExpertSlot[] }>("/api/expert-meetings/slots"),
-        api.get<{ meetings: MeetingRequest[] }>("/api/expert-meetings/requests").catch(() => ({ meetings: [] })),
+        api.get<{ meetings: MeetingRequest[] }>("/api/expert-meetings").catch(() => ({ meetings: [] })),
       ]);
       setSlots(slotsRes.slots || []);
       setMeetings(meetingsRes.meetings || []);
@@ -71,7 +71,7 @@ export function ExpertMeetingsCard({ caseId, studentCode }: ExpertMeetingsCardPr
     setFeedback(null);
 
     try {
-      const res = await api.post<{ request: MeetingRequest; message?: string }>("/api/expert-meetings/requests", {
+      const res = await api.post<{ meeting: MeetingRequest; emailSent?: boolean }>("/api/expert-meetings", {
         slotId: selectedSlotId,
         caseId,
         topic: topic.trim(),

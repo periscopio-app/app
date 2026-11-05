@@ -66,7 +66,7 @@ export function GrafanaHistoryCard() {
       const [res, dep, envio] = await Promise.all([
         Promise.all(METRICS.map((m) => api.get<Resposta>(`/api/admin/grafana/series?metric=${m}&range=${range}`))),
         api.get<RespostaDeploys>(`/api/admin/grafana/deploys?range=${range === "7d" ? "7d" : "24h"}`),
-        api.get<PushStatus>("/api/admin/grafana/push"),
+        api.get<PushStatus>("/api/admin/grafana/push").catch(() => null),
       ]);
       setDados(res);
       setDeploys(dep);

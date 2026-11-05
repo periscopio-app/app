@@ -120,6 +120,14 @@ export async function observabilityRoutes(app: FastifyInstance) {
     return fetchGrafanaStats(parsed.data.range);
   });
 
+  // Situação do envio de métricas pela API (OTLP). Só estado e mensagem de erro: nunca endereço, usuário ou token.
+  app.get("/api/admin/grafana/push", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "system.observability.view");
+    if (!actor) return;
+    reply.header("Cache-Control", "no-store");
+    return otlpPushStatus();
+  });
+
   app.get("/api/admin/grafana/deploys", async (request, reply) => {
     const actor = await requireCapability(request, reply, "system.observability.view");
     if (!actor) return;
