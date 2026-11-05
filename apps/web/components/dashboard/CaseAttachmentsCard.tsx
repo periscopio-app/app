@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Paperclip, UploadCloud, Eye, FileText, X, Loader2, ExternalLink, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 
 interface ClinicalAttachment {
   id: string;
@@ -31,8 +31,9 @@ function lerComoBase64(file: File): Promise<string> {
 }
 
 /**
- * Laudos que os pais levam (Bloco 5). Só RE e médico enviam e abrem; especialistas nunca veem este cartão.
- * PDF, JPG ou PNG, até 10 MB. O arquivo fica no bucket privado e abre aqui dentro, sem link público.
+ * Laudos que os pais levam (Bloco 5). É um complemento OPCIONAL: nada no envio ao médico depende dele.
+ * Só RE e médico enviam e abrem; especialistas nunca veem este cartão. PDF, JPG ou PNG, até 10 MB.
+ * O arquivo fica guardado no sistema e abre aqui dentro, sem link público; a lista mostra só o título.
  */
 export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
   const [attachments, setAttachments] = useState<ClinicalAttachment[]>([]);
@@ -50,7 +51,9 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
       const res = await api.get<{ attachments: ClinicalAttachment[] }>(`/api/cases/${caseId}/attachments`);
       setAttachments(res.attachments || []);
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : "Não foi possível carregar os laudos.");
+      // Laudo é opcional: se a lista não carregar, o cartão continua usável e não mostra alarme.
+      // O aviso só aparece quando a pessoa tenta anexar ou abrir um arquivo.
+      void e;
     } finally {
       setLoading(false);
     }
@@ -76,7 +79,7 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
       }
       await fetchAttachments();
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : (e as Error)?.message || "Erro no envio do laudo.");
+      setErro(e instanceof ApiError ? e.message : (e as Error)?.message || "Não foi possível anexar agora. O laudo é opcional: você pode continuar e tentar depois.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -99,21 +102,19 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2.5">
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-2 text-sky-700">
+    <div className="min-w-0 space-y-4 rounded-2xl border border-linha bg-white p-4 shadow-suave sm:p-5">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-roxo-100 bg-roxo-50 text-roxo">
           <Paperclip className="h-5 w-5" aria-hidden />
         </div>
-        <div className="min-w-0">
-          <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-black">
-            Laudos trazidos pela família
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-              {attachments.length} documento(s)
-            </span>
-          </h3>
-          <p className="flex items-center gap-1 text-xs text-slate-600">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
-            PDF ou foto em armazenamento privado. Só o RE e o médico do caso abrem.
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold leading-snug text-black">Laudos trazidos pela família</h3>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <Badge variant="secondary" className="whitespace-nowrap text-[11px]">Opcional</Badge>
+            {attachments.length > 0 && <Badge variant="default" className="whitespace-nowrap text-[11px]">{attachments.length} anexado(s)</Badge>}
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-700">
+            Se a família trouxe um laudo, anexe aqui. Não é obrigatório para enviar ao médico.
           </p>
         </div>
       </div>
@@ -122,10 +123,10 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); void enviar(e.dataTransfer.files); }}
-        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${dragging ? "border-purple-500 bg-purple-50" : "border-slate-300 bg-slate-50"}`}
+        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-4 text-center transition ${dragging ? "border-roxo bg-roxo-50" : "border-linha bg-fundo"}`}
       >
-        {uploading ? <Loader2 className="h-6 w-6 animate-spin text-purple-700" aria-hidden /> : <UploadCloud className="h-6 w-6 text-purple-700" aria-hidden />}
-        <p className="text-sm font-semibold text-black">{uploading ? "Enviando…" : "Arraste o PDF aqui"}</p>
+        {uploading ? <Loader2 className="h-6 w-6 animate-spin text-roxo" aria-hidden /> : <UploadCloud className="h-6 w-6 text-roxo" aria-hidden />}
+        <p className="text-sm font-semibold text-black">{uploading ? "Enviando…" : "Arraste o laudo aqui"}</p>
         <Button
           type="button"
           disabled={uploading}
@@ -134,30 +135,21 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
         >
           ou escolher o arquivo
         </Button>
-        <p className="text-[11px] text-slate-600">PDF, JPG ou PNG (foto do celular), até 10 MB cada.</p>
+        <p className="text-[11px] text-neutral-700">PDF, JPG ou PNG (foto do celular), até 10 MB cada.</p>
         <input ref={inputRef} type="file" multiple accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => e.target.files && void enviar(e.target.files)} />
       </div>
 
-      {erro && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">{erro}</p>}
+      {erro && <p role="status" className="rounded-xl border border-ouro/40 bg-ouro-50 px-3 py-2 text-xs leading-relaxed text-black">{erro}</p>}
 
       {loading ? (
-        <p className="text-xs text-slate-500">Carregando laudos…</p>
-      ) : attachments.length === 0 ? (
-        <div className="rounded-xl border border-slate-200/60 bg-slate-50 p-4 text-center text-xs text-slate-600">
-          Nenhum laudo anexado a este caso.
-        </div>
-      ) : (
-        <ul className="space-y-2 border-t border-slate-100 pt-1">
+        <p className="text-xs text-neutral-700">Carregando laudos…</p>
+      ) : attachments.length === 0 ? null : (
+        <ul className="space-y-2 border-t border-linha pt-3">
           {attachments.map((att) => (
-            <li key={att.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-700">
+            <li key={att.id} className="flex items-center justify-between gap-3 rounded-xl border border-linha bg-fundo p-3 text-xs text-neutral-800">
               <div className="flex min-w-0 items-center gap-2.5">
-                <FileText className="h-4 w-4 shrink-0 text-purple-700" aria-hidden />
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-black">{att.originalName}</p>
-                  <p className="text-[11px] text-slate-600">
-                    {(att.fileSizeBytes / 1024).toFixed(0)} KB • {new Date(att.createdAt).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
+                <FileText className="h-4 w-4 shrink-0 text-roxo" aria-hidden />
+                <p className="min-w-0 truncate text-sm font-semibold text-black" title={att.originalName}>{att.originalName}</p>
               </div>
               <Button
                 type="button"

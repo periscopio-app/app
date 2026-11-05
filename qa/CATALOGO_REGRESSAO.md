@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **604 casos de teste automáticos** em 92 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos de teste automáticos** em 92 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -13,6 +13,8 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **604 casos 
 | REG-001c | a rota recusa comportamento inexistente, valor inválido, perfil sem permissão e outro município | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-001d | RE completa a jornada SÓ pelas rotas da tela e envia ao médico | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-001e | depois do envio os comportamentos ficam em somente leitura (409) | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
+| REG-002 | com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele) | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-002 | laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele | `apps/api/src/e2e/attachments.e2e.test.ts` |
 
 ## API — unitários — 358
 
@@ -697,18 +699,19 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **604 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 204
+## API — E2E (banco de teste, fluxo pela API real) — 205
 
-<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 8 · Laudos em PDF/JPG/PNG (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 9 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
-- RE do caso envia PDF; o arquivo vai ao armazenamento e a chave não carrega o nome
+- RE do caso envia PDF; o arquivo fica no banco, não no armazenamento externo, e a chave não carrega o nome
 - médico também envia e lista os dois laudos; o RE só vê o que ele mesmo enviou (regra da Dra., 23/out)
 - RE e médico abrem o PDF; o conteúdo volta igual e sem cache
 - especialista, professor, gestor e Board não enviam, não listam e não abrem
 - outro município e outra escola recebem 404 (sem vazar que o caso existe)
 - foto do celular (JPG/PNG) é aceita e volta com o tipo certo
 - só PDF/JPG/PNG de verdade: GIF, texto disfarçado, vazio e acima de 10 MB são recusados
-- se o armazenamento cair, devolve 503 e não deixa registro órfão
+- [REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)
+- [REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele
 
 </details>
 
