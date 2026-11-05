@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
+import { inserirAuditoria } from "../services/audit.service";
 import { auditLogs, populationAggregates, schools } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
 import { canAccessSchool } from "../security/tenancy";
@@ -245,7 +246,7 @@ export async function populationRoutes(app: FastifyInstance) {
     }
 
     if (tenantId !== actor.tenantId) {
-      await db.insert(auditLogs).values({
+      await inserirAuditoria(db, {
         tenantId: actor.tenantId, actorId: actor.id, action: "population:taruma_view", entity: "population_aggregates",
         metadata: { role: actor.role, source: TARUMA_SOURCE },
       });
@@ -293,7 +294,7 @@ export async function populationRoutes(app: FastifyInstance) {
       })
       .where(eq(schools.id, school.id))
       .returning();
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId, actorId: actor.id, action: "school:geo_update", entity: "school", entityId: school.id,
     });
     return { success: true, school: updated };
@@ -366,7 +367,7 @@ export async function populationRoutes(app: FastifyInstance) {
             .onConflictDoNothing();
         }
       }
-      await tx.insert(auditLogs).values({
+      await inserirAuditoria(tx, {
         tenantId: actor.tenantId, actorId: actor.id, action: "population:import", entity: "population_aggregates", metadata: { source, referenceYear, schools: rows.length },
       });
     });

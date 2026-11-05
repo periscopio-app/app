@@ -59,3 +59,23 @@ export async function recordAudit(entry: AuditLogEntry, request?: FastifyRequest
     console.error("[audit] Falha ao registrar log de auditoria:", err);
   }
 }
+
+
+/**
+ * Inserção direta em audit_logs (para quem grava dentro de uma transação ou precisa do resultado).
+ * `actor_id` tem chave estrangeira para `users`, e o Admin Master é um ator virtual sem linha lá: gravar o id dele derrubava a
+ * rota inteira com 500. Aqui o id virtual vira nulo e a marca `actor: admin_master_virtual` vai no metadata; o e-mail fica
+ * em `userEmail` quando informado. Use SEMPRE isto em vez de `db.insert(auditLogs)`.
+ */
+export async function inserirAuditoria(
+  executor: { insert: (tabela: typeof auditLogs) => { values: (v: typeof auditLogs.$inferInsert) => PromiseLike<unknown> } },
+  values: typeof auditLogs.$inferInsert
+): Promise<void> {
+  if (values.actorId === VIRTUAL_ADMIN_ID) {
+    await executor
+      .insert(auditLogs)
+      .values({ ...values, actorId: null, metadata: { ...((values.metadata as Record<string, unknown> | null) ?? {}), actor: "admin_master_virtual" } });
+    return;
+  }
+  await executor.insert(auditLogs).values(values);
+}
