@@ -925,7 +925,7 @@ const FONO_SINTESE = def(
   "2.9",
   "Síntese da avaliação fonoaudiológica completa",
   "Síntese e conduta",
-  "Marque o que a avaliação mostrou em cada componente. Escolha a conduta; o sistema não indica conduta.",
+  "Marque o que a avaliação mostrou em cada componente. O sistema não interpreta nem indica conduta.",
   [
     sec("sintese", "Síntese: déficit por componente", [
       mx("sintese_audicao", "Audição", [["limiares", "Limiares auditivos"], ["orelha_media", "Integridade de orelha média"]], SIM_NAO_NAV),
@@ -967,54 +967,58 @@ const FONO_SINTESE = def(
         SIM_NAO_NAV
       ),
     ]),
-    sec("conduta", "Conduta: encaminhamentos e/ou terapia fonoaudiológica", [
-      m(
-        "conduta_audicao",
-        "Audição",
-        [
-          o("encaminhar_orl", "Alteração em limiar auditivo e/ou orelha média: encaminhar para otorrinolaringologista"),
-          o("avaliacao_pac", "Sem alteração em limiar, mas com déficit de compreensão oral, alterações na fala, memória fonológica e/ou leitura/escrita: avaliação formal do processamento auditivo central"),
-        ]
-      ),
-      m(
-        "conduta_linguagem_oral",
-        "Linguagem oral",
-        [
-          o("estimulacao_cognitivo_linguistica", "Estimulação cognitivo-linguística"),
-          o("treino_habilidades_auditivas", "Treino de habilidades auditivas (discriminação fonológica, memória auditiva e habilidades alteradas no exame formal de PAC)"),
-          o("processamento_fonologico", "Estimulação do processamento fonológico (consciência fonológica, acesso lexical e memória fonológica)"),
-          o("vocabulario", "Ampliação de vocabulário (organização categórica, associação, acesso lexical, nomeação e definição)"),
-          o("sintaxe", "Estruturação sintática (consciência sintática, organização frasal e discursiva)"),
-          o("pragmatica", "Pragmática (inferências, organização discursiva, uso da linguagem)"),
-        ]
-      ),
-      m(
-        "conduta_linguagem_escrita",
-        "Linguagem escrita",
-        [
-          o("conhecimento_alfabetico", "Conhecimento alfabético"),
-          o("rota_fonologica", "Fortalecimento da rota fonológica (processamento fonológico, associação grafema-fonema), nomeação rápida"),
-          o("dominio_ortografico", "Domínio ortográfico (regras ortográficas, consciência e treino de relações múltiplas entre grafemas e fonemas)"),
-          o("compreensao_leitora", "Compreensão leitora (informações literais, associação de ideias, inferências, estratégias)"),
-          o("producao_textual", "Produção textual (organização de sentenças e de textos, planejamento, construção e revisão)"),
-        ]
-      ),
-      m(
-        "conduta_fala",
-        "Fala",
-        [
-          o("encaminhar_miofuncional", "Alteração no sistema miofuncional orofacial: encaminhar para otorrinolaringologista e/ou dentista"),
-          o("encaminhar_voz", "Alteração na voz: encaminhar para otorrinolaringologista"),
-          o("treino_fluencia", "Treino de fluência para gagueira"),
-          o("origem_linguistica", "Alteração de fala é de origem linguística (ver linguagem)"),
-        ]
-      ),
-      tl("conclusao", "Conclusão"),
-      tl("conduta", "Conduta"),
-    ]),
   ],
-  ["As opções de conduta são as do capítulo (foco da intervenção baseado em evidências). Quem indica é o fonoaudiólogo; o sistema não sugere."]
+  [],
+  // A conduta virou o item próprio "Conduta" (fono_conduta), na sequência do 3 (SRS-2), como no PDF.
+  { camposRemovidos: ["conduta_audicao", "conduta_linguagem_oral", "conduta_linguagem_escrita", "conduta_fala", "conclusao", "conduta"] }
 );
+
+/**
+ * Conduta: encaminhamentos e/ou terapia fonoaudiológica (PDF p. 19), logo depois do SRS-2 e antes do plano terapêutico.
+ * Textos literais do PDF. O sistema NÃO indica conduta: quem marca é o fonoaudiólogo.
+ */
+const FONO_CONDUTA = def(
+  "fono_conduta",
+  "3.1",
+  "Conduta: encaminhamentos e/ou terapia fonoaudiológica",
+  "Conduta",
+  "Foco da intervenção (baseada em evidências) e estratégias principais, por área. Marque o que vale para este aluno; o sistema não indica conduta.",
+  [
+    sec("conduta", "Foco da intervenção (baseada em evidências) e estratégias principais", [
+      semObs(m("conduta_audicao", "Audição", [
+        o("encaminhar_orl", "Alteração em limiar auditivo e/ou orelha média → encaminhamento para otorrinolaringologista"),
+        o("avaliacao_pac", "Sem alterações em limiar auditivo, mas déficit de compreensão oral, alterações na fala, memória fonológica e/ou leitura/escrita → avaliação formal do Processamento auditivo central"),
+      ])),
+      semObs({
+        ...m("conduta_linguagem_oral", "Linguagem oral", [
+          o("treino_habilidades_auditivas", "Treino de habilidades auditivas (discriminação fonológica, memória auditiva e habilidades alteradas vistas em exame formal de PAC)"),
+          o("processamento_fonologico", "Estimulação do processamento fonológico (consciência fonológica, acesso lexical e memória fonológica)."),
+          o("vocabulario", "Ampliação de vocabulário (organização categórica, associação, acesso lexical, nomeação e definição)."),
+          o("sintaxe", "Estruturação sintática (consciência sintática, organização frasal e discursiva)."),
+          o("pragmatica", "Pragmática (inferências, organização discursiva, uso da linguagem)."),
+        ]),
+        ajuda: "Estimulação cognitivo-linguística",
+      }),
+      semObs(m("conduta_linguagem_escrita", "Linguagem escrita", [
+        o("conhecimento_alfabetico", "Conhecimento alfabético."),
+        o("rota_fonologica", "Fortalecimento da rota fonológica (processamento fonológico, associação grafema-fonema), nomeação rápida."),
+        o("dominio_ortografico", "Domínio ortográfico (regras ortográficas, consciência e treino de relações múltiplas entre grafemas e fonemas)."),
+        o("compreensao_leitora", "Compreensão leitora (identificação de informações literais, associação de ideias, realização de inferências, estratégias)."),
+        o("producao_textual", "Produção textual (organização de sentenças e de textos, etapas de planejamento, construção e revisão)."),
+      ])),
+      semObs(m("conduta_fala", "Fala", [
+        o("encaminhar_miofuncional", "Alteração no sistema miofuncional orofacial → encaminhar para otorrinolaringologista e/ou dentista."),
+        o("encaminhar_voz", "Alteração na voz → encaminhar para otorrinolaringologista."),
+        o("treino_fluencia", "Treino de fluência para gagueira."),
+        o("origem_linguistica", "Alteração de fala é de origem linguística (ver linguagem)."),
+      ])),
+    ]),
+    sec("fechamento", "Conclusão e conduta", [tl("conclusao", "Conclusão"), tl("conduta", "Conduta")]),
+  ],
+  ["As opções de conduta são as do capítulo (foco da intervenção baseado em evidências). Quem indica é o fonoaudiólogo; o sistema não sugere."],
+  { semObservacoes: true }
+);
+
 
 const FONO_SRS2 = def(
   "fono_srs2",
@@ -2850,7 +2854,7 @@ const AS_ENCAMINHAMENTO = def(
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export const ESPECIALIDADE_FORMS: Record<EspecialidadeId, FormDef[]> = {
-  fonoaudiologia: [FONO_ANAMNESE, FONO_AUDICAO, FONO_LINGUAGEM_ORAL, FONO_LINGUAGEM_ESCRITA, FONO_FALA, FONO_SINTESE, FONO_SRS2, FONO_PLANO],
+  fonoaudiologia: [FONO_ANAMNESE, FONO_AUDICAO, FONO_LINGUAGEM_ORAL, FONO_LINGUAGEM_ESCRITA, FONO_FALA, FONO_SINTESE, FONO_SRS2, FONO_CONDUTA, FONO_PLANO],
   psicopedagogia: [PPC_ANAMNESE, PPC_EOCA, PPC_AVALIACAO, PPC_PIAGET, PPC_CONCLUSAO, PPC_PLANO],
   psicologia: [PSI_ENTREVISTA, PSI_MASC, PSI_SEGUIMENTO, PSI_SCARED, PSI_TAC_SUMARIO, PSI_TAC_ALTA, PSI_GRUPO_INICIAL, PSI_GRUPO_SUMARIO, PSI_GRUPO_FINAL],
   neuropsicologia: [PSI_ENTREVISTA, PSI_MASC, ANP_RESULTADO, ANP_SUMARIO],
