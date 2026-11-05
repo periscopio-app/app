@@ -10,7 +10,7 @@
  * O que NÃO faz, de propósito: somar, ponderar, converter em classe/percentil, ordenar por gravidade, dar cor
  * por resposta ou apontar "alto/baixo". A interface usa a mesma cor neutra para qualquer resposta.
  */
-import { progressoDef, type FormDef, type ReCampo, type ReOpcao } from "./re-journey-catalog";
+import { progressoDef, textoDosNumeros, type FormDef, type ReCampo, type ReOpcao } from "./re-journey-catalog";
 
 export interface ResumoLinha {
   rotulo: string;
@@ -86,7 +86,7 @@ function campoResumo(c: ReCampo, p: Record<string, any>): ResumoCampo | null {
       for (const l of c.linhas) {
         const cel = (dados[l.key] && typeof dados[l.key] === "object" ? dados[l.key] : {}) as Record<string, any>;
         const resp = rotulos(c.opcoes, cel.r);
-        const numero = typeof cel.n === "number" && Number.isFinite(cel.n) ? String(cel.n) : undefined;
+        const numero = textoDosNumeros(c, cel) || undefined;
         const linha: ResumoLinha = { rotulo: l.label, numero, obs: texto(cel.obs) || undefined };
         if (resp.length === 0) {
           if (numero !== undefined || linha.obs) {

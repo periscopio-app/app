@@ -61,7 +61,7 @@ export interface GrafanaPoint {
 }
 
 export type GrafanaSeriesResult =
-  | { configured: false }
+  | { configured: false; reason: string }
   | { configured: true; ok: true; metric: GrafanaMetric; label: string; unit: string; range: GrafanaRange; points: GrafanaPoint[] }
   | { configured: true; ok: false; metric: GrafanaMetric; error: string };
 
@@ -88,6 +88,22 @@ const cache = new Map<string, { at: number; value: GrafanaSeriesResult | Grafana
 
 export function clearGrafanaCache() {
   cache.clear();
+}
+
+/**
+ * Explica, em português, por que a leitura do Grafana está desligada: qual variável falta ou está inválida.
+ * Nunca devolve valor de variável (só o nome), para não vazar segredo.
+ */
+export function motivoNaoConfigurado(env: GrafanaDeps["env"]): string {
+  const faltam = (["GRAFANA_PROM_URL", "GRAFANA_PROM_USER", "GRAFANA_PROM_TOKEN"] as const).filter((k) => !env[k]?.trim());
+  if (faltam.length) return `No servidor (Render, serviço periscopio-api) está faltando: ${faltam.join(", ")}. Se já criou, confira o nome (sem espaço) e se o serviço foi reiniciado depois de salvar.`;
+  try {
+    const u = new URL(env.GRAFANA_PROM_URL!.trim());
+    if (u.protocol !== "https:") return "GRAFANA_PROM_URL precisa começar com https://.";
+  } catch {
+    return "GRAFANA_PROM_URL não é um endereço válido: precisa ser completo, começando com https:// (ex.: https://prometheus-prod-…grafana.net/api/prom).";
+  }
+  return "A configuração de leitura do Grafana está incompleta.";
 }
 
 /** Base da API Prometheus do Grafana Cloud. Só https; devolve null se não estiver configurada. */
@@ -153,7 +169,7 @@ export async function fetchGrafanaSeries(
 ): Promise<GrafanaSeriesResult> {
   const d = { ...defaults, ...overrides };
   const cfg = resolveConfig(d.env);
-  if (!cfg) return { configured: false };
+  if (!cfg) return { configured: false, reason: motivoNaoConfigurado(d.env) };
 
   const key = `${metric}:${range}`;
   const hit = cache.get(key);
@@ -182,7 +198,7 @@ export interface GrafanaDeploy {
 }
 
 export type GrafanaDeploysResult =
-  | { configured: false }
+  | { configured: false; reason: string }
   | { configured: true; ok: true; range: GrafanaRange; stepSeconds: number; deploys: GrafanaDeploy[] }
   | { configured: true; ok: false; error: string };
 
@@ -193,7 +209,7 @@ export type GrafanaDeploysResult =
 export async function fetchGrafanaDeploys(range: GrafanaRange, overrides: Partial<GrafanaDeps> = {}): Promise<GrafanaDeploysResult> {
   const d = { ...defaults, ...overrides };
   const cfg = resolveConfig(d.env);
-  if (!cfg) return { configured: false };
+  if (!cfg) return { configured: false, reason: motivoNaoConfigurado(d.env) };
 
   const key = `deploys:${range}`;
   const hit = cache.get(key);
@@ -262,7 +278,7 @@ export interface GrafanaStats {
 }
 
 export type GrafanaStatsResult =
-  | { configured: false }
+  | { configured: false; reason: string }
   | {
       configured: true;
       ok: true;
@@ -279,7 +295,7 @@ const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) && Numbe
 export async function fetchGrafanaStats(range: GrafanaRange, overrides: Partial<GrafanaDeps> = {}): Promise<GrafanaStatsResult> {
   const d = { ...defaults, ...overrides };
   const cfg = resolveConfig(d.env);
-  if (!cfg) return { configured: false };
+  if (!cfg) return { configured: false, reason: motivoNaoConfigurado(d.env) };
 
   const key = `stats:${range}`;
   const hit = cache.get(key);

@@ -27,6 +27,14 @@ export const TERMO_PROFISSIONAL = {
   ].join("\n"),
 };
 
+export class MigracaoPendenteError extends Error {
+  constructor() {
+    super("O sistema está sendo atualizado (migração do banco pendente). Nada foi gravado; tente de novo em alguns minutos.");
+  }
+}
+
+const tabelaAusente = (err: unknown) => codigoDoErro(err) === "42P01";
+
 export class TermoDesatualizadoError extends Error {
   constructor() {
     super("O termo foi atualizado. Recarregue a página e leia a versão atual antes de aceitar.");
@@ -128,15 +136,30 @@ export async function situacaoDoTermo(actor: AtorTermo) {
       .limit(1);
     if (a) aceito = { acceptedAt: a.acceptedAt, version: a.version };
   } else {
-    const [s] = await db
-      .select({ accepted: professionalTermStatus.accepted, acceptedAt: professionalTermStatus.acceptedAt, version: professionalTermStatus.termVersion })
-      .from(professionalTermStatus)
-      .where(eq(professionalTermStatus.userId, actor.id))
-      .limit(1);
-    if (s?.accepted) aceito = { acceptedAt: s.acceptedAt, version: s.version };
+    try {
+      const [s] = await db
+        .select({ accepted: professionalTermStatus.accepted, acceptedAt: professionalTermStatus.acceptedAt, version: professionalTermStatus.termVersion })
+        .from(professionalTermStatus)
+        .where(eq(professionalTermStatus.userId, actor.id))
+        .limit(1);
+      if (s?.accepted) aceito = { acceptedAt: s.acceptedAt, version: s.version };
+    } catch (err) {
+      if (!tabelaAusente(err)) throw err;
+      // Migração 0029 ainda não aplicada: não dá para gravar o aceite. Não trava ninguém nem mostra a janela (a trava do
+      // servidor também fica desligada nesse caso); o aviso vai para o log e a resposta marca migrationPending.
+      console.warn("[termo] tabela professional_term_status ausente (migração 0029 pendente): janela e trava desligadas");
+      return {
+        hasAccepted: true,
+        acceptedAt: null,
+        acceptedVersion: null,
+        migrationPending: true,
+        term: { id: termo.id, version: termo.version, title: termo.title, summary: termo.summary, content: termo.content },
+      };
+    }
   }
   return {
     hasAccepted: !!aceito,
+    migrationPending: false,
     acceptedAt: aceito?.acceptedAt ?? null,
     acceptedVersion: aceito?.version ?? null,
     term: { id: termo.id, version: termo.version, title: termo.title, summary: termo.summary, content: termo.content },
@@ -157,6 +180,7 @@ export async function registrarAceiteProfissional(
     throw new TermoDesatualizadoError();
   }
   const atual = await situacaoDoTermo(actor);
+  if (atual.migrationPending) throw new MigracaoPendenteError();
   // Um aceite por conta: quem já aceitou não registra de novo (nem se o texto ganhar nova versão; para exigir novo
   // aceite de todos, zere `accepted` em professional_term_status).
   if (atual.hasAccepted) {
@@ -212,6 +236,9 @@ export async function registrarAceiteProfissional(
       metadata: virtual ? { actor: "admin_master_virtual" } : undefined,
     });
     return prova;
+  }).catch((err) => {
+    if (tabelaAusente(err)) throw new MigracaoPendenteError();
+    throw err;
   });
 
   aceitoEmCache.set(actor.id, Date.now() + CACHE_MS);

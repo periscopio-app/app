@@ -12,6 +12,7 @@ import {
   validateSignedUrlAccess,
 } from "../services/attachment.service";
 import { recordAudit } from "../services/audit.service";
+import { gravarLaudoNoBanco } from "../services/attachment-store.service";
 import { can } from "../services/privilege.service";
 
 type Actor = NonNullable<Awaited<ReturnType<typeof requireCapability>>>;
@@ -106,34 +107,22 @@ export async function attachmentsRoutes(app: FastifyInstance) {
 
     let attachment;
     try {
-      [attachment] = await db
-        .insert(clinicalAttachments)
-        .values({
-          tenantId: actor.tenantId,
-          caseId,
-          studentId: acesso.caso.studentId,
-          uploaderId: actor.id,
-          storageKey: validation.objectKey,
-          originalName: (fileName || `laudo.${formato.ext}`).slice(0, 200),
-          mimeType: formato.mime,
-          fileSizeBytes: bytes.length,
-          sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
-          category: "laudo_externo",
-          description: null,
-          content: bytes,
-        })
-        .returning({
-          id: clinicalAttachments.id,
-          originalName: clinicalAttachments.originalName,
-          category: clinicalAttachments.category,
-          fileSizeBytes: clinicalAttachments.fileSizeBytes,
-          mimeType: clinicalAttachments.mimeType,
-          description: clinicalAttachments.description,
-          sha256: clinicalAttachments.sha256,
-          createdAt: clinicalAttachments.createdAt,
-        });
+      attachment = await gravarLaudoNoBanco({
+        tenantId: actor.tenantId,
+        caseId,
+        studentId: acesso.caso.studentId,
+        uploaderId: actor.id,
+        storageKey: validation.objectKey,
+        originalName: (fileName || `laudo.${formato.ext}`).slice(0, 200),
+        mimeType: formato.mime,
+        fileSizeBytes: bytes.length,
+        sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+        category: "laudo_externo",
+        content: bytes,
+      });
     } catch (err) {
-      request.log.error({ err }, "falha ao registrar o laudo");
+      // O erro é curto e sem o arquivo (ver attachment-store.service.ts): logar não infla a memória.
+      request.log.error({ codigo: (err as { codigo?: string }).codigo }, "falha ao registrar o laudo");
       reply.status(503);
       return { error: "Não foi possível registrar o laudo agora. O laudo é opcional: você pode continuar e tentar de novo depois." };
     }

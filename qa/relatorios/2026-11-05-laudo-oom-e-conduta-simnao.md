@@ -14,6 +14,8 @@
 - A leitura do laudo guardado não faz cópia extra do conteúdo.
 - RE e médico usam o mesmo cartão e a mesma rota: tudo vai para o mesmo lugar. A chave guardada é `schools/<uuid da escola>/<uuid do aluno>/<uuid do documento>.<ext>`: a "pasta" é a do aluno, e o nome do arquivo nunca entra no caminho.
 
+**Atualização (05/nov, à noite) — a primeira correção não bastou.** A Render registrou novos `oomKilled` (19:53, 19:58 e 20:04 UTC) mesmo com o envio binário no ar. Causa adicional, confirmada por teste: quando a gravação do laudo **falha** (na época a coluna `content` da migração 0028 ainda não existia), o Drizzle monta a mensagem do erro com **todos os parâmetros da consulta, ou seja, o arquivo inteiro** (mais de 1 milhão de caracteres para 8 MB), e o log a copia várias vezes: pico de memória no caminho de erro. Correção: o laudo agora é gravado por consulta direta ao driver (`attachment-store.service.ts`), cujo erro é curto e só traz o código do Postgres. Prova: `[REG-008]`. A migração 0028 também foi aplicada, então o caminho feliz deixou de falhar. **Ainda não verificado em produção:** envie um laudo e confira se não há novo `oomKilled`.
+
 **Prova:** `[REG-005]` (RE e médico gravam sob a mesma pasta do aluno, sem o nome no caminho) e os testes de laudo agora enviam em binário como a tela. **Não medi a memória em produção:** confirme depois do deploy no card "Memória do servidor" (`/admin/saude`) enviando um laudo de alguns MB. Se continuar apertado, o próximo passo é subir o plano da Render (o limite de 512 MB é baixo para este serviço).
 
 ## 2. Conduta do Sumário do médico: escolha Sim ou Não por item

@@ -169,9 +169,9 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
   });
 
   test("seção concluída: formulários viram somente leitura e o médico lê SÓ o sumário, não o bloco de notas", async () => {
-    const SUMARIO = "Síntese sintética do fonoaudiólogo para o médico.";
-    // preenche o sumário (fono_sintese) além do plano terapêutico, que é só do profissional
-    const sint = await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_sintese`, "fono", { payload: { conclusao: SUMARIO } });
+    const PRIVADO = "Conteúdo privado da síntese 2.9: fica só com a fonoaudióloga.";
+    // O sumário que vai ao médico é o item 4 (plano terapêutico), já concluído acima. A síntese 2.9 NÃO é sumário.
+    const sint = await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_sintese`, "fono", { payload: { conclusao: PRIVADO } });
     assert.equal(sint.status, 200, JSON.stringify(sint.body));
 
     const fim = await call("PATCH", `/api/cases/sections/${secaoFono}`, "fono", { summary: { texto: "final" }, markAsCompleted: true });
@@ -189,9 +189,9 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
     const sec = md.body.sections[0];
     assert.equal(sec.specialty, "fonoaudiologia");
     assert.equal(sec.sumarioPreenchido, true);
-    assert.deepEqual(sec.forms.map((f: any) => f.id), ["fono_sintese"], "só o sumário chega ao médico");
-    assert.equal(sec.forms[0].payload.conclusao, SUMARIO);
-    assert.ok(!JSON.stringify(md.body).includes("Achado sintético"), "o plano terapêutico e as anamneses ficam com o profissional");
+    assert.deepEqual(sec.forms.map((f: any) => f.id), ["fono_plano_terapeutico"], "só o sumário (item 4) chega ao médico");
+    assert.equal(sec.forms[0].payload.principais_achados, TEXTO);
+    assert.ok(!JSON.stringify(md.body).includes(PRIVADO), "a síntese 2.9 e as anamneses ficam com o profissional");
     // a seção da psicomotricidade, ainda aberta, continua invisível
     assert.ok(!md.body.sections.some((s: any) => s.specialty === "psicomotricidade"));
   });
@@ -199,7 +199,7 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
   test("seção concluída sem o formulário de sumário: o médico vê a seção, avisada como sem sumário", async () => {
     const { caseSpecialtyForms } = shared;
     const { and, eq } = await import("drizzle-orm");
-    await dbx.delete(caseSpecialtyForms).where(and(eq(caseSpecialtyForms.sectionId, secaoFono), eq(caseSpecialtyForms.formId, "fono_sintese")));
+    await dbx.delete(caseSpecialtyForms).where(and(eq(caseSpecialtyForms.sectionId, secaoFono), eq(caseSpecialtyForms.formId, "fono_plano_terapeutico")));
     const md = await call("GET", `/api/cases/${caso}/specialty-forms`, "md");
     assert.equal(md.body.sections[0].sumarioPreenchido, false);
     assert.deepEqual(md.body.sections[0].forms, []);

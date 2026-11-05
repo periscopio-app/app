@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { clearGrafanaCache, describePromError, fetchGrafanaDeploys, fetchGrafanaSeries, fetchGrafanaStats, GRAFANA_SERIES } from "./grafana.service";
+import { clearGrafanaCache, describePromError, fetchGrafanaDeploys, fetchGrafanaSeries, fetchGrafanaStats, GRAFANA_SERIES, motivoNaoConfigurado } from "./grafana.service";
 
 const env = {
   GRAFANA_PROM_URL: "https://prometheus-prod-00.example.net/api/prom/",
@@ -19,13 +19,13 @@ describe("fetchGrafanaSeries", () => {
   it("sem configuração devolve configured=false e não chama o Grafana", async () => {
     let chamou = false;
     const r = await fetchGrafanaSeries("memory_mb", "1h", { env: {}, now: () => NOW, fetch: async () => { chamou = true; return { status: 200, json: async () => ({}) }; } });
-    assert.deepEqual(r, { configured: false });
+    assert.equal(r.configured, false);
     assert.equal(chamou, false);
   });
 
   it("recusa URL que não seja https", async () => {
     const r = await fetchGrafanaSeries("memory_mb", "1h", { env: { ...env, GRAFANA_PROM_URL: "http://localhost:9090" }, now: () => NOW });
-    assert.deepEqual(r, { configured: false });
+    assert.equal(r.configured, false);
   });
 
   it("monta query_range com a consulta da lista, autenticação básica e passo do período", async () => {
@@ -93,7 +93,7 @@ describe("fetchGrafanaDeploys", () => {
   };
 
   it("sem configuração devolve configured=false", async () => {
-    assert.deepEqual(await fetchGrafanaDeploys("7d", { env: {}, now: () => NOW }), { configured: false });
+    assert.equal((await fetchGrafanaDeploys("7d", { env: {}, now: () => NOW })).configured, false);
   });
 
   it("lista commits do mais novo ao mais antigo e marca o atual", async () => {
@@ -156,7 +156,7 @@ describe("fetchGrafanaStats", () => {
   const fakeFetch = async (u: string) => ({ status: 200, json: async () => answers(decodeURIComponent(new URL(u).searchParams.get("query")!.replace(/\+/g, " "))) });
 
   it("sem configuração devolve configured=false", async () => {
-    assert.deepEqual(await fetchGrafanaStats("24h", { env: {}, now: () => NOW }), { configured: false });
+    assert.equal((await fetchGrafanaStats("24h", { env: {}, now: () => NOW })).configured, false);
   });
 
   it("junta os números e ordena o uso de IA por modelo e por recurso", async () => {
@@ -194,5 +194,28 @@ describe("fetchGrafanaStats", () => {
     const r = await fetchGrafanaStats("24h", { env, now: () => NOW, fetch: async () => ({ status: 401, json: async () => ({}) }) });
     assert.equal(r.configured && !r.ok, true);
     assert.ok(!JSON.stringify(r).includes("token-secreto-de-teste"));
+  });
+});
+
+describe("[REG-006] leitura do Grafana desligada: a resposta diz o que falta", () => {
+  it("lista só os NOMES das variáveis que faltam, nunca valores", () => {
+    const m = motivoNaoConfigurado({ GRAFANA_PROM_URL: "https://x.grafana.net/api/prom", GRAFANA_PROM_USER: "123" });
+    assert.match(m, /GRAFANA_PROM_TOKEN/);
+    assert.doesNotMatch(m, /GRAFANA_PROM_URL|GRAFANA_PROM_USER|x\.grafana\.net|123/);
+  });
+  it("endereço sem https:// ou inválido é apontado", () => {
+    assert.match(motivoNaoConfigurado({ GRAFANA_PROM_URL: "prometheus-prod-40.grafana.net/api/prom", GRAFANA_PROM_USER: "1", GRAFANA_PROM_TOKEN: "t" }), /https:\/\//);
+    assert.match(motivoNaoConfigurado({ GRAFANA_PROM_URL: "http://x.grafana.net", GRAFANA_PROM_USER: "1", GRAFANA_PROM_TOKEN: "t" }), /https:\/\//);
+  });
+  it("série, deploys e resumo devolvem o motivo quando não estão configurados", async () => {
+    clearGrafanaCache();
+    const env = { GRAFANA_PROM_USER: "1", GRAFANA_PROM_TOKEN: "t" };
+    const s = await fetchGrafanaSeries("requests_per_min", "24h", { env } as never);
+    const d = await fetchGrafanaDeploys("24h", { env } as never);
+    const st = await fetchGrafanaStats("24h", { env } as never);
+    for (const r of [s, d, st]) {
+      assert.equal(r.configured, false);
+      assert.match((r as { reason: string }).reason, /GRAFANA_PROM_URL/);
+    }
   });
 });

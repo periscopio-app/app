@@ -9,7 +9,7 @@ import { requireActor, requireCapability } from "../security/actor";
 import { effectiveCapabilities } from "../services/privilege.service";
 import { isRole, type Role } from "../security/roles";
 import { recordAudit } from "../services/audit.service";
-import { TermoDesatualizadoError, registrarAceiteProfissional, situacaoDoTermo } from "../services/professional-term.service";
+import { MigracaoPendenteError, TermoDesatualizadoError, registrarAceiteProfissional, situacaoDoTermo } from "../services/professional-term.service";
 import { errorCauseChain } from "../observability/error-cause";
 import { urlDoAvatar } from "../services/avatar.service";
 
@@ -394,6 +394,7 @@ export async function usersRoutes(app: FastifyInstance) {
       return { success: true, alreadyAccepted: r.jaAceito, acceptedAt: r.acceptedAt, termVersion: r.version, message: "Termo aceito. Este aceite vale para a sua conta." };
     } catch (err) {
       if (err instanceof TermoDesatualizadoError) return reply.status(409).send({ error: err.message });
+      if (err instanceof MigracaoPendenteError) return reply.status(503).send({ error: err.message });
       request.log.error({ err, causes: errorCauseChain(err) }, "falha ao registrar aceite do termo profissional");
       return reply.status(503).send({ error: "Não foi possível registrar o aceite agora. Nada foi gravado; tente de novo em instantes." });
     }

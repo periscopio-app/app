@@ -1,5 +1,5 @@
 import { recordAiUsageFromReply } from "../observability/ai-usage";
-import { RE_FORMS, RE_TEXTO_MAX, camposDoForm, type ReCampo, type ReFormId, type ReOpcao, lerGenograma, resumoDoGenograma } from "@periscopio/shared";
+import { RE_FORMS, RE_TEXTO_MAX, camposDoForm, textoDosNumeros, type ReCampo, type ReFormId, type ReOpcao, lerGenograma, resumoDoGenograma } from "@periscopio/shared";
 import { BANNED } from "./tea-summary.service";
 
 /**
@@ -78,7 +78,7 @@ function respostaDe(campo: ReCampo, p: Record<string, any>): ItemContexto[] | nu
         const d = dados[l.key];
         if (!d) continue;
         const r = rotulos(campo.opcoes, d.r);
-        const n = d.n != null && d.n !== "" ? `${campo.comNumero ?? "Número"}: ${d.n}` : "";
+        const n = textoDosNumeros(campo, d);
         const obs = txt(d.obs);
         const partes = [r.join("; "), n, obs && `Obs.: ${clip(obs, 150)}`].filter(Boolean);
         if (partes.length) out.push({ pergunta: `${campo.label} — ${l.label}`, resposta: partes.join(" ") });

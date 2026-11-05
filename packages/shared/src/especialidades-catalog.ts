@@ -19,7 +19,7 @@
  *    módulo de consentimento (P1).
  */
 
-import { FORM_BUILDERS, aplicarRegrasDeOpcoes, type CampoMatriz, type FormDef, type ReCampo, type ReOpcao, type ReSecao } from "./re-journey-catalog";
+import { FORM_BUILDERS, aplicarRegrasDeOpcoes, type CampoMatriz, type CampoNumero, type FormDef, type LinhaMatriz, type ReCampo, type ReOpcao, type ReSecao } from "./re-journey-catalog";
 
 const { t, tl, u, m, o, linhas } = FORM_BUILDERS;
 
@@ -90,6 +90,18 @@ const CLASSE_PADRAO: ReOpcao[] = [
   o("alta", "Alta"),
   o("muito_alta", "Muito alta"),
 ];
+/**
+ * Pontuação-padrão como o PDF da fono imprime (TNI, TRPP, TDF e total do TCFPO): a faixa vem junto da classe.
+ * Mesmas chaves de `CLASSE_PADRAO`, então o que já foi salvo continua válido. O sistema não converte pontuação em classe.
+ */
+const PADRAO_PDF: ReOpcao[] = [
+  o("muito_baixa", "Pontuação-padrão < 70 – muito baixa"),
+  o("baixa", "Pontuação-padrão entre 70 e 84 – baixa"),
+  o("media", "Pontuação-padrão entre 85 e 114 – média"),
+  o("alta", "Pontuação-padrão entre 115 e 129 – alta"),
+  o("muito_alta", "Pontuação-padrão > ou + 130 – muito alta"),
+];
+const SIM_NAO: ReOpcao[] = [o("sim", "Sim"), o("nao", "Não")];
 const CLASSE_WISC: ReOpcao[] = [
   o("extremamente_baixo", "Extremamente baixo"),
   o("limitrofe", "Limítrofe"),
@@ -122,12 +134,30 @@ const DATA_NOTA = "Escolha a data no calendário.";
 function mx(key: string, label: string, rows: [string, string][], opcoes: ReOpcao[], extra: Partial<CampoMatriz> = {}): CampoMatriz {
   return { key, label, tipo: "matriz", linhas: linhas(...rows), opcoes, exclusiva: true, comObs: false, ...extra };
 }
+/** Linhas de matriz com colunas informativas impressas na fonte (ex.: "Aplicação", "Áreas avaliadas"). */
+const linhasInfo = (rows: [string, string, [string, string][]][]): LinhaMatriz[] =>
+  rows.map(([key, label, info]) => ({ key, label, info: info.map(([rotulo, texto]) => ({ rotulo, texto })) }));
+/** Síntese de um instrumento: Instrumento | Aplicação | Áreas avaliadas | Conclusão (déficit) Sim/Não, como no PDF. */
+const sintese = (key: string, label: string, rows: [string, string, string, string][], extra: Partial<CampoMatriz> = {}): CampoMatriz => ({
+  key,
+  label,
+  tipo: "matriz",
+  linhas: linhasInfo(rows.map(([k, instrumento, aplicacao, areas]) => [k, instrumento, [["Aplicação", aplicacao], ["Áreas avaliadas", areas]]] as [string, string, [string, string][]])),
+  opcoes: SIM_NAO,
+  exclusiva: true,
+  comObs: false,
+  ...extra,
+});
+/** Campo numérico de uma linha (ver `CampoNumero`). */
+const num = (key: string, label: string, extra: Partial<CampoNumero> = {}): CampoNumero => ({ key, label, ...extra });
 /** Lista de perguntas Não/Sim (uma observação opcional por linha). */
 const ns = (key: string, label: string, rows: [string, string][], obs = true) => mx(key, label, rows, NS, { comObs: obs });
 /** Escolha única forçada (classificação que o profissional marca; nunca vira múltipla). */
 const ue = (key: string, label: string, opcoes: ReOpcao[], ajuda?: string): ReCampo => ({ ...u(key, label, opcoes, ajuda), exclusiva: true, comObs: false });
 const data = (key: string, label: string): ReCampo => t(key, label, DATA_NOTA);
 const opc = (c: ReCampo): ReCampo => ({ ...c, opcional: true });
+/** Tira a observação por pergunta que o motor põe nas marcações: o PDF da fono não tem esse campo nessas tabelas. */
+const semObs = <T extends ReCampo>(c: T): T => ({ ...c, comObs: false });
 const sec = (id: string, titulo: string, campos: ReCampo[], descricao?: string): ReSecao => ({ id, titulo, descricao, campos });
 
 function def(
@@ -137,7 +167,9 @@ function def(
   tituloCurto: string,
   dica: string,
   secoes: ReSecao[],
-  pendenciasDeValidacao: string[] = []
+  pendenciasDeValidacao: string[] = [],
+  /** `semObservacoes`: a fonte não tem a seção "Observações" (ela não é injetada). `camposRemovidos`: chaves antigas ignoradas ao salvar. */
+  opcoesDoForm: { semObservacoes?: boolean; camposRemovidos?: string[] } = {}
 ): FormDef {
   return aplicarRegrasDeOpcoes({
     id,
@@ -146,7 +178,8 @@ function def(
     titulo,
     tituloCurto,
     dica,
-    secoes: [...secoes, sec("observacoes", "Observações", [opc(tl("observacoes", "Observações"))])],
+    camposRemovidos: opcoesDoForm.camposRemovidos,
+    secoes: opcoesDoForm.semObservacoes ? secoes : [...secoes, sec("observacoes", "Observações", [opc(tl("observacoes", "Observações"))])],
     pendenciasDeValidacao: [
       "Cadastro do aluno (nome, nascimento, escola, série, sexo) vem do caso. Nome, endereço, telefone e nomes de familiares foram omitidos de propósito (LGPD).",
       ...pendenciasDeValidacao,
@@ -271,8 +304,10 @@ const FONO_ANAMNESE = def(
         ["dificuldade_familia", "Alguém na família tem ou teve dificuldade escolar ou de fala (quem? qual?)"],
       ]),
     ]),
-    sec("conclusao", "Conclusão", [tl("conclusao", "Conclusão da anamnese")]),
-  ]
+  ],
+  [],
+  // O PDF não tem "Conclusão da anamnese" nem "Observações" nesta parte. Dados antigos nesses campos são ignorados ao salvar.
+  { semObservacoes: true, camposRemovidos: ["conclusao", "observacoes"] }
 );
 
 const FONO_AUDICAO = def(
@@ -383,9 +418,9 @@ const FONO_LINGUAGEM_ORAL = def(
           o("atraso_leve", "Atraso leve"),
           o("atraso_moderado_grave", "Atraso moderado a grave"),
         ],
-        { comNumero: "Escore padrão", comObs: true }
+        { numeros: [num("escore_bruto", "Escore bruto"), num("n", "Escore padrão")], numerosAntes: true, comObs: false }
       ),
-    ], "Escore bruto: registre na observação de cada linha."),
+    ]),
     sec("dno", "DNO — Discurso narrativo oral (6 a 12 anos)", [
       mx(
         "dno",
@@ -399,7 +434,7 @@ const FONO_LINGUAGEM_ORAL = def(
           ["compreensao_inferencia", "Compreensão: momento da inferência"],
         ],
         CLASSE_6,
-        { comNumero: "Pontuação", comObs: true }
+        { numeros: [num("n", "Pontuação"), num("percentil", "Percentil")], numerosAntes: true, comObs: false }
       ),
       mx(
         "dno_conclusao",
@@ -412,21 +447,22 @@ const FONO_LINGUAGEM_ORAL = def(
         ],
         ESP_ALT
       ),
-    ], "Percentil: registre na observação de cada linha."),
-    sec("tin", "TIN — Teste de nomeação infantil (3 a 14 anos)", [
-      t("tin_bruta", "Pontuação bruta (de 60)"),
-      ue("tin_classe", "Interpretação da pontuação-padrão para a idade", CLASSE_PADRAO),
-      m(
+    ]),
+    sec("tin", "TNI — Teste de nomeação infantil (3 a 14 anos)", [
+      t("tin_bruta", "Pontuação bruta (____/60)"),
+      ue("tin_classe", "Pontuação-padrão de acordo com idade", PADRAO_PDF),
+      semObs(m(
         "tin_erros",
-        "Se a pontuação ficou baixa ou muito baixa, marque o que ocorreu",
+        "Quando a pontuação está baixa ou muito baixa",
         [
-          o("erros_semanticos", "Erros semânticos (mesma categoria)"),
-          o("erros_visuais", "Erros visuais (fisicamente semelhantes)"),
-          o("erros_fonologicos", "Erros fonológicos (palavras parecidas)"),
-          o("nao_conhece", "Não conhece a maior parte das figuras que não nomeou"),
+          o("fala_nome_errado", "Fala sobre a figura, mas dá o nome errado"),
+          o("erros_semanticos", "Presença de erros semânticos (mesma categoria)"),
+          o("erros_visuais", "Presença de erros visuais (fisicamente semelhantes)"),
+          o("erros_fonologicos", "Presença de erros fonológicos (palavras parecidas)"),
+          o("nao_conhece", "Não conhece a maior parte das figuras que não nomeou corretamente"),
           o("beneficia_pista", "Beneficia-se de pista fonológica"),
         ]
-      ),
+      )),
     ]),
     sec("fv", "FV — Fluência verbal (6 a 12 anos)", [
       mx(
@@ -438,25 +474,34 @@ const FONO_LINGUAGEM_ORAL = def(
           ["vestimentas", "Palavras referentes a roupas/vestimentas"],
         ],
         CLASSE_6,
-        { comNumero: "Nº de palavras", comObs: true }
+        {
+          numeros: [num("n", "Nº de palavras"), num("percentil", "Percentil"), num("repeticoes", "Repetições"), num("intrusoes", "Intrusões"), num("clusters", "Clusters")],
+          numerosAntes: true,
+          comObs: false,
+        }
       ),
-    ], "Percentil, repetições, intrusões e clusters: registre na observação de cada linha."),
+    ]),
     sec("trpp", "TRPP — Repetição de palavras e pseudopalavras (3 a 14 anos)", [
       mx(
         "trpp",
         "Resultados do TRPP",
         [
-          ["palavras", "Sequência de palavras (de 10)"],
-          ["pseudopalavras", "Sequência de pseudopalavras (de 10)"],
-          ["total", "Total (de 20)"],
+          ["palavras", "Sequência de palavras"],
+          ["pseudopalavras", "Sequência de pseudopalavras"],
+          ["total", "Total"],
         ],
-        CLASSE_PADRAO,
-        { comNumero: "Pontuação bruta" }
+        PADRAO_PDF,
+        {
+          numeros: [num("n", "Pontuação bruta")],
+          numerosAntes: true,
+          comObs: false,
+          sufixosPorLinha: { palavras: { n: "/10" }, pseudopalavras: { n: "/10" }, total: { n: "/20" } },
+        }
       ),
     ]),
     sec("tdf", "TDF — Discriminação fonológica (3 a 14 anos)", [
-      t("tdf_bruta", "Pontuação bruta (de 23)"),
-      ue("tdf_classe", "Interpretação da pontuação-padrão para a idade", CLASSE_PADRAO),
+      t("tdf_bruta", "Pontuação bruta (____/23)"),
+      ue("tdf_classe", "Pontuação-padrão de acordo com idade", PADRAO_PDF),
     ]),
     sec("tcfpo", "TCFPO — Consciência fonológica por produção oral (3 a 14 anos)", [
       mx(
@@ -478,24 +523,25 @@ const FONO_LINGUAGEM_ORAL = def(
         [],
         { comNumero: "Pontuação bruta" }
       ),
-      ue("tcfpo_classe", "Interpretação da pontuação-padrão do total", CLASSE_PADRAO),
-      m("tcfpo_nivel", "Dificuldades em nível", [o("silabico", "Silábico"), o("fonemico", "Fonêmico")]),
+      ue("tcfpo_classe", "Pontuação-padrão e interpretação do total", PADRAO_PDF),
+      semObs(m("tcfpo_nivel", "Dificuldades em nível", [o("silabico", "Silábico"), o("fonemico", "Fonêmico")])),
     ]),
     sec("sintese", "Síntese da avaliação da linguagem oral", [
-      mx(
+      sintese(
         "sintese_instrumentos",
-        "Conclusão por instrumento (déficit)",
+        "Conclusão (Déficit)",
         [
-          ["proc", "PROC — habilidades comunicativas e cognição"],
-          ["adl", "ADL — linguagem compreensiva e expressiva"],
-          ["dno", "DNO — memória, inferência e organização"],
-          ["tin", "TIN — nomeação e acesso ao léxico"],
-          ["fv", "FV — estratégia de busca e flexibilidade"],
-          ["trpp", "TRPP — alça fonológica (curto prazo)"],
-          ["tdf", "TDF — diferenciação de sons semelhantes"],
-          ["tcfpo", "TCFPO — manipulação de sons e rimas"],
+          ["proc", "PROC (Zorzi e Hage)", "Para crianças que não respondem a testes formais, 12 a 48 meses", "Habilidades comunicativas e cognição"],
+          ["adl", "ADL (Menezes)", "1 a 6 anos e 11 meses", "Linguagem compreensiva e expressiva"],
+          ["dno", "DNO (Fonseca et al.)", "6 a 12 anos", "Memória, inferência e organização"],
+          ["tin", "TIN (Seabra et al.)", "3 a 14 anos", "Nomeação e acesso ao léxico"],
+          ["fv", "FV (Fluência Verbal)", "6 a 12 anos", "Estratégia de busca e flexibilidade"],
+          ["trpp", "TRPP (Seabra et al.)", "3 a 14 anos", "Alça fonológica (curto prazo)"],
+          ["tdf", "TDF (Seabra et al.)", "3 a 14 anos", "Diferenciação de sons semelhantes"],
+          ["tcfpo", "TCFPO (Capovilla)", "3 a 14 anos", "Manipulação de sons e rimas"],
         ],
-        SIM_NAO_NAV
+        // "Não avaliado" não existe nesta tabela do PDF (só na síntese completa): rascunhos antigos com ele ficam em branco.
+        { legadoEmBranco: ["nao_avaliado"] }
       ),
       mx(
         "conclusao_areas",
@@ -505,7 +551,7 @@ const FONO_LINGUAGEM_ORAL = def(
           ["expressao", "Expressão"],
           ["uso", "Uso da linguagem"],
         ],
-        NS
+        SIM_NAO
       ),
       mx(
         "conclusao_habilidades",
@@ -516,7 +562,7 @@ const FONO_LINGUAGEM_ORAL = def(
           ["sintaxe", "Sintaxe"],
           ["pragmatica", "Pragmática"],
         ],
-        NS
+        SIM_NAO
       ),
     ]),
   ],
@@ -560,14 +606,43 @@ const ERROS_LEITURA_ESCRITA: ReOpcao[] = [
 ];
 
 /** Resultados do TDE II e tipos de erro: iguais na fonoaudiologia e na psicopedagogia. */
-function secoesTde(prefixo: string): ReSecao[] {
+/** Legenda de classificação do TDE II, literal do PDF da fono (p. 9). O item 1 está incompleto no próprio PDF ("< ou = %"): perguntar à clínica. */
+const TDE_LEGENDA = {
+  titulo: "Legenda: classificação",
+  itens: [
+    "1. < ou = % – déficit muito grave",
+    "2. Entre 1 e 5 – déficit grave",
+    "3. Entre 6 e 9 – déficit de leve a moderado",
+    "4. Entre 10 e 25 – alerta para déficit (abaixo do esperado)",
+    "5. 26 a 40 – médio-inferior",
+    "6. 41 a 59 – médio",
+    "7. 60 a 74 – médio-superior",
+    "8. 75 a 94 – acima do esperado",
+    "9. 95 a 99 – muito acima do esperado",
+  ],
+};
+const TDE_CLASSE_NUM: ReOpcao[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((v) => o(v, v));
+
+function secoesTde(prefixo: string, formatoPdf = false): ReSecao[] {
   return [
-    sec(`${prefixo}tde`, "TDE II — Teste de desempenho escolar: leitura e escrita", [
-      mx(`${prefixo}tde`, "Resultados do TDE II", TDE_LINHAS, TDE_CLASSE, { comNumero: "Resultado", comObs: true }),
-    ], "Percentil: registre na observação de cada linha. A classificação 1 a 9 é a da tabela do teste, marcada por você."),
+    sec(
+      `${prefixo}tde`,
+      "TDE II — Teste de desempenho escolar: leitura e escrita",
+      [
+        formatoPdf
+          ? mx(`${prefixo}tde`, "Resultados TDE leitura e escrita", TDE_LINHAS, TDE_CLASSE_NUM, {
+              numeros: [num("n", "Resultados"), num("percentil", "Percentis")],
+              numerosAntes: true,
+              comObs: false,
+              legenda: TDE_LEGENDA,
+            })
+          : mx(`${prefixo}tde`, "Resultados do TDE II", TDE_LINHAS, TDE_CLASSE, { comNumero: "Resultado", comObs: true }),
+      ],
+      formatoPdf ? undefined : "Percentil: registre na observação de cada linha. A classificação 1 a 9 é a da tabela do teste, marcada por você."
+    ),
     sec(`${prefixo}tde_erros`, "Tipos de erros", [
-      m(`${prefixo}tde_erros_leitura`, "Erros na leitura", ERROS_LEITURA_ESCRITA),
-      m(`${prefixo}tde_erros_escrita`, "Erros na escrita", ERROS_LEITURA_ESCRITA),
+      formatoPdf ? semObs(m(`${prefixo}tde_erros_leitura`, "Erros na leitura", ERROS_LEITURA_ESCRITA)) : m(`${prefixo}tde_erros_leitura`, "Erros na leitura", ERROS_LEITURA_ESCRITA),
+      formatoPdf ? semObs(m(`${prefixo}tde_erros_escrita`, "Erros na escrita", ERROS_LEITURA_ESCRITA)) : m(`${prefixo}tde_erros_escrita`, "Erros na escrita", ERROS_LEITURA_ESCRITA),
     ]),
     sec(`${prefixo}tde_conclusao`, "Conclusão: decodificação e codificação", [
       mx(
@@ -592,19 +667,19 @@ const FONO_LINGUAGEM_ESCRITA = def(
   "Linguagem escrita",
   AVISO_RESULTADO,
   [
-    ...secoesTde(""),
+    ...secoesTde("", true),
     sec("dne_fluencia", "DNE — Discurso narrativo escrito (6 a 12 anos): fluência leitora", [
       mx(
         "dne_fluencia",
         "Resultados quantitativos",
         [
-          ["tempo_leitura", "Tempo de leitura (segundos)"],
-          ["velocidade", "Velocidade (palavras por minuto)"],
+          ["tempo_leitura", "Tempo de leitura"],
+          ["velocidade", "Velocidade"],
         ],
         CLASSE_6,
-        { comNumero: "Resultado", comObs: true }
+        { numeros: [num("n", "Tempo em segundos"), num("percentil", "Percentil")], numerosAntes: true, comObs: false }
       ),
-    ], "Percentil: registre na observação de cada linha."),
+    ]),
     sec("dne", "DNE — Resultados quantitativos", [
       mx(
         "dne",
@@ -618,7 +693,7 @@ const FONO_LINGUAGEM_ESCRITA = def(
           ["compreensao_inferencia", "Compreensão: momento da inferência"],
         ],
         CLASSE_6,
-        { comNumero: "Pontuação", comObs: true }
+        { numeros: [num("n", "Pontuação"), num("percentil", "Percentil")], numerosAntes: true, comObs: false }
       ),
     ]),
     sec("producao", "Produção escrita — análise qualitativa", [
@@ -634,19 +709,14 @@ const FONO_LINGUAGEM_ESCRITA = def(
       ),
     ]),
     sec("sintese", "Síntese da avaliação da linguagem escrita", [
-      mx(
-        "sintese_instrumentos",
-        "Conclusão por instrumento (déficit)",
-        [
-          ["tde_leitura", "TDE II (leitura) — precisão, tempo e eficiência leitora"],
-          ["tde_escrita", "TDE II (escrita) — precisão, tempo e eficiência de escrita"],
-          ["dne_tempo", "DNE — tempo de leitura e velocidade"],
-          ["dne_inferencia", "DNE — capacidade inferencial e memória episódica verbal"],
-          ["dne_reconto", "DNE (reconto parcial e integral) — retenção e associação de ideias"],
-          ["narrativa", "Narrativa espontânea — convenções, elaboração e produção escrita"],
-        ],
-        NS
-      ),
+      sintese("sintese_instrumentos", "Conclusão (Déficit)", [
+        ["tde_leitura", "TDE II (Subteste Leitura)", "1º ao 9º ano (EF)", "Precisão, tempo e eficiência leitora"],
+        ["tde_escrita", "TDE II (Subteste Escrita)", "1º ao 9º ano (EF)", "Precisão, tempo e eficiência de escrita"],
+        ["dne_tempo", "DNE (Subteste Discurso Narrativo Escrito)", "6 a 12 anos", "Tempo de leitura e velocidade (Palavras/Min)"],
+        ["dne_inferencia", "DNE (Subteste Discurso Narrativo Escrito)", "6 a 12 anos", "Capacidade inferencial e memória episódica verbal"],
+        ["dne_reconto", "DNE (Reconto Parcial e Integral)", "6 a 12 anos", "Retenção de informações e associação de ideias"],
+        ["narrativa", "Narrativa Espontânea", "Idade Escolar", "Convenções textuais, elaboração da história e produção escrita"],
+      ]),
       mx(
         "conclusao_leitura",
         "Conclusão: déficits em leitura",
@@ -656,7 +726,7 @@ const FONO_LINGUAGEM_ESCRITA = def(
           ["eficiencia", "Eficiência"],
           ["compreensao", "Compreensão escrita"],
         ],
-        NS
+        SIM_NAO
       ),
       mx(
         "conclusao_escrita",
@@ -667,7 +737,7 @@ const FONO_LINGUAGEM_ESCRITA = def(
           ["eficiencia", "Eficiência"],
           ["producao", "Produção textual escrita"],
         ],
-        NS
+        SIM_NAO
       ),
     ]),
   ],
@@ -828,17 +898,12 @@ const FONO_FALA = def(
       ),
     ]),
     sec("sintese", "Síntese da avaliação da fala", [
-      mx(
-        "sintese_instrumentos",
-        "Presença de déficit por instrumento",
-        [
-          ["abfw_fonologia", "ABFW fonologia — processos fonológicos produtivos"],
-          ["abfw_fluencia", "ABFW fluência — disfluências, velocidade e gravidade"],
-          ["amiofe", "AMIOFE — estrutura, mobilidade e funções"],
-          ["voz", "Avaliação perceptivo-auditiva da voz"],
-        ],
-        NS
-      ),
+      sintese("sintese_instrumentos", "Presença de déficit", [
+        ["abfw_fonologia", "ABFW Fonologia (Andrade et al.)", "2 anos e 6 meses a 5 anos e 6 meses", "Processos fonológicos (simplificações) produtivos"],
+        ["abfw_fluencia", "ABFW Fluência (Andrade et al.)", "2 anos e 6 meses a 5 anos e 6 meses", "Tipos de disfluências, velocidade (PPM/SPM) e gravidade"],
+        ["amiofe", "AMIOFE (Felício et al.)", "Infantil a Adulto", "Estrutura, mobilidade e funções (respiração, mastigação e deglutição)"],
+        ["voz", "Avaliação Perceptivo-Auditiva da voz", "Todas as idades", "Qualidade vocal, ressonância, pitch e coordenação pneumofonoarticulatória"],
+      ]),
       mx(
         "conclusao_areas",
         "Conclusão: presença de déficits nas áreas da fala",
@@ -848,7 +913,7 @@ const FONO_FALA = def(
           ["miofuncional", "Sistema miofuncional orofacial"],
           ["voz", "Voz"],
         ],
-        NS
+        SIM_NAO
       ),
     ]),
   ],
@@ -2798,11 +2863,12 @@ export const ESPECIALIDADE_FORMS: Record<EspecialidadeId, FormDef[]> = {
  * só depois de a seção ser concluída. Todos os demais formulários ficam apenas com o profissional que os preencheu.
  *
  * Confirmados pelo título do capítulo: psm_sumario, as_sumario, anp_sumario.
- * Inferidos (CONFIRMAR COM A DRA.): fono_sintese (síntese da avaliação completa), ppc_conclusao (conclusão da avaliação)
- * e, na psicologia, os dois sumários de programa (TAC e grupo operativo), porque o capítulo não traz um sumário único.
+ * Confirmado pela clínica em 05/nov/2026: fono_plano_terapeutico (item 4 do capítulo da fono).
+ * Inferidos (CONFIRMAR COM A DRA.): ppc_conclusao (conclusão da avaliação) e, na psicologia, os dois sumários de programa
+ * (TAC e grupo operativo), porque o capítulo não traz um sumário único.
  */
 export const ESPECIALIDADE_SUMARIOS: Record<EspecialidadeId, string[]> = {
-  fonoaudiologia: ["fono_sintese"],
+  fonoaudiologia: ["fono_plano_terapeutico"],
   psicopedagogia: ["ppc_conclusao"],
   psicologia: ["psi_tac_sumario", "psi_grupo_sumario"],
   neuropsicologia: ["anp_sumario"],

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { RE_TEXTO_MAX, lerGenograma, type FormDef, type ReCampo, type ReOpcao } from "@periscopio/shared";
+import { RE_TEXTO_MAX, lerGenograma, numerosDoCampo, textoDosNumeros, valorNumeroDaCelula, type FormDef, type ReCampo, type ReOpcao } from "@periscopio/shared";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { GenogramaDesenho } from "@/components/genograma/GenogramaDesenho";
 import { Button } from "@/components/ui";
@@ -322,11 +322,43 @@ function CampoView({
   }
 
   // matriz
-  const dados: Record<string, { r?: string | string[] | null; obs?: string; n?: number | null }> = value[campo.key] ?? {};
+  const dados: Record<string, { r?: string | string[] | null; obs?: string; n?: number | null; nums?: Record<string, number | null> }> = value[campo.key] ?? {};
   const setLinha = (k: string, patch: Record<string, unknown>) => {
     const atualLinha = dados[k] ?? {};
     onChange({ [campo.key]: { ...dados, [k]: { ...atualLinha, ...patch } } });
   };
+  const numeros = numerosDoCampo(campo);
+  const setNumero = (k: string, chave: string, texto: string) => {
+    const v = texto === "" ? null : Number(texto);
+    if (chave === "n") return setLinha(k, { n: v });
+    setLinha(k, { nums: { ...(dados[k]?.nums ?? {}), [chave]: v } });
+  };
+  const camposNumericos = (l: { key: string; label: string }, cel: (typeof dados)[string]) =>
+    numeros.length > 0 && (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {numeros.map((nm) => (
+          <label key={nm.key} className="flex items-center gap-2 text-xs font-semibold text-black">
+            {nm.label}
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={nm.max ?? 1000}
+              step="any"
+              aria-label={`${nm.label}: ${l.label}`}
+              data-testid={`num-${campo.key}-${l.key}-${nm.key}`}
+              disabled={readOnly}
+              value={valorNumeroDaCelula(cel, nm.key) ?? ""}
+              onChange={(e) => setNumero(l.key, nm.key, e.target.value)}
+              className="w-24 rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
+            />
+            {(campo.sufixosPorLinha?.[l.key]?.[nm.key] ?? nm.sufixo) && (
+              <span className="font-normal text-neutral-700">{campo.sufixosPorLinha?.[l.key]?.[nm.key] ?? nm.sufixo}</span>
+            )}
+          </label>
+        ))}
+      </div>
+    );
   return (
     <div data-campo={`${formId}:${campo.key}`} className="scroll-mt-28">
       {rotulo}
@@ -337,29 +369,25 @@ function CampoView({
           return (
             <li key={l.key} data-campo={`${formId}:${campo.key}|${l.key}`} className={`scroll-mt-28 space-y-2 px-3 py-3 ${faltaLinha ? "border-l-4 border-l-erro bg-erro/5" : ""}`}>
               <p className="text-sm text-black">{l.label}</p>
+              {l.info && l.info.length > 0 && (
+                <dl className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-neutral-700 sm:grid-cols-[auto_1fr]">
+                  {l.info.map((i) => (
+                    <div key={i.rotulo} className="contents">
+                      <dt className="font-semibold text-black">{i.rotulo}:</dt>
+                      <dd>{i.texto}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {campo.numerosAntes && camposNumericos(l, cel)}
               <div className="flex flex-wrap items-center gap-2">
                 {campo.opcoes.length === 0 ? null : campo.multipla ? (
                   <OpcoesMultipla nome={l.label} opcoes={campo.opcoes} valor={celulaComoLista(cel.r)} desabilitado={readOnly} onChange={(v) => setLinha(l.key, { r: v })} />
                 ) : (
                   <OpcoesUnica nome={l.label} opcoes={campo.opcoes} valor={typeof cel.r === "string" ? cel.r : null} desabilitado={readOnly} onChange={(v) => setLinha(l.key, { r: v })} />
                 )}
-                {campo.comNumero && (
-                  <label className="flex items-center gap-2 text-xs font-semibold text-black">
-                    {campo.comNumero}
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      max={1000}
-                      step="any"
-                      disabled={readOnly}
-                      value={cel.n ?? ""}
-                      onChange={(e) => setLinha(l.key, { n: e.target.value === "" ? null : Number(e.target.value) })}
-                      className="w-24 rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo"
-                    />
-                  </label>
-                )}
               </div>
+              {!campo.numerosAntes && camposNumericos(l, cel)}
               {campo.comObs && (
                 <input
                   type="text"
@@ -377,6 +405,16 @@ function CampoView({
           );
         })}
       </ul>
+      {campo.legenda && (
+        <div className="mt-2 rounded-xl border border-linha bg-fundo p-3 text-xs text-black" data-testid={`legenda-${campo.key}`}>
+          <p className="font-semibold">{campo.legenda.titulo}</p>
+          <ol className="mt-1 list-none space-y-0.5 text-neutral-800">
+            {campo.legenda.itens.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -479,7 +517,7 @@ export function ReFormLeitura({ form, value }: { form: FormDef; value: Payload }
                 const dados = (value[c.key] ?? {}) as Record<string, any>;
                 const respondidas = c.linhas.filter((l) => {
                   const d = dados[l.key];
-                  return d && (celulaComoLista(d.r).length > 0 || d.n != null || d.obs);
+                  return d && (celulaComoLista(d.r).length > 0 || textoDosNumeros(c, d) !== "" || d.obs);
                 });
                 conteudo = respondidas.length ? (
                   <ul className="space-y-0.5">
@@ -488,7 +526,7 @@ export function ReFormLeitura({ form, value }: { form: FormDef; value: Payload }
                       return (
                         <li key={l.key}>
                           {l.label}: <strong>{rotulosDe(c.opcoes, d.r) || "—"}</strong>
-                          {d.n != null ? ` · ${c.comNumero}: ${d.n}` : ""}
+                          {textoDosNumeros(c, d) ? ` · ${textoDosNumeros(c, d)}` : ""}
                           {d.obs ? ` · ${d.obs}` : ""}
                         </li>
                       );

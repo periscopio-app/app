@@ -62,6 +62,8 @@ interface CampoBase {
   ajuda?: string;
   /** Campo que pode ficar em branco sem aparecer na lista de pendências (ex.: observações finais). */
   opcional?: boolean;
+  /** Legenda impressa na fonte, mostrada logo abaixo do campo (ex.: faixas de percentil do TDE II). Só texto, sem cálculo. */
+  legenda?: { titulo: string; itens: string[] };
 }
 
 export interface CampoTexto extends CampoBase {
@@ -101,17 +103,66 @@ export interface CampoMultipla extends CampoBase {
  * Payload: `{ [linha.key]: { r?: string|string[]|null, obs?: string, n?: number|null } }`.
  * Com 3 ou mais opções a linha aceita várias respostas (array) e ganha campo de observação.
  */
+/** Campo numérico de uma linha da matriz (ex.: "Percentil"). A chave "n" é o número legado (`cel.n`); as demais ficam em `cel.nums`. */
+export interface CampoNumero {
+  key: string;
+  label: string;
+  /** Texto fixo depois do campo (ex.: "/60"), como no papel. */
+  sufixo?: string;
+  /** Maior valor aceito (padrão 1000). */
+  max?: number;
+}
+
+/** Linha da matriz. `info` são colunas só de leitura impressas na fonte (ex.: "Aplicação", "Áreas avaliadas"). */
+export interface LinhaMatriz {
+  key: string;
+  label: string;
+  info?: { rotulo: string; texto: string }[];
+}
+
 export interface CampoMatriz extends CampoBase {
   tipo: "matriz";
-  linhas: { key: string; label: string }[];
+  linhas: LinhaMatriz[];
   opcoes: ReOpcao[];
   comObs?: boolean;
   /** Linha com várias respostas (ligado automaticamente com 3 ou mais opções). */
   multipla?: boolean;
   /** Mantém uma resposta por linha mesmo com 3 ou mais opções (classificação do instrumento). */
   exclusiva?: boolean;
-  /** Se informado, cada linha tem um campo numérico (ex.: "Total de acertos"). */
+  /** Se informado, cada linha tem um campo numérico (ex.: "Total de acertos"). Atalho para `numeros: [{ key: "n", label }]`. */
   comNumero?: string;
+  /** Vários campos numéricos por linha, na ordem em que aparecem (ex.: nº de palavras, percentil, repetições). */
+  numeros?: CampoNumero[];
+  /** Mostra os números ANTES das opções (ordem do PDF: pontuação bruta e depois a classificação). */
+  numerosAntes?: boolean;
+  /** Texto fixo depois de um número por linha (ex.: "/10" na linha das palavras, "/20" no total): linha → chave do número → texto. */
+  sufixosPorLinha?: Record<string, Record<string, string>>;
+  /** Opções que existiam antes e foram retiradas: nos rascunhos antigas viram "em branco" em vez de bloquear o salvamento. */
+  legadoEmBranco?: string[];
+}
+
+/** Números de uma linha, na ordem do formulário (aceita o atalho `comNumero`). */
+export function numerosDoCampo(c: Pick<CampoMatriz, "numeros" | "comNumero">): CampoNumero[] {
+  return c.numeros ?? (c.comNumero ? [{ key: "n", label: c.comNumero }] : []);
+}
+
+/** Valor digitado de um número da linha (null = em branco). */
+export function valorNumeroDaCelula(cel: unknown, chave: string): number | null {
+  if (!cel || typeof cel !== "object") return null;
+  const c = cel as { n?: unknown; nums?: Record<string, unknown> };
+  const v = chave === "n" ? c.n : c.nums?.[chave];
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** "Nº de palavras: 12 · Percentil: 40" (só o que foi digitado). Usado na leitura, no resumo e no contexto da IA. */
+export function textoDosNumeros(c: Pick<CampoMatriz, "numeros" | "comNumero">, cel: unknown): string {
+  return numerosDoCampo(c)
+    .map((nm) => {
+      const v = valorNumeroDaCelula(cel, nm.key);
+      return v === null ? "" : `${nm.label}: ${v}${nm.sufixo ?? ""}`;
+    })
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Genograma desenhado por parentesco (ver `genograma.ts`). Payload: texto JSON curto; em branco = sem desenho. */
@@ -142,6 +193,8 @@ export interface FormDef {
   tituloCurto: string;
   /** Quem é a pessoa entrevistada/observada (para a frase de apoio na tela). */
   dica: string;
+  /** Campos que existiam e saíram do formulário (não estavam na fonte): dados antigos neles são ignorados ao salvar. */
+  camposRemovidos?: string[];
   secoes: ReSecao[];
   /** Itens do PDF que NÃO foram transcritos e o motivo. Para a equipe clínica/LGPD validar. */
   pendenciasDeValidacao: string[];
@@ -967,12 +1020,11 @@ function vazioTexto(v: unknown): boolean {
   return typeof v !== "string" || v.trim() === "";
 }
 
-function celulaRespondida(cel: any, comNumero: boolean): boolean {
+function celulaRespondida(cel: any, campo: Pick<CampoMatriz, "numeros" | "comNumero">): boolean {
   if (!cel || typeof cel !== "object") return false;
   const r = cel.r;
   if (Array.isArray(r) ? r.length > 0 : typeof r === "string" && r !== "") return true;
-  if (comNumero && typeof cel.n === "number") return true;
-  return false;
+  return numerosDoCampo(campo).some((nm) => valorNumeroDaCelula(cel, nm.key) !== null);
 }
 
 function campoRespondido(c: ReCampo, p: Record<string, any>): boolean {
@@ -1006,7 +1058,7 @@ export function lacunasDoForm(formId: ReFormId, payload: unknown): Lacuna[] {
       if (c.tipo === "matriz") {
         const m = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
         for (const l of c.linhas) {
-          if (!celulaRespondida(m[l.key], Boolean(c.comNumero))) {
+          if (!celulaRespondida(m[l.key], c)) {
             out.push({ passo: formId, campo: c.key, linha: l.key, rotulo: `${base} › ${l.label}` });
           }
         }
@@ -1029,7 +1081,7 @@ export function progressoDef(form: FormDef, payload: unknown): { respondidos: nu
       const m = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
       for (const l of c.linhas) {
         total += 1;
-        if (celulaRespondida(m[l.key], Boolean(c.comNumero))) respondidos += 1;
+        if (celulaRespondida(m[l.key], c)) respondidos += 1;
       }
     } else {
       total += 1;
@@ -1215,14 +1267,31 @@ const CHAVES_LEGADAS: Record<ReFormId, string[]> = {
 /** Aceita rascunhos antigos: remove chaves legadas e passa respostas únicas para lista onde o campo agora é múltiplo. */
 export function normalizarPayloadDef(form: FormDef, payload: Record<string, unknown>, chavesLegadas: string[] = []): Record<string, unknown> {
   const campos = new Map(camposDoForm(form).map((c) => [c.key, c] as const));
+  const removidos = new Set(form.camposRemovidos ?? []);
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(payload)) {
     if (chavesLegadas.includes(key)) continue;
+    if (removidos.has(key.replace(/__(texto|outros|obs)$/, ""))) continue;
     const campo = campos.get(key);
     if (campo?.tipo === "genograma") {
       out[key] = normalizarGenogramaTexto(val);
     } else if (campo?.tipo === "multipla" && typeof val === "string") {
       out[key] = val ? [val] : [];
+    } else if (campo?.tipo === "matriz" && campo.legadoEmBranco?.length && val && typeof val === "object" && !Array.isArray(val)) {
+      const nova: Record<string, unknown> = {};
+      for (const [lk, lv] of Object.entries(val as Record<string, any>)) {
+        if (lv && typeof lv === "object" && !Array.isArray(lv) && lv.r !== undefined && lv.r !== null) {
+          const velho = campo.legadoEmBranco;
+          const limpo = Array.isArray(lv.r) ? lv.r.filter((x: unknown) => !velho.includes(String(x))) : velho.includes(String(lv.r)) ? null : lv.r;
+          nova[lk] = { ...lv, r: limpo };
+        } else nova[lk] = lv;
+      }
+      if (campo.multipla) {
+        for (const [lk, lv] of Object.entries(nova)) {
+          if (lv && typeof lv === "object" && !Array.isArray(lv) && typeof (lv as any).r === "string") nova[lk] = { ...(lv as any), r: (lv as any).r ? [(lv as any).r] : [] };
+        }
+      }
+      out[key] = nova;
     } else if (campo?.tipo === "matriz" && campo.multipla && val && typeof val === "object" && !Array.isArray(val)) {
       const nova: Record<string, unknown> = {};
       for (const [lk, lv] of Object.entries(val as Record<string, any>)) {
@@ -1292,7 +1361,7 @@ export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas
           if (!lv || typeof lv !== "object" || Array.isArray(lv)) return `Campo "${campo.label}": linha inválida.`;
           const cel = lv as Record<string, unknown>;
           for (const ck of Object.keys(cel)) {
-            if (!["r", "obs", "n"].includes(ck)) return `Campo "${campo.label}": chave desconhecida (${ck}).`;
+            if (!["r", "obs", "n", "nums"].includes(ck)) return `Campo "${campo.label}": chave desconhecida (${ck}).`;
           }
           if (cel.r !== undefined && cel.r !== null) {
             const rs = Array.isArray(cel.r) ? cel.r : [cel.r];
@@ -1302,9 +1371,20 @@ export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas
             }
           }
           if (!textoValido(cel.obs)) return `Campo "${campo.label}": observação longa demais.`;
+          const previstos = numerosDoCampo(campo);
           if (cel.n !== undefined && cel.n !== null) {
-            if (!campo.comNumero) return `Campo "${campo.label}": número não previsto.`;
-            if (typeof cel.n !== "number" || !Number.isFinite(cel.n) || cel.n < 0 || cel.n > 1000) return `Campo "${campo.label}": total de acertos inválido.`;
+            const nm = previstos.find((x) => x.key === "n");
+            if (!nm) return `Campo "${campo.label}": número não previsto.`;
+            if (typeof cel.n !== "number" || !Number.isFinite(cel.n) || cel.n < 0 || cel.n > (nm.max ?? 1000)) return `Campo "${campo.label}": ${nm.label} inválido.`;
+          }
+          if (cel.nums !== undefined && cel.nums !== null) {
+            if (typeof cel.nums !== "object" || Array.isArray(cel.nums)) return `Campo "${campo.label}": números inválidos.`;
+            for (const [nk, nv] of Object.entries(cel.nums as Record<string, unknown>)) {
+              const nm = previstos.find((x) => x.key === nk && nk !== "n");
+              if (!nm) return `Campo "${campo.label}": número não previsto (${nk}).`;
+              if (nv === null || nv === undefined) continue;
+              if (typeof nv !== "number" || !Number.isFinite(nv) || nv < 0 || nv > (nm.max ?? 1000)) return `Campo "${campo.label}": ${nm.label} inválido.`;
+            }
           }
         }
         break;

@@ -198,7 +198,7 @@ describe("resumo visual sem peso", () => {
     const f = formDaEspecialidade("fonoaudiologia", "fono_audicao")!;
     const r = resumoVisualDef(f, { limiar_auditivo: { od: { r: "normal", n: 15 } } });
     const campo = r.secoes.flatMap((s) => s.campos).find((c) => c.key === "limiar_auditivo")!;
-    assert.equal(campo.grupos![0].linhas[0].numero, "15");
+    assert.equal(campo.grupos![0].linhas[0].numero, "dB: 15", "o número aparece como foi digitado, com o rótulo da coluna");
   });
 });
 
