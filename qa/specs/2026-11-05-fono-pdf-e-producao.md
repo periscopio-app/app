@@ -116,3 +116,23 @@ Revisar a escolha quando o volume de laudos passar de alguns GB ou se a busca em
 
 ## Teste de conformidade com o PDF
 `apps/api/src/services/fono-conformidade-pdf.test.ts` guarda os requisitos acima (colunas, rótulos, faixas, opções) por instrumento. Uma mudança futura que simplifique uma tabela do PDF quebra a CI.
+
+## Lote 2 (05/nov/2026 noite): Conduta, termo, encaminhamentos e varredura de rotas
+
+**1. Conduta fonoaudiológica ausente.** Faltava a tabela "Conduta: encaminhamentos e/ou terapia fonoaudiológica" do PDF. Agora é o formulário próprio `fono_conduta` (item 3.1, logo depois do item 3): audição (2 opções), linguagem oral (5), linguagem escrita (5), fala (4), mais conclusão e conduta. Teste `[REG-007]`.
+
+**2. Não concluía o formulário (403 "Seu perfil não possui permissão").**
+- **Causa:** não era capacidade. A conta ainda não tinha aceitado o Termo de Responsabilidade (`TERMO_PENDENTE`), e a tela escondia o motivo atrás da mensagem genérica de permissão.
+- **Correção:** `apps/web/lib/api.ts` mostra a mensagem certa e abre a janela do termo; ao aceitar, o painel do especialista recarrega sozinho.
+- **Aceite:** cada conta demo aceita o termo uma única vez (fonoaudiologia, psicologia, psicomotricidade, psicopedagogia, serviço social, neuropsicologia).
+
+**3. Item 4 preenchido e "Não iniciado".** Mesmo efeito do item 2: a gravação era barrada com 403 e nada era salvo. Teste `[REG-009c]` confirma que, salvando, o status deixa de ser "não iniciado".
+
+**4/5. Encaminhamentos do médico não apareciam para psicólogo, neuropsicólogo e psicomotricista.**
+- **Causas (duas):** (a) o termo pendente barrava `GET /api/cases/my-delegated-sections`, e o painel mostrava lista vazia; (b) **dados do demo**: no caso `ae900b66…`, as seções de psicologia e neuropsicologia foram designadas à conta de psicopedagogia, por isso a conta de psicologia não tinha nada para puxar. A tela do médico lista todos os especialistas em cada vaga e permitia escolher a pessoa errada, sem aviso.
+- **Correção:** aviso quando a especialidade da pessoa escolhida não é a da vaga; nova rota `POST /api/cases/sections/:sectionId/reassign` e botão "Trocar profissional" (só se a seção estiver pendente e sem anotações, tudo auditado). Testes `[REG-009b]`, `[REG-009d]`, `[REG-009e]`.
+- **Pendente (decisão do dono do demo):** trocar as designações do caso já existente em produção.
+
+**6. Varredura de rotas (`[REG-009f]`).** Chama todas as rotas GET como médico, RE, especialista e Admin Master e exige nenhuma resposta 5xx. Achou 4 rotas do Admin Master que respondiam 500 porque gravavam auditoria com o id virtual do Master (chave estrangeira para `users`): `/api/management/re-summaries`, `re-observability`, `nucleo-referrals` e `/api/bi/overview`. Correção: `inserirAuditoria` em `audit.service.ts` troca o ator virtual por nulo e marca `actor: admin_master_virtual` (`[REG-010]`). O 500 de `/api/bi/overview` que sobrou no teste era do ambiente (município de Tarumã inexistente no banco de teste); em produção ele existe.
+
+**Como rodar a suíte:** `SUPERADMIN_EMAILS="bruno@oceanoazul.dev.br,master@teste.local"` e `TEST_DATABASE_URL` apontando para um Postgres descartável. Sem a variável, 3 testes de RNDS dão 403.

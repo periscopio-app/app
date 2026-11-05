@@ -16,6 +16,7 @@ import {
   teaScreenings,
 } from "@periscopio/shared";
 import { db } from "../db/client";
+import { inserirAuditoria } from "../services/audit.service";
 import { requireCapability, type Actor } from "../security/actor";
 import { decideCapability } from "../services/privilege.service";
 import { canonicalRole } from "../security/capabilities";
@@ -96,7 +97,7 @@ export async function managementRoutes(app: FastifyInstance) {
       .orderBy(desc(reAssessments.submittedAt))
       .limit(500);
 
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "management:re-summaries",
@@ -142,7 +143,7 @@ export async function managementRoutes(app: FastifyInstance) {
       .orderBy(desc(cases.updatedAt))
       .limit(1000);
 
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "management:nucleo-referrals",
@@ -226,7 +227,7 @@ export async function managementRoutes(app: FastifyInstance) {
       .innerJoin(students, eq(cases.studentId, students.id))
       .where(and(eq(teaScreenings.tenantId, actor.tenantId), escolaCaso));
 
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "management:re-observability",
@@ -281,7 +282,7 @@ export async function managementRoutes(app: FastifyInstance) {
           set: { baselineMinutes: b.baselineMinutes, note: b.note ?? null, updatedBy: actor.id, updatedAt: agora },
         });
     }
-    await db.insert(auditLogs).values({
+    await inserirAuditoria(db, {
       tenantId: actor.tenantId,
       actorId: actor.id,
       action: "management:re-time-baselines",

@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
+import { inserirAuditoria } from "../services/audit.service";
 import {
   auditLogs,
   biQuestions,
@@ -349,7 +350,7 @@ export async function biRoutes(app: FastifyInstance) {
     if (!tenantId) return reply.status(403).send({ error: "Tenant fora do seu escopo" });
     try {
       const result = await execute(actor, tenantId, parsed.data.plan);
-      await db.insert(auditLogs).values({
+      await inserirAuditoria(db, {
         tenantId,
         actorId: actor.id,
         action: "bi:query",
@@ -388,7 +389,7 @@ export async function biRoutes(app: FastifyInstance) {
       const r = await execute(actor, tenantId, plan);
       out[k] = { ...r, summary: summarize(r) };
     }
-    await db.insert(auditLogs).values({ tenantId, actorId: actor.id, action: "bi:overview", entity: "bi" });
+    await inserirAuditoria(db, { tenantId, actorId: actor.id, action: "bi:overview", entity: "bi" });
     return out;
   });
 
@@ -476,7 +477,7 @@ export async function biRoutes(app: FastifyInstance) {
     }
     try {
       const result = await execute(actor, tenantId, planParse.data);
-      await db.insert(auditLogs).values({
+      await inserirAuditoria(db, {
         tenantId,
         actorId: actor.id,
         action: "bi:query",

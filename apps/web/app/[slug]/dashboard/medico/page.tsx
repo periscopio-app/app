@@ -99,6 +99,10 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
   const [aba, setAba] = useState<ProntuarioTabKey>("overview");
   // Especialidades já designadas neste caso (para acrescentar outras sem repetir).
   const [designadas, setDesignadas] = useState<CaseSection[]>([]);
+  // Troca de profissional de uma seção designada (só enquanto pendente e sem nada preenchido).
+  const [trocandoId, setTrocandoId] = useState<string | null>(null);
+  const [trocaProf, setTrocaProf] = useState("");
+  const [trocaBusy, setTrocaBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   // RE assessment view
@@ -188,6 +192,23 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
       setDesignadas(data.sections ?? []);
     } catch {
       setDesignadas([]);
+    }
+  }
+
+  async function trocarProfissional(sectionId: string) {
+    if (!activeCase || !trocaProf) return;
+    setTrocaBusy(true);
+    setActionMsg(null);
+    try {
+      await api.post(`/api/cases/sections/${sectionId}/reassign`, { professionalId: trocaProf });
+      setActionMsg("Profissional trocado. A seção já aparece no painel dele.");
+      setTrocandoId(null);
+      setTrocaProf("");
+      await carregarDesignadas(activeCase.id);
+    } catch (err: unknown) {
+      setActionMsg(err instanceof Error ? err.message : "Não foi possível trocar o profissional.");
+    } finally {
+      setTrocaBusy(false);
     }
   }
 
@@ -746,9 +767,43 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                           <div key={spec.id} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-2 sm:gap-3">
                             <span className="sm:col-span-2 text-sm font-semibold text-black">{spec.label}</span>
                             {jaDesignada ? (
-                              <span className="sm:col-span-3 rounded-xl border border-sucesso/40 bg-sucesso/10 px-3 py-2 text-sm text-black">
-                                Já designada{jaDesignada.professionalName ? ` · ${jaDesignada.professionalName}` : ""} ({jaDesignada.status})
-                              </span>
+                              <div className="sm:col-span-3 space-y-2">
+                                <span className="block rounded-xl border border-sucesso/40 bg-sucesso/10 px-3 py-2 text-sm text-black">
+                                  Já designada{jaDesignada.professionalName ? ` · ${jaDesignada.professionalName}` : ""} ({jaDesignada.status})
+                                </span>
+                                {jaDesignada.status === "pendente" && trocandoId !== jaDesignada.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setTrocandoId(jaDesignada.id); setTrocaProf(""); }}
+                                    className="text-xs font-semibold text-black underline"
+                                    data-testid={`trocar-${spec.id}`}
+                                  >
+                                    Trocar profissional
+                                  </button>
+                                )}
+                                {trocandoId === jaDesignada.id && (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <select
+                                      aria-label={`Novo profissional para ${spec.label}`}
+                                      value={trocaProf}
+                                      onChange={(e) => setTrocaProf(e.target.value)}
+                                      className="min-w-0 flex-1 rounded-xl border border-linha bg-white px-3 py-2 text-sm text-black"
+                                    >
+                                      <option value="">Escolha o profissional</option>
+                                      {opcoes.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          {p.name}
+                                          {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <Button type="button" size="sm" variant="primary" disabled={!trocaProf || trocaBusy} onClick={() => void trocarProfissional(jaDesignada.id)}>
+                                      {trocaBusy ? "Trocando…" : "Confirmar troca"}
+                                    </Button>
+                                    <Button type="button" size="sm" variant="outline" onClick={() => setTrocandoId(null)}>Cancelar</Button>
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <div className="sm:col-span-3 space-y-1">
                                 <select
@@ -767,6 +822,14 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                     </option>
                                   ))}
                                 </select>
+                                {(() => {
+                                  const escolhido = professionals.find((p) => p.id === delegations[spec.id]);
+                                  return escolhido && escolhido.specialty && escolhido.specialty !== spec.id ? (
+                                    <p role="status" className="rounded-lg border border-ouro/40 bg-ouro-50 px-2 py-1 text-[11px] text-black" data-testid={`aviso-especialidade-${spec.id}`}>
+                                      Atenção: {escolhido.name} é de <strong>{escolhido.specialty}</strong>. A seção de {spec.label} aparecerá no painel dele, e não no de quem é dessa especialidade.
+                                    </p>
+                                  ) : null;
+                                })()}
                                 {opcoes.length === 0 && (
                                   <p className="text-[11px] text-neutral-800">
                                     Nenhum especialista cadastrado neste município. Peça ao Administrador para convidar o profissional (Usuários e perfis).

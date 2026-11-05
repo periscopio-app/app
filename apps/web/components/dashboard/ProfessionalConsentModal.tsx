@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ShieldAlert, CheckCircle2, FileText, Lock } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, TERMO_PENDENTE_EVENTO, TERMO_ACEITO_EVENTO } from "@/lib/api";
 import { Button } from "@/components/ui";
 
 interface TermoVigente {
@@ -38,13 +38,18 @@ export function ProfessionalConsentModal() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .get<{ hasAccepted: boolean; term?: TermoVigente }>("/api/me/professional-consent")
-      .then((res) => {
-        setTermo(res.term ?? null);
-        setHasAccepted(res.hasAccepted);
-      })
-      .catch(() => setHasAccepted(true)); // a trava de verdade é no servidor; se esta consulta falhar a janela não bloqueia a tela
+    const consultar = () =>
+      api
+        .get<{ hasAccepted: boolean; term?: TermoVigente }>("/api/me/professional-consent")
+        .then((res) => {
+          setTermo(res.term ?? null);
+          setHasAccepted(res.hasAccepted);
+        })
+        .catch(() => setHasAccepted((atual) => atual ?? true)); // a trava de verdade é no servidor; se esta consulta falhar a janela não bloqueia a tela
+    void consultar();
+    // O servidor pode pedir o aceite depois que a página já abriu (ex.: a tabela do termo foi criada com a tela aberta).
+    window.addEventListener(TERMO_PENDENTE_EVENTO, consultar);
+    return () => window.removeEventListener(TERMO_PENDENTE_EVENTO, consultar);
   }, []);
 
   if (hasAccepted === null || hasAccepted === true) {
@@ -61,6 +66,7 @@ export function ProfessionalConsentModal() {
     try {
       await api.post("/api/me/professional-consent/accept", { accepted: true, termId: termo?.id, termVersion: termo?.version });
       setHasAccepted(true);
+      window.dispatchEvent(new CustomEvent(TERMO_ACEITO_EVENTO));
     } catch (err: any) {
       setError(err?.message || "Não foi possível registrar o aceite agora. Nada foi gravado; tente de novo.");
     } finally {

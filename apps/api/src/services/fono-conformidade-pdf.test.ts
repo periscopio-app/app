@@ -12,6 +12,7 @@ import {
   camposDoForm,
   ehFormularioDeSumario,
   formDaEspecialidade,
+  formsDaEspecialidade,
   idsDeSumarioDaEspecialidade,
   normalizarPayloadDef,
   numerosDoCampo,
@@ -152,6 +153,42 @@ describe("[REG-007] fonoaudiologia conforme o PDF — anamnese e sumário", () =
     assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_plano_terapeutico"), true);
     assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_sintese"), false);
     assert.equal(form("fono_plano_terapeutico").letra, "4");
+  });
+});
+
+describe("[REG-007] fonoaudiologia conforme o PDF — Conduta como item próprio (após o 3)", () => {
+  test("a Conduta é um formulário próprio, entre o SRS-2 (3) e o plano terapêutico (4)", () => {
+    const ids = formsDaEspecialidade("fonoaudiologia").map((f) => f.id);
+    assert.deepEqual(ids.slice(-3), ["fono_srs2", "fono_conduta", "fono_plano_terapeutico"]);
+    assert.equal(form("fono_conduta").letra, "3.1");
+  });
+
+  test("as 4 áreas do PDF, com o texto literal, e Conclusão/Conduta ao final", () => {
+    const campos = camposDoForm(form("fono_conduta"));
+    assert.deepEqual(campos.map((c) => c.key), ["conduta_audicao", "conduta_linguagem_oral", "conduta_linguagem_escrita", "conduta_fala", "conclusao", "conduta"]);
+    const aud = campos[0] as CampoMultipla;
+    assert.equal(aud.opcoes.length, 2);
+    assert.match(aud.opcoes[1].label, /avaliação formal do Processamento auditivo central$/);
+    const oral = campos[1] as CampoMultipla;
+    assert.equal(oral.ajuda, "Estimulação cognitivo-linguística");
+    assert.equal(oral.opcoes.length, 5);
+    assert.equal(oral.opcoes[4].label, "Pragmática (inferências, organização discursiva, uso da linguagem).");
+    assert.equal((campos[2] as CampoMultipla).opcoes.length, 5);
+    assert.equal((campos[3] as CampoMultipla).opcoes.length, 4);
+    for (const c of campos.slice(0, 4)) assert.equal((c as { comObs?: boolean }).comObs, false, c.key);
+  });
+
+  test("a síntese 2.9 não carrega mais a conduta; dados antigos dela não bloqueiam o salvamento", () => {
+    const sint = form("fono_sintese");
+    const chaves = camposDoForm(sint).map((c) => c.key);
+    for (const k of ["conduta_audicao", "conduta_linguagem_oral", "conduta_linguagem_escrita", "conduta_fala", "conclusao", "conduta"]) assert.ok(!chaves.includes(k), k);
+    const antigo = { conduta_audicao: ["encaminhar_orl"], conclusao: "x", conduta: "y" };
+    assert.equal(validarPayloadDef(sint, antigo), null);
+    assert.deepEqual(normalizarPayloadDef(sint, antigo), {});
+  });
+
+  test("não é sumário: só o plano terapêutico (item 4) vai ao médico", () => {
+    assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_conduta"), false);
   });
 });
 

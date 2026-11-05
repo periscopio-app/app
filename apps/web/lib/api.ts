@@ -1,5 +1,9 @@
 const BASE = "";
 
+/** Evento disparado quando o servidor responde 403 TERMO_PENDENTE (a janela do termo escuta e reabre). */
+export const TERMO_PENDENTE_EVENTO = "periscopio:termo-pendente";
+export const TERMO_ACEITO_EVENTO = "periscopio:termo-aceito";
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -19,6 +23,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    // 403 "TERMO_PENDENTE": a conta ainda não aceitou o Termo de Responsabilidade Clínica e LGPD. O servidor bloqueia o uso,
+    // mas a mensagem genérica de 403 ("Seu perfil não possui permissão") enganava: aqui avisamos o certo e pedimos a janela do termo.
+    if (res.status === 403) {
+      try {
+        const corpo = (await res.clone().json()) as { code?: string; error?: string };
+        if (corpo.code === "TERMO_PENDENTE") {
+          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(TERMO_PENDENTE_EVENTO));
+          throw new ApiError(403, corpo.error ?? "Aceite o Termo de Responsabilidade Clínica e LGPD para continuar.", corpo);
+        }
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+      }
+    }
     // 400/409/422 trazem mensagem específica do servidor (ex.: validação, horário já reservado)
     let serverMsg: string | null = null;
     let serverBody: unknown;
