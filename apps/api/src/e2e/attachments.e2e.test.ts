@@ -89,13 +89,15 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
   const enviar = (who: string, bytes: Buffer = PDF, fileName = "laudo.pdf") =>
     call("POST", `/api/cases/${caseId}/attachments`, who, { fileName, dataBase64: bytes.toString("base64") });
 
-  test("RE do caso envia PDF; o arquivo vai ao armazenamento e a chave não carrega o nome", async () => {
+  test("RE do caso envia PDF; o arquivo fica no banco, não no armazenamento externo, e a chave não carrega o nome", async () => {
     const r = await enviar("re", PDF, "Laudo_Joao_Silva.pdf");
     assert.equal(r.status, 200, JSON.stringify(r.body));
     attId = r.body.attachment.id;
-    assert.equal(objetos.size, 1);
-    const key = [...objetos.keys()][0];
-    assert.doesNotMatch(key, /joao|silva/i);
+    assert.equal(objetos.size, 0, "o armazenamento externo não é usado para laudos novos");
+    const [linha] = await dbx.select().from(shared.clinicalAttachments).where((await import("drizzle-orm")).eq(shared.clinicalAttachments.id, attId));
+    assert.ok(linha.content && Buffer.from(linha.content).equals(PDF), "o conteúdo está na coluna content");
+    assert.doesNotMatch(linha.storageKey, /joao|silva/i);
+    assert.equal("storageKey" in r.body.attachment, false, "a resposta não expõe a chave interna");
   });
 
   test("médico também envia e lista os dois laudos; o RE só vê o que ele mesmo enviou (regra da Dra., 23/out)", async () => {
@@ -166,19 +168,39 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2, "nada novo foi gravado");
   });
 
-  test("se o armazenamento cair, devolve 503 e não deixa registro órfão", async () => {
+  test("[REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)", async () => {
     svc.setAttachmentStorage({
       async put() { throw new Error("fora do ar"); },
       async get() { throw new Error("fora do ar"); },
-      async remove() {},
+      async remove() { throw new Error("fora do ar"); },
     });
-    assert.equal((await enviar("re")).status, 503);
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${attId}/file`, "md")).status, 503);
+    const novo = await enviar("re", PDF, "outro.pdf");
+    assert.equal(novo.status, 200, JSON.stringify(novo.body));
+    const aberto = await call("GET", `/api/cases/${caseId}/attachments/${novo.body.attachment.id}/file`, "re");
+    assert.equal(aberto.status, 200);
+    assert.ok(Buffer.from(aberto.raw).equals(PDF));
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "re")).status, 200, "a lista não depende do armazenamento");
+  });
+
+  test("[REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele", async () => {
     svc.setAttachmentStorage({
       async put(key, body) { objetos.set(key, body); },
-      async get(key) { const o = objetos.get(key); if (!o) throw new Error("x"); return o; },
+      async get(key) { const o = objetos.get(key); if (!o) throw new Error("não existe"); return o; },
       async remove(key) { objetos.delete(key); },
     });
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2);
+    const { eq } = await import("drizzle-orm");
+    const [re] = await dbx.select().from(shared.users).where(eq(shared.users.email, "re@teste.local"));
+    const [st] = await dbx.select().from(shared.cases).where(eq(shared.cases.id, caseId));
+    objetos.set("legado/antigo.pdf", PDF);
+    const [antigo] = await dbx.insert(shared.clinicalAttachments).values({
+      tenantId: st.tenantId, caseId, studentId: st.studentId, uploaderId: re.id, storageKey: "legado/antigo.pdf",
+      originalName: "antigo.pdf", mimeType: "application/pdf", fileSizeBytes: PDF.length, sha256: "0".repeat(64), category: "laudo_externo",
+    }).returning();
+    const ok = await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re");
+    assert.equal(ok.status, 200);
+    assert.ok(Buffer.from(ok.raw).equals(PDF));
+    objetos.delete("legado/antigo.pdf");
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re")).status, 503);
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${attId}/file`, "re")).status, 200, "os laudos novos seguem abrindo");
   });
 });

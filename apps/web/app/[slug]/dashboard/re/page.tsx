@@ -535,7 +535,7 @@ export default function REDashboardPage({
         </div>
 
         {/* ── Right column: FOGAP form ─────────────────────────────────── */}
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           {!activeCase ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-linha bg-white py-20 text-center">
               <FileText className="h-10 w-10 text-neutral-800/40 mb-3" />
@@ -551,7 +551,7 @@ export default function REDashboardPage({
 
               {/* Proteção de dados e consentimento (LGPD): caixas do mesmo tamanho, lado a lado em telas largas */}
               <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
-                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2 [&>*]:min-w-0">
                   <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
                   <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} abrirSinal={vaultSinal} />
                 </div>

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
+import { Badge, Button } from "@/components/ui";
+import { CartaoProtecao } from "./CartaoProtecao";
 
 interface StudentIdentityVaultCardProps {
   studentId?: string;
@@ -129,93 +131,73 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "", abr
     }
   };
 
+  const selos = (
+    <>
+      <Badge variant="default" className="whitespace-nowrap text-[11px]">AES-256 cifrado</Badge>
+      {vaultStatus &&
+        (vaultStatus.hasData ? (
+          <Badge variant="success" className="whitespace-nowrap text-[11px]"><CheckCircle className="h-3 w-3" aria-hidden /> Custodiado</Badge>
+        ) : (
+          <Badge variant="warning" className="whitespace-nowrap text-[11px]"><AlertCircle className="h-3 w-3" aria-hidden /> Pendente de cadastro</Badge>
+        ))}
+    </>
+  );
+
   return (
-    <div id="cofre-identidade" className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 h-full scroll-mt-24">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-slate-100 text-slate-700 rounded-xl border border-slate-200">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-black">
-                Cofre de Identidade do Aluno (LGPD)
-              </h3>
-              <span className="text-[11px] font-semibold text-purple-800 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                AES-256 Cifrado
-              </span>
-              {vaultStatus && (
-                vaultStatus.hasData ? (
-                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Custodiado
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 text-amber-600" /> Pendente de Cadastro
-                  </span>
-                )
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Isolamento estrito: o sistema opera 100% sobre o código pseudonimizado <strong className="font-mono text-black">{studentCode}</strong>.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {revealedData ? (
-            <button
-              onClick={() => setRevealedData(null)}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5"
-            >
-              <EyeOff className="w-3.5 h-3.5" /> Ocultar Dados
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => setRegisterModalOpen(true)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition"
-              >
-                Cadastrar no Cofre
-              </button>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition flex items-center gap-1.5"
-              >
-                <Eye className="w-3.5 h-3.5" /> Acessar Identidade
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
+    <CartaoProtecao
+      id="cofre-identidade"
+      icone={<Lock className="h-5 w-5" />}
+      titulo="Cofre de Identidade do Aluno (LGPD)"
+      selos={selos}
+      descricao={
+        <>
+          Isolamento estrito: o sistema opera 100% sobre o código pseudonimizado <strong className="whitespace-nowrap font-mono text-black">{studentCode}</strong>.
+        </>
+      }
+      acoes={
+        revealedData ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => setRevealedData(null)}>
+            <EyeOff className="h-3.5 w-3.5" aria-hidden /> Ocultar dados
+          </Button>
+        ) : (
+          <>
+            <Button type="button" variant="outline" size="sm" onClick={() => setRegisterModalOpen(true)}>
+              Cadastrar no cofre
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(true)}>
+              <Eye className="h-3.5 w-3.5" aria-hidden /> Acessar identidade
+            </Button>
+          </>
+        )
+      }
+    >
       {/* Exibição dos Dados Revelados */}
       {revealedData ? (
-        <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 text-xs space-y-2 animate-fadeIn">
-          <div className="flex items-center gap-2 text-purple-900 font-bold mb-1">
-            <ShieldCheck className="w-4 h-4 text-purple-700" />
-            Dados Pessoais Revelados sob Auditoria Clínica:
+        <div className="animate-fadeIn space-y-2 rounded-xl border border-roxo-200 bg-roxo-50/60 p-3 text-xs sm:p-4">
+          <div className="flex items-center gap-2 font-bold text-roxo-800">
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
+            Dados pessoais revelados sob auditoria clínica
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 items-stretch">
+          <div className="grid grid-cols-1 items-stretch gap-2 pt-1">
             {(
               [
-                ["Nome Completo Civil", revealedData.fullName],
-                ["Documento / Certidão", revealedData.document || "Não cadastrado"],
-                ["Contato Responsável", revealedData.contact || "Não cadastrado"],
+                ["Nome completo civil", revealedData.fullName],
+                ["Documento / certidão", revealedData.document || "Não cadastrado"],
+                ["Contato do responsável", revealedData.contact || "Não cadastrado"],
               ] as const
             ).map(([rotulo, valor]) => (
-              <div key={rotulo} className="flex min-h-[88px] flex-col rounded-xl border border-purple-200 bg-white p-3" data-testid="cofre-caixa">
-                <span className="text-slate-500 text-[11px] uppercase font-bold">{rotulo}</span>
-                <p className="mt-1 break-words font-semibold text-black text-sm">{valor}</p>
+              <div key={rotulo} className="flex min-h-[72px] flex-col rounded-xl border border-roxo-200 bg-white p-3" data-testid="cofre-caixa">
+                <span className="text-[11px] font-bold uppercase text-neutral-700">{rotulo}</span>
+                <p className="mt-1 break-words text-sm font-semibold text-black">{valor}</p>
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 border border-slate-200/60 flex items-center gap-2">
-          <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+        <p className="flex items-start gap-2 rounded-xl border border-linha bg-fundo p-3 text-xs leading-relaxed text-neutral-700">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-neutral-600" aria-hidden />
           <span>Nome civil e documentos estão protegidos no cofre criptografado. Para visualizar, informe uma justificativa assistencial formal.</span>
-        </div>
+        </p>
       )}
 
       {/* Modal de Revelação Auditada */}
@@ -333,6 +315,6 @@ export function StudentIdentityVaultCard({ studentId = "", studentCode = "", abr
           </div>
         </form>
       </Modal>
-    </div>
+    </CartaoProtecao>
   );
 }
