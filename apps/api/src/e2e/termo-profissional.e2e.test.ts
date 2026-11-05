@@ -178,4 +178,21 @@ describe("[REG-003] termo profissional (E2E)", { skip }, () => {
     assert.equal((await evidencias("medico@teste.local")).length, antes);
     assert.equal((await statusDe("medico@teste.local")).status, undefined);
   });
+
+  test("[REG-006] com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro", async () => {
+    const { sql } = await import("drizzle-orm");
+    await H.db.execute(sql`DROP TABLE professional_term_status`);
+
+    const s = await call("GET", "/api/me/professional-consent", "re2@teste.local");
+    assert.equal(s.status, 200, JSON.stringify(s.body));
+    assert.equal(s.body.migrationPending, true);
+    assert.equal(s.body.hasAccepted, true, "sem a tabela não dá para gravar o aceite: a janela não aparece");
+
+    assert.equal((await call("GET", "/api/cases", "re2@teste.local")).status, 200, "a trava do servidor também fica desligada");
+
+    const r = await call("POST", "/api/me/professional-consent/accept", "re2@teste.local", { accepted: true });
+    assert.equal(r.status, 503);
+    assert.match(r.body.error, /migração/i);
+    assert.equal((await evidencias("re2@teste.local")).length, 0, "nada foi gravado");
+  });
 });
