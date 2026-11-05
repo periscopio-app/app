@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { MD_FORMS, MD_FORM_IDS, normalizarPayloadMedico, medicoTemConteudo, sumarioMedicoComoTexto } from "@periscopio/shared";
+import { MD_FORMS, MD_FORM_IDS, normalizarPayloadMedico, medicoTemConteudo, respostaMedicoLegivel, sumarioMedicoComoTexto } from "@periscopio/shared";
 
 describe("formulários do médico: reproduzem o capítulo em papel", () => {
   test("cada seção B a R tem campos do papel; nenhum campo provisório 'registro'", () => {
@@ -10,7 +10,7 @@ describe("formulários do médico: reproduzem o capítulo em papel", () => {
       assert.ok(!f.campos.some((c) => c.id === "registro"), `${id} ainda tem o campo provisório`);
       const ids = f.campos.map((c) => c.id);
       assert.equal(new Set(ids).size, ids.length, `${id}: ids de campo repetidos`);
-      for (const c of f.campos) if (c.tipo === "escolha" || c.tipo === "multi") assert.ok((c.opcoes?.length ?? 0) >= 1, `${id}.${c.id}`);
+      for (const c of f.campos) if (c.tipo === "escolha" || c.tipo === "multi" || c.tipo === "simnao") assert.ok((c.opcoes?.length ?? 0) >= 1, `${id}.${c.id}`);
     }
   });
 
@@ -62,5 +62,31 @@ describe("formulários do médico: reproduzem o capítulo em papel", () => {
     assert.ok(t.includes("10. Fez avaliação fonoaudiológica"));
     assert.equal(sumarioMedicoComoTexto({ registro: "texto antigo" }), "texto antigo");
     assert.equal(sumarioMedicoComoTexto({}), "");
+  });
+});
+
+describe("[REG-004] Conduta do sumário do médico: cada item é Sim (1) ou Não (0), escolhido pelo médico", () => {
+  const campo = MD_FORMS.sumario_medico.campos.find((c) => c.id === "conduta")!;
+
+  test("o campo é do tipo simnao e guarda 1 e 0 por item, na ordem do formulário", () => {
+    assert.equal(campo.tipo, "simnao");
+    const out = normalizarPayloadMedico("sumario_medico", { conduta: "9=0,5=1,7=1,999=1,8=talvez" });
+    assert.equal(out.conduta, "5=1,7=1,9=0", "valor inexistente e resposta inválida são descartados");
+  });
+
+  test("Não é resposta de verdade (0) e é diferente de em branco", () => {
+    assert.equal(normalizarPayloadMedico("sumario_medico", { conduta: "7=0" }).conduta, "7=0");
+    assert.equal(normalizarPayloadMedico("sumario_medico", { conduta: "" }).conduta, "");
+  });
+
+  test("dados antigos (lista de caixas marcadas) continuam valendo como Sim", () => {
+    assert.equal(normalizarPayloadMedico("sumario_medico", { conduta: "8,6,999" }).conduta, "6=1,8=1");
+  });
+
+  test("o texto para leitura mostra Sim ou Não de cada item respondido e omite o que está em branco", () => {
+    assert.equal(
+      respostaMedicoLegivel(campo, "5=1,9=0"),
+      "5. não está sob farmacoterapia: Sim; 9. Fez avaliação motora: Não",
+    );
   });
 });

@@ -45,14 +45,14 @@ export interface MdOpcao {
   rotulo: string;
 }
 
-export type MdTipo = "texto" | "texto_curto" | "data" | "numero" | "escolha" | "multi" | "genograma";
+export type MdTipo = "texto" | "texto_curto" | "data" | "numero" | "escolha" | "multi" | "simnao" | "genograma";
 
 export interface MdCampo {
   id: string;
   rotulo: string;
   ajuda?: string;
   max: number;
-  /** "texto" (área grande, padrão), "texto_curto" (uma linha), "data" (AAAA-MM-DD), "numero", "escolha" (uma opção), "multi" (várias) ou "genograma". */
+  /** "texto" (área grande, padrão), "texto_curto" (uma linha), "data" (AAAA-MM-DD), "numero", "escolha" (uma opção), "multi" (várias), "simnao" (cada item com resposta 1. Sim ou 0. Não, escolhida pelo médico) ou "genograma". */
   tipo?: MdTipo;
   opcoes?: MdOpcao[];
   /** Em "multi": valor que, marcado, desmarca os demais (ex.: "0. nenhuma"). */
@@ -87,6 +87,8 @@ const N019: MdOpcao[] = [{ valor: "0", rotulo: "0 · Normal" }, { valor: "1", ro
 const esc = (id: string, rotulo: string, opcoes: MdOpcao[], extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "escolha", opcoes, max: 40, ...extra });
 const sn = (id: string, rotulo: string, extra: Partial<MdCampo> = {}): MdCampo => esc(id, rotulo, NS, extra);
 const multi = (id: string, rotulo: string, opcoes: MdOpcao[], extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "multi", opcoes, max: 400, ...extra });
+/** Cada opção é uma pergunta com resposta 1 (Sim) ou 0 (Não). Guardado como "valor=1,valor=0"; em branco = sem resposta. */
+const simnao = (id: string, rotulo: string, opcoes: MdOpcao[], extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "simnao", opcoes, max: 400, ...extra });
 const curto = (id: string, rotulo: string, extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "texto_curto", max: CURTO, ...extra });
 const longo = (id: string, rotulo: string, extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "texto", max: MD_TEXTO_MAX, ...extra });
 const num = (id: string, rotulo: string, extra: Partial<MdCampo> = {}): MdCampo => ({ id, rotulo, tipo: "numero", max: 8, ...extra });
@@ -463,7 +465,7 @@ export const MD_FORMS: Record<MdFormId, MdForm> = {
       longo("queixa_professor", "1. Queixa do professor"),
       longo("avaliacao_re", "2. Avaliação do RE"),
       longo("hipotese", "3. Hipótese Diagnóstica"),
-      multi("conduta", "4. Conduta (0. Não · 1. Sim)", CONDUTA_SUMARIO),
+      simnao("conduta", "4. Conduta (0. Não · 1. Sim)", CONDUTA_SUMARIO),
       data("data", "Data"),
     ],
     "Só o que o especialista precisa para a avaliação dele. Rascunho nunca sai do seu perfil."
@@ -498,6 +500,27 @@ export const MD_INSTRUMENTOS_EXTERNOS = [
 
 const NUMERO_RE = /^\d{1,4}([.,]\d{1,2})?$/;
 
+/** "5=1,7=0" → mapa valor→"1"|"0". Aceita o formato antigo (lista "5,7"): item listado vale Sim; o que não estava marcado fica em branco. */
+export function lerSimNao(texto: unknown): Map<string, "1" | "0"> {
+  const partes = typeof texto === "string" ? texto.split(",") : Array.isArray(texto) ? texto.map(String) : [];
+  const mapa = new Map<string, "1" | "0">();
+  for (const bruto of partes) {
+    const [valor, resposta] = bruto.trim().split("=");
+    if (!valor) continue;
+    if (resposta === undefined || resposta === "1") mapa.set(valor, "1");
+    else if (resposta === "0") mapa.set(valor, "0");
+  }
+  return mapa;
+}
+
+function normalizarSimNao(c: MdCampo, v: unknown): string {
+  const mapa = lerSimNao(v);
+  return (c.opcoes ?? [])
+    .filter((o) => mapa.has(o.valor))
+    .map((o) => `${o.valor}=${mapa.get(o.valor)}`)
+    .join(",");
+}
+
 function normalizarCampo(c: MdCampo, v: unknown): string {
   switch (c.tipo) {
     case "genograma":
@@ -512,6 +535,8 @@ function normalizarCampo(c: MdCampo, v: unknown): string {
       const t = typeof v === "string" ? v.trim() : "";
       return c.opcoes?.some((o) => o.valor === t) ? t : "";
     }
+    case "simnao":
+      return normalizarSimNao(c, v);
     case "multi": {
       const marcados = new Set((typeof v === "string" ? v.split(",") : Array.isArray(v) ? v.map(String) : []).map((x) => x.trim()));
       let validos = (c.opcoes ?? []).map((o) => o.valor).filter((x) => marcados.has(x));
@@ -556,6 +581,13 @@ export function respostaMedicoLegivel(c: MdCampo, valor: string): string {
   if (c.tipo === "multi") {
     const s = new Set(valor.split(","));
     return (c.opcoes ?? []).filter((o) => s.has(o.valor)).map((o) => o.rotulo).join("; ");
+  }
+  if (c.tipo === "simnao") {
+    const mapa = lerSimNao(valor);
+    return (c.opcoes ?? [])
+      .filter((o) => mapa.has(o.valor))
+      .map((o) => `${o.rotulo}: ${mapa.get(o.valor) === "1" ? "Sim" : "Não"}`)
+      .join("; ");
   }
   return valor;
 }

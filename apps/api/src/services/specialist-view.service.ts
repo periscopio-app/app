@@ -11,7 +11,7 @@
  * "Sumário executivo" = a própria seção/formulário concluído do profissional. Para o médico, é o
  * formulário "Sumário médico" (sumario_medico). Rascunho nunca sai do perfil de quem escreve.
  */
-import { MD_FORMS, normalizarPayloadMedico, sumarioMedicoComoTexto } from "@periscopio/shared";
+import { MD_FORMS, lerSimNao, normalizarPayloadMedico, sumarioMedicoComoTexto } from "@periscopio/shared";
 
 export const SUMARIO_MEDICO_FORM_ID = "sumario_medico" as const;
 
@@ -35,6 +35,13 @@ export function sumarioExecutivoMedico(row: SumarioMedicoRow | undefined | null)
   const payload = normalizarPayloadMedico(SUMARIO_MEDICO_FORM_ID, p);
   const campos = MD_FORMS.sumario_medico.campos.map((campo) => {
     const valor = payload[campo.id]?.trim() || null;
+    if (campo.tipo === "simnao") {
+      const respostas = lerSimNao(payload[campo.id]);
+      const itens = (campo.opcoes ?? [])
+        .filter((opcao) => respostas.has(opcao.valor))
+        .map((opcao) => `${opcao.rotulo}: ${respostas.get(opcao.valor) === "1" ? "Sim" : "Não"}`);
+      return { id: campo.id, rotulo: campo.rotulo.replace(/\s*\([^)]*\)\s*$/, ""), tipo: "lista" as const, valor: null, itens };
+    }
     if (campo.tipo === "multi") {
       const marcados = new Set((payload[campo.id] ?? "").split(",").filter(Boolean));
       const itens = (campo.opcoes ?? []).filter((opcao) => marcados.has(opcao.valor)).map((opcao) => opcao.rotulo);
