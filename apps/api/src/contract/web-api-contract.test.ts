@@ -60,7 +60,7 @@ function extrairChamadas(arquivo: string): { chamadas: Chamada[]; naoResolvidas:
 
   const chamadas: Chamada[] = [];
   const naoResolvidas: string[] = [];
-  const re = /\bapi\.(get|post|put|patch|delete)\b/g;
+  const re = /\bapi\.(get|post|put|patch|delete|upload)\b/g;
   for (const m of src.matchAll(re)) {
     let i = (m.index ?? 0) + m[0].length;
     i = pularGenerico(src, i);
@@ -88,7 +88,7 @@ function extrairChamadas(arquivo: string): { chamadas: Chamada[]; naoResolvidas:
       naoResolvidas.push(`${rel}: ${m[0]}(${caminho})`);
       continue;
     }
-    chamadas.push({ metodo: m[1] as Metodo, caminho, arquivo: rel });
+    chamadas.push({ metodo: (m[1] === "upload" ? "post" : m[1]) as Metodo, caminho, arquivo: rel }); // api.upload = POST binário
   }
   return { chamadas, naoResolvidas };
 }

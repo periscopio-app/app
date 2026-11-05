@@ -58,6 +58,16 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: "DELETE", body: "{}" }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  /**
+   * Envia um arquivo como corpo binário (sem base64 nem JSON): bem mais leve para o servidor.
+   * O nome vai em X-File-Name, codificado, para não aparecer na URL (e nos logs).
+   */
+  upload: <T>(path: string, file: File) =>
+    request<T>(path, {
+      method: "POST",
+      body: file,
+      headers: { "Content-Type": file.type || "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) },
+    }),
 };
 
 // ─── tipos compartilhados ────────────────────────────────────────────────────

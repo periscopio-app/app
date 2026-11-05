@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos de teste automáticos** em 92 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **610 casos de teste automáticos** em 92 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -15,8 +15,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos 
 | REG-001e | depois do envio os comportamentos ficam em somente leitura (409) | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-002 | com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele) | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-002 | laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-005 | RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho | `apps/api/src/e2e/attachments.e2e.test.ts` |
 
-## API — unitários — 358
+## API — unitários — 362
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -485,7 +486,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/medico-forms-catalog.test.ts</code> — 6 · formulários do médico: reproduzem o capítulo em papel</summary>
+<details><summary><code>apps/api/src/services/medico-forms-catalog.test.ts</code> — 10 · formulários do médico: reproduzem o capítulo em papel</summary>
 
 - cada seção B a R tem campos do papel; nenhum campo provisório 'registro'
 - estruturas-chave do papel
@@ -493,6 +494,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos 
 - hipótese diagnóstica agrupa campos CID legados sem sobrescrever o campo atual
 - não há escore: nenhum campo calcula, soma ou classifica; Σ FR é digitado
 - sumário executivo para o especialista: texto legível, aceita o formato antigo
+- o campo é do tipo simnao e guarda 1 e 0 por item, na ordem do formulário
+- Não é resposta de verdade (0) e é diferente de em branco
+- dados antigos (lista de caixas marcadas) continuam valendo como Sim
+- o texto para leitura mostra Sim ou Não de cada item respondido e omite o que está em branco
 
 </details>
 
@@ -699,9 +704,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 205
+## API — E2E (banco de teste, fluxo pela API real) — 206
 
-<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 9 · Laudos em PDF/JPG/PNG (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 10 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
 - RE do caso envia PDF; o arquivo fica no banco, não no armazenamento externo, e a chave não carrega o nome
 - médico também envia e lista os dois laudos; o RE só vê o que ele mesmo enviou (regra da Dra., 23/out)
@@ -712,6 +717,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **605 casos 
 - só PDF/JPG/PNG de verdade: GIF, texto disfarçado, vazio e acima de 10 MB são recusados
 - [REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)
 - [REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele
+- [REG-005] RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho
 
 </details>
 

@@ -40,11 +40,22 @@ export async function attachmentsRoutes(app: FastifyInstance) {
     return { caso, schoolId: aluno?.schoolId ?? null };
   }
 
-  /** 1. Enviar um laudo em PDF, JPG ou PNG (base64, até 10 MB). */
-  app.post<{
-    Params: { caseId: string };
-    Body: { fileName?: string; dataBase64?: string; description?: string };
-  }>("/api/cases/:caseId/attachments", { bodyLimit: 15 * 1024 * 1024 }, async (request, reply) => {
+  /**
+   * O arquivo chega como corpo binário (Content-Type do próprio arquivo), sem base64 nem JSON. Isso importa: o servidor tem
+   * 512 MB e ~290 MB já em uso em repouso; o envio em base64 fazia várias cópias de um arquivo de até 10 MB e a Render
+   * matava o processo por falta de memória (05/nov/2026). Em binário o pico é ~2x o tamanho do arquivo.
+   */
+  app.addContentTypeParser(
+    /^(application\/(pdf|octet-stream)|image\/(jpeg|jpg|png))(;.*)?$/i,
+    { parseAs: "buffer", bodyLimit: ATTACHMENT_MAX_BYTES + 4096 },
+    (_request, body, done) => done(null, body)
+  );
+
+  /** 1. Enviar um laudo em PDF, JPG ou PNG (corpo binário, até 10 MB). O nome vem em X-File-Name (codificado em URL). */
+  app.post<{ Params: { caseId: string } }>(
+    "/api/cases/:caseId/attachments",
+    { bodyLimit: ATTACHMENT_MAX_BYTES + 4096 },
+    async (request, reply) => {
     const actor = await requireCapability(request, reply, "attachments.write");
     if (!actor) return;
 
@@ -52,12 +63,17 @@ export async function attachmentsRoutes(app: FastifyInstance) {
     const acesso = await casoAcessivel(actor, caseId, reply);
     if (!acesso) return;
 
-    const { fileName, dataBase64, description } = request.body ?? {};
-    if (typeof fileName !== "string" || !fileName.trim() || typeof dataBase64 !== "string" || !dataBase64) {
-      reply.status(400);
-      return { error: "Envie o nome e o conteúdo do arquivo." };
+    if (!Buffer.isBuffer(request.body)) {
+      reply.status(415);
+      return { error: "Envie o laudo como arquivo PDF, JPG ou PNG." };
     }
-    const bytes = Buffer.from(dataBase64.replace(/^data:[^,]*,/, ""), "base64");
+    const bytes = request.body;
+    let fileName = "";
+    try {
+      fileName = decodeURIComponent(String(request.headers["x-file-name"] ?? "")).trim();
+    } catch {
+      fileName = "";
+    }
     if (bytes.length === 0) {
       reply.status(400);
       return { error: "O arquivo veio vazio." };
@@ -98,12 +114,12 @@ export async function attachmentsRoutes(app: FastifyInstance) {
           studentId: acesso.caso.studentId,
           uploaderId: actor.id,
           storageKey: validation.objectKey,
-          originalName: fileName.trim().slice(0, 200),
+          originalName: (fileName || `laudo.${formato.ext}`).slice(0, 200),
           mimeType: formato.mime,
           fileSizeBytes: bytes.length,
           sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
           category: "laudo_externo",
-          description: description?.trim().slice(0, 500) || null,
+          description: null,
           content: bytes,
         })
         .returning({
@@ -224,7 +240,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
 
       let bytes: Buffer;
       try {
-        bytes = attachment.content ? Buffer.from(attachment.content) : await (await getAttachmentStorage()).get(attachment.storageKey);
+        bytes = attachment.content ? Buffer.from(attachment.content.buffer, attachment.content.byteOffset, attachment.content.byteLength) : await (await getAttachmentStorage()).get(attachment.storageKey);
       } catch (err) {
         request.log.error({ err }, "falha ao ler laudo do armazenamento");
         reply.status(503);
