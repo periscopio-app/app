@@ -235,4 +235,39 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     }
     assert.ok(new Set(linhas.map((l) => l.uploaderId)).size >= 2, "RE e médico enviaram para o mesmo aluno");
   });
+
+  test("[REG-008] gravar laudo grande que FALHA não infla a memória: o erro é curto e sem o arquivo (o Drizzle põe os parâmetros na mensagem)", async () => {
+    const { sql } = await import("drizzle-orm");
+    const { gravarLaudoNoBanco, LaudoNaoGravadoError } = await import("../services/attachment-store.service");
+    const [caso] = await dbx.select().from(shared.cases).where(eq(shared.cases.id, caseId));
+    const [re] = await dbx.select().from(shared.users).where(eq(shared.users.email, "re@teste.local"));
+    const grande = Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(8 * 1024 * 1024, 0xe9)]);
+    const base = { tenantId: caso.tenantId, caseId, studentId: caso.studentId, uploaderId: re.id, originalName: "g.pdf", mimeType: "application/pdf", fileSizeBytes: grande.length, sha256: "0".repeat(64), category: "laudo_externo" };
+
+    // Força a falha: a coluna do arquivo não existe (era o estado de produção antes da migração 0028).
+    await dbx.execute(sql`ALTER TABLE clinical_attachments DROP COLUMN content`);
+    try {
+      // Caminho antigo (Drizzle): a mensagem do erro carrega os parâmetros, ou seja, o arquivo inteiro.
+      const msgDrizzle = await dbx
+        .insert(shared.clinicalAttachments)
+        .values({ ...base, storageKey: `t/${crypto.randomUUID()}.pdf`, content: grande })
+        .then(() => "")
+        .catch((e: Error) => e.message);
+      assert.ok(msgDrizzle.length > 1_000_000, `a mensagem do Drizzle deveria carregar o arquivo (tem ${msgDrizzle.length} caracteres)`);
+
+      // Caminho novo: erro curto, só o código do Postgres.
+      const erro = await gravarLaudoNoBanco({ ...base, storageKey: `t/${crypto.randomUUID()}.pdf`, content: grande }).then(() => null, (e: unknown) => e);
+      assert.ok(erro instanceof LaudoNaoGravadoError);
+      assert.ok((erro as Error).message.length < 200, `o erro deveria ser curto (tem ${(erro as Error).message.length})`);
+      assert.equal((erro as InstanceType<typeof LaudoNaoGravadoError>).codigo, "42703");
+      assert.doesNotMatch((erro as Error).message, /params|%PDF/);
+
+      // E pela rota: 503 com mensagem clara (laudo opcional), sem derrubar nada.
+      const r = await enviar("re", grande.subarray(0, 2 * 1024 * 1024), "grande.pdf");
+      assert.equal(r.status, 503);
+      assert.match(r.body.error, /opcional/);
+    } finally {
+      await dbx.execute(sql`ALTER TABLE clinical_attachments ADD COLUMN IF NOT EXISTS content bytea`);
+    }
+  });
 });

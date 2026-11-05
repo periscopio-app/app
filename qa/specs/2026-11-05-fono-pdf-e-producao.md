@@ -93,8 +93,9 @@ Formato: **Sintoma → Fonte (PDF) → Causa → Correção → Aceite (testáve
 - **Correção:** migração aplicada no Neon (conferida: tabela, RLS e 4 aceites anteriores preservados) **e** o código não dá mais 500 quando a tabela falta ([REG-006]).
 
 **b) `POST …/attachments` → 502 e 503 (laudos).**
-- **Causa:** (1) o envio em JSON/base64 derrubava a API por falta de memória (`oomKilled`, limite 512 Mi) → 502; (2) a coluna `clinical_attachments.content` (migração 0028) não existia → 503.
-- **Correção:** envio binário (já em produção) + migração 0028 aplicada hoje.
+- **Causa:** (1) o envio em JSON/base64 derrubava a API por falta de memória (`oomKilled`, limite 512 Mi) → 502; (2) a coluna `clinical_attachments.content` (migração 0028) não existia; (3) **quando a gravação falhava, o Drizzle colocava o arquivo inteiro na mensagem de erro** (provado por teste: mais de 1 milhão de caracteres para 8 MB), e o log copiava isso várias vezes, causando novos `oomKilled` mesmo depois do envio binário (19:53, 19:58 e 20:04 UTC).
+- **Correção:** envio binário + migração 0028 aplicada + gravação do laudo por consulta direta ao driver, cujo erro nunca carrega os valores (`[REG-008]`).
+- **Aceite:** enviar um laudo de alguns MB não gera `oomKilled` na Render e o card "Memória do servidor" não passa de ~350 MB.
 - **Sobre trocar o destino (Supabase → Render, Databricks, MongoDB/vetor):** não recomendado agora.
 
 | Opção | Prós | Contras |

@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **637 casos de teste automáticos** em 94 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **638 casos de teste automáticos** em 94 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -24,6 +24,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **637 casos 
 | REG-003g | termo desatualizado na tela é recusado (409) e nada é gravado | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 | REG-005 | RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-006 | com a migração 0029 pendente (tabela ausente) não há 500 nem bloqueio: avisa e libera; aceitar responde 503 claro | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
+| REG-008 | gravar laudo grande que FALHA não infla a memória: o erro é curto e sem o arquivo (o Drizzle põe os parâmetros na mensagem) | `apps/api/src/e2e/attachments.e2e.test.ts` |
 
 ## API — unitários — 381
 
@@ -736,9 +737,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **637 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 214
+## API — E2E (banco de teste, fluxo pela API real) — 215
 
-<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 10 · Laudos em PDF/JPG/PNG (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 11 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
 - RE do caso envia PDF; o arquivo fica no banco, não no armazenamento externo, e a chave não carrega o nome
 - médico também envia e lista os dois laudos; o RE só vê o que ele mesmo enviou (regra da Dra., 23/out)
@@ -750,6 +751,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **637 casos 
 - [REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)
 - [REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele
 - [REG-005] RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho
+- [REG-008] gravar laudo grande que FALHA não infla a memória: o erro é curto e sem o arquivo (o Drizzle põe os parâmetros na mensagem)
 
 </details>
 
