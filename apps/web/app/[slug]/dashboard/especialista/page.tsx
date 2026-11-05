@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { api, type CaseSection, type Me } from "@/lib/api";
+import { api, ApiError, TERMO_ACEITO_EVENTO, type CaseSection, type Me } from "@/lib/api";
 import { ProfileHero } from "@/components/ui/ProfileHero";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
 import { ProntuarioHorizontalTabs } from "@/components/dashboard/ProntuarioHorizontalTabs";
@@ -137,6 +137,7 @@ export default function EspecialistaDashboardPage({
   useEffect(() => {
     async function boot() {
       try {
+        setError(null);
         const meData = await api.get<{ user: Me }>("/api/me");
         setMe(meData.user);
 
@@ -149,6 +150,9 @@ export default function EspecialistaDashboardPage({
       } catch (err: unknown) {
         if (err instanceof Error && err.message.includes("Sessão")) {
           router.push(`/${slug}/login`);
+        } else if (err instanceof ApiError && err.status === 403) {
+          // Ex.: termo profissional pendente. Mostra o motivo real em vez de "erro ao carregar".
+          setError(err.message);
         } else {
           setError("Erro ao carregar seções. Verifique sua sessão e tente novamente.");
         }
@@ -157,6 +161,10 @@ export default function EspecialistaDashboardPage({
       }
     }
     boot();
+    // Ao aceitar o termo, busca de novo os encaminhamentos que o médico já designou.
+    const recarregar = () => { void boot(); };
+    window.addEventListener(TERMO_ACEITO_EVENTO, recarregar);
+    return () => window.removeEventListener(TERMO_ACEITO_EVENTO, recarregar);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
