@@ -318,7 +318,10 @@ export const DIFICULDADES_PERSISTENTES_OPCOES: string[] = [
   "Motora",
   "Fala",
   "Compreensão",
-  "Aprendizagem",
+  // "Aprendizagem" foi desdobrada (PM, 06/nov/2026). Registros antigos com "Aprendizagem" continuam legíveis como valor avulso.
+  "Leitura",
+  "Matemática",
+  "Escrita",
   "Linguagem",
   "Cognitiva",
   "Comunicação Social",
