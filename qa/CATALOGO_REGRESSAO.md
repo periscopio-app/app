@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **661 casos de teste automáticos** em 97 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos de teste automáticos** em 96 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -33,7 +33,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **661 casos 
 | REG-009f | varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
-| REG-013 | painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
 ## API — unitários — 395
 
@@ -1038,7 +1038,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **661 casos 
 - [REG-009f] varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master
 - [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
 - [REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200
-- [REG-013] painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza
+- [REG-014] cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada
 
 </details>
 

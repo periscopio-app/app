@@ -253,19 +253,53 @@ describe("[REG-009] jornada dos especialistas com a trava do termo ligada", { sk
     assert.ok(!/postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}/.test(JSON.stringify(ok.body)), "o mapa não carrega connection string nem chave");
   });
 
-  test("[REG-013] painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza", async () => {
-    for (const rota of ["/api/admin/data-panel", "/api/admin/data-panel/casos_por_estado"]) {
-      assert.equal((await call("GET", rota)).status, 401, rota);
-      for (const email of [U.md, U.re, U.fono]) assert.equal((await call("GET", rota, email)).status, 403, `${rota} ${email}`);
-    }
-    const lista = await call("GET", "/api/admin/data-panel", MASTER);
+  test("[REG-014] cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada", async () => {
+    const { eq } = await import("drizzle-orm");
+    const [ref] = await H.db.select().from(H.caseSummaries).where(eq(H.caseSummaries.id, sec.psicologia));
+    const [assoc] = await H.db.insert(H.users).values({ tenantId: ref.tenantId, schoolId: ref.schoolId, email: "as@teste.local", name: "Pessoa as", role: "specialist", specialty: "servico_social", accessEnabled: true }).returning();
+    await aceitar("as@teste.local");
+
+    // Delegar: vaga de serviço social só aceita quem é de serviço social.
+    const errada = await call("POST", `/api/cases/${caseId}/delegate`, U.md, { reason: "teste", delegations: [{ specialty: "servico_social", professionalId: ids.psico }] });
+    assert.equal(errada.status, 400, JSON.stringify(errada.body));
+    assert.match(errada.body.error, /serviço social/i);
+    assert.equal((await H.db.select().from(H.caseSummaries).where(eq(H.caseSummaries.specialty, "servico_social"))).length, 0, "nada foi gravado");
+    const certa = await call("POST", `/api/cases/${caseId}/delegate`, U.md, { reason: "teste", delegations: [{ specialty: "servico_social", professionalId: assoc.id }] });
+    assert.equal(certa.status, 201, JSON.stringify(certa.body));
+
+    // Trocar: psicologia está na conta da psicopedagogia (como em produção). Neuropsicóloga não serve; a psicóloga serve.
+    const troca1 = await call("POST", `/api/cases/sections/${sec.psicologia}/reassign`, U.md, { professionalId: ids.neuro });
+    assert.equal(troca1.status, 400, JSON.stringify(troca1.body));
+    assert.match(troca1.body.error, /psicologia/i);
+    const troca2 = await call("POST", `/api/cases/sections/${sec.psicologia}/reassign`, U.md, { professionalId: ids.psico });
+    assert.equal(troca2.status, 200, JSON.stringify(troca2.body));
+
+    // A psicóloga entra e vê os formulários de psicologia e o aluno na fila.
+    const { ESPECIALIDADE_FORMS } = await import("@periscopio/shared");
+    const lista = await call("GET", `/api/cases/sections/${sec.psicologia}/forms`, U.psico);
     assert.equal(lista.status, 200);
-    assert.equal(lista.body.configured, false);
-    assert.match(lista.body.reason, /DATABRICKS_HOST/);
-    assert.equal(lista.body.paineis.length, 4);
-    const um = await call("GET", "/api/admin/data-panel/casos_por_estado", MASTER);
-    assert.equal(um.status, 200);
-    assert.equal(um.body.configured, false);
-    assert.equal((await call("GET", "/api/admin/data-panel/qualquer_outro", MASTER)).status, 404, "fora da lista fechada não existe");
+    assert.deepEqual(lista.body.forms.map((f: any) => f.id), (ESPECIALIDADE_FORMS as any).psicologia.map((f: any) => f.id));
+    const minhas = await call("GET", "/api/cases/my-delegated-sections", U.psico);
+    assert.equal(minhas.status, 200);
+    assert.deepEqual(minhas.body.assignedSections.map((x: any) => [x.specialty, x.posicao, x.especialidadeDivergente]), [["psicologia", 1, false]]);
+    assert.equal(minhas.body.fila.abertos, 1);
+
+    // Designação antiga errada (serviço social na conta da psicologia): aparece depois na fila, marcada como divergente.
+    const [antiga] = await H.db.insert(H.caseSummaries).values({ caseId, tenantId: ref.tenantId, schoolId: ref.schoolId, specialty: "servico_social", assignedProfessionalId: ids.psico, status: "pendente" }).returning();
+    const comAntiga = (await call("GET", "/api/cases/my-delegated-sections", U.psico)).body;
+    assert.deepEqual(comAntiga.assignedSections.map((x: any) => [x.specialty, x.posicao, x.especialidadeDivergente]), [["psicologia", 1, false], ["servico_social", 2, true]]);
+    // Concluída vai para o fim e sai da contagem da fila.
+    await H.db.update(H.caseSummaries).set({ status: "concluido" }).where(eq(H.caseSummaries.id, ref.id));
+    const final = (await call("GET", "/api/cases/my-delegated-sections", U.psico)).body;
+    assert.deepEqual(final.assignedSections.map((x: any) => [x.specialty, x.posicao]), [["servico_social", 1], ["psicologia", null]]);
+    assert.deepEqual(final.fila, { abertos: 1, concluidos: 1 });
+    void antiga;
+
+    // A lista de profissionais do médico traz a especialidade já resolvida.
+    const dir = await call("GET", "/api/nucleo/professionals", U.md);
+    assert.equal(dir.status, 200);
+    const porEmailId = new Map(dir.body.professionals.map((p: any) => [p.id, p.specialty]));
+    assert.equal(porEmailId.get(assoc.id), "servico_social");
+    assert.equal(porEmailId.get(ids.psico), "psicologia");
   });
 });

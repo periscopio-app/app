@@ -136,3 +136,13 @@ Revisar a escolha quando o volume de laudos passar de alguns GB ou se a busca em
 **6. Varredura de rotas (`[REG-009f]`).** Chama todas as rotas GET como médico, RE, especialista e Admin Master e exige nenhuma resposta 5xx. Achou 4 rotas do Admin Master que respondiam 500 porque gravavam auditoria com o id virtual do Master (chave estrangeira para `users`): `/api/management/re-summaries`, `re-observability`, `nucleo-referrals` e `/api/bi/overview`. Correção: `inserirAuditoria` em `audit.service.ts` troca o ator virtual por nulo e marca `actor: admin_master_virtual` (`[REG-010]`). O 500 de `/api/bi/overview` que sobrou no teste era do ambiente (município de Tarumã inexistente no banco de teste); em produção ele existe.
 
 **Como rodar a suíte:** `SUPERADMIN_EMAILS="bruno@oceanoazul.dev.br,master@teste.local"` e `TEST_DATABASE_URL` apontando para um Postgres descartável. Sem a variável, 3 testes de RNDS dão 403.
+
+## Lote 3 (06/nov/2026): cada vaga só aceita a própria especialidade e fila do especialista
+
+**Regra do produto:** o encaminhamento do médico para uma especialidade chega ao profissional **daquela** especialidade, que entra e vê os formulários da especialidade e os pacientes dele em fila.
+
+- **Servidor:** `POST /api/cases/:caseId/delegate` e `POST /api/cases/sections/:id/reassign` recusam (400) profissional de outra especialidade, antes de gravar. A especialidade vem de `users.specialty` ou, sem ela, do perfil (`delegation-rules.ts`).
+- **Tela do médico:** cada vaga lista só profissionais da especialidade da vaga. Saiu o aviso de "especialidade diferente", que não pode mais acontecer.
+- **Fila do especialista (Postgres, sem Redis):** `GET /api/cases/my-delegated-sections` devolve `posicao` por ordem de chegada (quem foi designado primeiro vem primeiro), concluídas no fim, `fila.abertos/concluidos` e `especialidadeDivergente` para designações antigas erradas. Sem prioridade clínica: o sistema não decide quem é mais urgente.
+- **Teste `[REG-014]`:** delegar/trocar para a especialidade errada dá 400 e nada é gravado; a certa funciona; a psicóloga vê os formulários de psicologia; fila e divergência.
+- **Dados antigos:** designações já gravadas erradas não são alteradas sozinhas. Aparecem como "divergente" para o especialista e o médico troca pela tela.
