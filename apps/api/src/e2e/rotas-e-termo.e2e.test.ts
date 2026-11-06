@@ -238,4 +238,18 @@ describe("[REG-009] jornada dos especialistas com a trava do termo ligada", { sk
     const [t] = await H.db.select().from(H.auditLogs).where(eq(H.auditLogs.action, "teste.transacao"));
     assert.equal((t.metadata as any).origem, "x", "o metadata original é preservado");
   });
+
+  test("[REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200", async () => {
+    assert.equal((await call("GET", "/api/admin/system-map")).status, 401);
+    for (const email of [U.md, U.re, U.fono, U.psicomot]) {
+      const r = await call("GET", "/api/admin/system-map", email);
+      assert.equal(r.status, 403, `${email} não pode ler o mapa`);
+      assert.equal(r.body.groups, undefined, "nenhum dado do mapa vaza na recusa");
+    }
+    const ok = await call("GET", "/api/admin/system-map", MASTER);
+    assert.equal(ok.status, 200);
+    assert.ok(ok.body.groups.length >= 10 && ok.body.edges.length > 0);
+    assert.ok(!/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(JSON.stringify(ok.body)), "o mapa não carrega e-mail de ninguém");
+    assert.ok(!/postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}/.test(JSON.stringify(ok.body)), "o mapa não carrega connection string nem chave");
+  });
 });

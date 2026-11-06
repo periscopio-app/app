@@ -7,6 +7,7 @@ import { metricsEnabled, metricsTokenOk } from "../observability/metrics-auth";
 import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
+import { SYSTEM_MAP } from "../data/system-map.data";
 import { otlpPushStatus, resolveOtlpConfig } from "../observability/otlp-push";
 import { fetchGrafanaDeploys, fetchGrafanaSeries, fetchGrafanaStats, GRAFANA_METRICS, GRAFANA_RANGES, type GrafanaRange } from "../services/grafana.service";
 
@@ -31,6 +32,14 @@ function configChecks() {
 }
 
 export async function observabilityRoutes(app: FastifyInstance) {
+  // Mapa técnico do código: orientação para o Administrador Master. Nunca público (mesma capacidade da aba Saúde).
+  app.get("/api/admin/system-map", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "system.observability.view");
+    if (!actor) return;
+    reply.header("Cache-Control", "no-store");
+    return SYSTEM_MAP;
+  });
+
   // Painel do Administrador Master.
   app.get("/api/admin/observability", async (request, reply) => {
     const actor = await requireCapability(request, reply, "system.observability.view");
