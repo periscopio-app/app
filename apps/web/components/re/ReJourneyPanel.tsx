@@ -1032,7 +1032,7 @@ function SumarioPasso({
             </div>
           </div>
           <div className={`space-y-3 rounded-xl border border-linha p-4 ${falta("conduta") || falta("qual") ? "border-l-4 border-l-erro bg-erro/5" : ""}`}>
-            <p className="text-sm font-bold text-black">Intervenção do PpI</p>
+            <p className="text-sm font-bold text-black">Intervenção do RE</p>
             <div>
               <p className="mb-1.5 text-sm font-semibold text-black">Houve conduta?</p>
               <OpcoesUnica nome="Houve conduta" opcoes={[{ value: "sim", label: "Sim" }, { value: "nao", label: "Não" }]} valor={sum.conduta} onChange={(v) => set({ conduta: (v as "sim" | "nao" | null) })} />

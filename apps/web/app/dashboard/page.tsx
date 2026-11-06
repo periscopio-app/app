@@ -48,7 +48,7 @@ export default function DashboardHubPage() {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-roxo-100 border border-roxo hover:bg-roxo-200 text-black shadow-sm transition"
             >
               <FileText className="w-4 h-4" />
-              <span>Painel do Psicopedagogo (PpI)</span>
+              <span>Painel do RE</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
@@ -118,7 +118,7 @@ export default function DashboardHubPage() {
               <div className="w-10 h-10 rounded-xl bg-[#682880]/10 text-black flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <FileText className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-black mb-2">Painel do Psicopedagogo (PpI)</h3>
+              <h3 className="text-lg font-bold text-black mb-2">Painel do RE</h3>
               <p className="text-xs text-neutral-800 leading-relaxed mb-4">
                 Gestão completa de estudantes com cadastro pseudonimizado (LGPD), abertura de prontuário e delegação de seções para a equipe multiprofissional.
               </p>
@@ -127,7 +127,7 @@ export default function DashboardHubPage() {
               href={`/${currentSlug}/dashboard/psicopedagogo`}
               className="inline-flex items-center justify-between pt-4 border-t border-[#E1E9ED] text-xs font-bold text-black hover:text-[#52206A] transition"
             >
-              <span>Acessar Módulo PpI</span>
+              <span>Acessar módulo do RE</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

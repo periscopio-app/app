@@ -59,7 +59,7 @@ const DEFAULT_ROLES: RoleDefinition[] = [
   },
   {
     role: "ppi",
-    title: "Psicopedagogo(a) / PpI",
+    title: "RE — Responsável Escolar",
     description: "Acolhimento da família e estudante, aplicação de escalas validadas e condução da triagem inicial no protocolo NEMT.",
     level: "clinico",
     permissions: ["Triagem NEMT", "Aplicação de Escalas", "Acolhimento Familiar"],

@@ -62,7 +62,7 @@ export const SYSTEM_ROLES_CATALOG = [
   },
   {
     role: "ppi",
-    title: "RE — Responsável Escolar (PpI)",
+    title: "RE — Responsável Escolar",
     description: "Cadastra professores e a si mesmo, acompanha os alunos com dificuldade, completa o FOGAP, monta o sumário e a lista para o núcleo assistencial e pode pedir ajuda ao Board em casos graves.",
     level: "clinico",
     permissions: [

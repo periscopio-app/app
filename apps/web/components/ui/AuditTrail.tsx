@@ -15,7 +15,7 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  ppi: "RE/PpI",
+  ppi: "RE",
   md1: "Médico(a)",
   specialist: "Especialista",
   admin_platform: "Admin",

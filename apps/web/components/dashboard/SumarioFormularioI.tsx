@@ -115,7 +115,7 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
           )}
           <span className="mt-0.5 block text-[11px] text-neutral-700">Pontuação conforme o formulário-fonte; não é diagnóstico.</span>
         </Linha>
-        <Linha rotulo="Intervenção do PpI">
+        <Linha rotulo="Intervenção do RE">
           {s.conduta === "sim" ? (
             <span>
               Conduta: <strong>Sim</strong> · Qual: {s.qual || "—"} · Por quanto tempo: {s.tempo || "—"} · Resultado: {s.resultado || "—"}

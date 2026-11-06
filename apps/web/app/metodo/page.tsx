@@ -36,9 +36,9 @@ export default function MetodoPage() {
 
           <div className="rounded-3xl border border-border bg-card p-8">
             <span className="text-sm font-bold text-primary">ETAPA 2</span>
-            <h2 className="mt-3 font-display text-xl font-bold text-foreground">Triagem Especializada (PpI & MD1)</h2>
+            <h2 className="mt-3 font-display text-xl font-bold text-foreground">Triagem Especializada (RE & MD1)</h2>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-              A psicopedagoga institucional da rede (PpI / Responsável Escolar) realiza a escuta qualificada e o preenchimento do protocolo FOGAP. Em seguida,
+              A psicopedagoga institucional da rede (Responsável Escolar, RE) realiza a escuta qualificada e o preenchimento do protocolo FOGAP. Em seguida,
               o caso é estratificado clinicamente com supervisão médica (MD1) conforme critérios de gravidade do protocolo NEMT.
             </p>
           </div>

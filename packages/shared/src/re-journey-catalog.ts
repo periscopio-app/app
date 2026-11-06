@@ -1122,7 +1122,7 @@ export function lacunasDoSumario(sumario: unknown, serieDoAluno?: string | null)
   if (!Array.isArray(s.dificuldades_persistentes) || s.dificuldades_persistentes.length === 0) {
     push("dificuldades_persistentes", "Dificuldades persistentes");
   }
-  if (s.conduta !== "sim" && s.conduta !== "nao") push("conduta", "Houve conduta do PpI?");
+  if (s.conduta !== "sim" && s.conduta !== "nao") push("conduta", "Houve conduta do RE?");
   else if (s.conduta === "sim") {
     texto("qual", "Qual conduta");
     texto("tempo", "Por quanto tempo");
