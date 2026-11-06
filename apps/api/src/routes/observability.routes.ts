@@ -24,7 +24,7 @@ function configChecks() {
     { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), optional: false, hint: "Origens permitidas para chamar a API." },
     { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },
     { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), optional: true, hint: "Armazenamento de anexos clínicos (Supabase Storage para laudos e exames)." },
-    { key: "SUPABASE_SERVICE_ROLE_KEY", ok: has("SUPABASE_SERVICE_ROLE_KEY"), optional: true, hint: "Chave de serviço do Supabase: necessária para gravar fotos de perfil e anexos clínicos." },
+    { key: "SUPABASE_SERVICE_ROLE_KEY", ok: has("SUPABASE_SERVICE_ROLE_KEY"), optional: true, hint: "Chave de serviço do Supabase: só para anexos clínicos antigos (as fotos de perfil agora ficam no banco)." },
     { key: "GRAFANA_OTLP_TOKEN", ok: resolveOtlpConfig(process.env) !== null, optional: true, hint: "Opcional: a API envia as métricas ao Grafana Cloud (OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS, ou GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_USER e GRAFANA_OTLP_TOKEN)." },
     { key: "GRAFANA_PROM_TOKEN", ok: has("GRAFANA_PROM_URL") && has("GRAFANA_PROM_USER") && has("GRAFANA_PROM_TOKEN"), optional: true, hint: "Opcional: histórico de métricas do Grafana Cloud no painel de saúde (GRAFANA_PROM_URL, GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." },
     { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), optional: true, hint: "Opcional: libera rota /metrics para coletor externo (Prometheus/Grafana)." },

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { StorageCheckCard } from "@/components/admin/StorageCheckCard";
+import { KpisInternosCard } from "@/components/admin/KpisInternosCard";
 import { FactoryResetCard } from "@/components/admin/FactoryResetCard";
 import { GrafanaHistoryCard } from "@/components/admin/GrafanaHistoryCard";
 import { SaudeSimples } from "@/components/admin/SaudeSimples";
@@ -215,6 +216,7 @@ export default function AdminSaudePage() {
               <div className="px-4 pb-4"><GrafanaHistoryCard /></div>
             </details>
 
+            <KpisInternosCard />
             <StorageCheckCard />
 
             <FactoryResetCard />
