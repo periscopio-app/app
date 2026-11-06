@@ -6,11 +6,12 @@
  * 3. Modo offline mostra indicação visual de perda de rede sem expor dados.
  */
 
-const CACHE_NAME = "periscopio-public-v2";
+const CACHE_NAME = "periscopio-public-v3";
 const PUBLIC_ASSETS = [
   "/manifest.json",
   "/hero-escola.png",
   "/landing-logo.webp",
+  "/icons/icon-192.png",
 ];
 
 // Instalação — Precache restrito a ativos públicos estáticos

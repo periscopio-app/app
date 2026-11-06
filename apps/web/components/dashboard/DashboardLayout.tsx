@@ -26,6 +26,7 @@ import { BarChart3, MapPinned,
   UserRound,
   Maximize2,
   Minimize2,
+  Network,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
@@ -153,6 +154,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const visibleAdmin = [
     { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal },
     { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity },
+    { show: has("system.observability.view"), label: "Mapa do sistema", href: "/admin/mapa-do-sistema", icon: Network },
     { show: has("users.manage") || isSuper, label: "Usuários & Perfis", href: "/admin/users", icon: ShieldCheck },
     { show: has("lgpd.manage") || isSuper, label: "Governança & DPO LGPD", href: "/admin/lgpd", icon: ShieldCheck },
     { show: isSuper, label: "Suporte & Chamados", href: "/admin/suporte", icon: HelpCircle },
@@ -173,7 +175,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
-    if (path.startsWith("/admin/saude")) return ["system.observability.view"];
+    if (path.startsWith("/admin/saude") || path.startsWith("/admin/mapa-do-sistema")) return ["system.observability.view"];
     if (path.startsWith("/admin/users")) return ["users.manage"];
     if (path.startsWith("/admin/lgpd")) return ["lgpd.manage"];
     if (path.startsWith("/admin/setup")) return ["schools.provision"];
