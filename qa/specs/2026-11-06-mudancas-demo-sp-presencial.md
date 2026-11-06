@@ -282,3 +282,32 @@ nenhuma migração aplicada em produção sem confirmação do PM.
 3. **Itens C** não podem ganhar texto clínico novo sem fonte (E4, E8).
 4. **R2** só vale de verdade com a migração 0034; sem ela, grants antigos mantêm os itens no menu.
 5. **Cold start do bi-rag** (32 s) na demo.
+
+## 11. Status de execução (atualizado em 06/nov/2026)
+
+Suíte da API: **683 de 683** passando; typecheck e lint verdes. Nada foi aplicado em banco compartilhado (migrações 0030 a 0035 só rodaram no Postgres local de teste).
+
+| Item | Estado | Teste |
+|---|---|---|
+| Migrações 0030–0035 | feito (local) | REG-015 |
+| T1 validador zod da justificativa | feito (shared); **ainda não ligado** às perguntas Sim/Não do RE (espera Q1) | REG-016 |
+| R1 foto no Postgres | feito | REG-017 |
+| R11 etiquetas (API) | feito; **falta a tela do admin** e o diálogo do RE (R10) | REG-018 |
+| M2 devolução com UUID + justificativa | feito (API); falta o botão/diálogo no painel do médico | journey e2e |
+| R8 mediana do FOGAP + T2 volume | feito (API e card em Saúde do sistema); a volumetria hoje só recebe a devolução | REG-019/020 |
+| R2 RE sem BI/mapa/indicadores | feito. **Mudança de desenho:** a Agenda do Board sai só do *menu* do RE (o RE segue pedindo ajuda ao Board dentro do caso), por isso `board.request` não foi retirada | testes de BI e piloto atualizados |
+| R3 "Gerar código de aluno" | feito | — |
+| R9 Leitura/Matemática/Escrita | feito. Valores gravados são os nomes puros; registro antigo "Aprendizagem" continua legível | REG-021 |
+| R13 PpI → RE | feito nos textos que nomeiam o RE; "Psicopedagogia (PpI)" como especialidade ficou | — |
+| E1 DNO a partir de 6 anos | feito | REG-022 |
+| E2 SRS-2 só na neuropsicologia | feito (`neuro_srs2`); licença a confirmar | catálogo |
+| E10 SCARED no lugar do MASC (neuro) | feito | catálogo |
+| R4 formulário por etapa com autosave | **não iniciado** | — |
+| R5/R7 ATA opcional, "Não vou aplicar", primeira da ordem | **não iniciado** (banco já aceita o passo `h`) | — |
+| R6 ATA de uso livre | **não iniciado** | — |
+| R12 só o RE atribuído emite ao responsável | **não iniciado** (Q9) | — |
+| R14, justificativa nas perguntas do RE | **não iniciado** (Q1) | — |
+| M1 FOGAP comportamental ao médico | **não iniciado** | — |
+| M3 linha do tempo do paciente | **não iniciado** (a API de linha do tempo já existe em `cases.routes.ts`) | — |
+| M4 botões finais do médico | **não iniciado** (b depende de Q8) | — |
+| E3, E4, E8, E9 | **bloqueados** (Q3, Q4, Q5, Q6) | — |

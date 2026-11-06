@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos de teste automáticos** em 96 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos de teste automáticos** em 103 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -35,7 +35,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 395
+## API — unitários — 414
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -353,7 +353,14 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/especialidades-catalog.test.ts</code> — 24 · catálogo das especialidades</summary>
+<details><summary><code>apps/api/src/services/dificuldades-persistentes.test.ts</code> — 2 · dificuldades persistentes (REG-021)</summary>
+
+- a lista não oferece mais Aprendizagem e traz Leitura, Matemática e Escrita no lugar, mantendo Outra por último
+- registro antigo com Aprendizagem continua sendo lido (aparece como valor avulso, nada se perde)
+
+</details>
+
+<details><summary><code>apps/api/src/services/especialidades-catalog.test.ts</code> — 29 · catálogo das especialidades</summary>
 
 - toda especialidade delegável com formulário tem pelo menos um
 - ids de formulário são únicos por especialidade e cabem na coluna
@@ -362,7 +369,8 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - opções de uma mesma pergunta têm valores únicos
 - todo formulário declara de onde vieram as lacunas (cadastro e nomes omitidos)
 - instrumentos sem licença confirmada guardam só o resultado
-- SRS-2 licenciado reproduz os 65 itens, com quatro respostas e sem cálculo
+- SRS-2 licenciado reproduz os 65 itens, com quatro respostas e sem cálculo (agora só na neuropsicologia)
+- neuropsicologia: SCARED no lugar do MASC, SRS-2 no fim, sem formulário repetido (06/nov/2026)
 - plano terapêutico fono preserva o item 4 do capítulo
 - o sistema não calcula: nenhum campo guarda total, escore ou classe calculados
 - o ponto de corte do SCARED não aparece em nenhum texto do formulário
@@ -379,6 +387,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - número digitado aparece como veio, sem conversão
 - toda especialidade tem ao menos um sumário e ele existe no catálogo dela
 - só o sumário sai; anamnese, instrumentos e plano terapêutico ficam com o profissional
+- a seção do DNO tem idade mínima 6 e as outras seções do formulário não têm
+- aluno de 5 anos não vê o DNO; aos 6 e acima vê; sem idade conhecida vê (nada some por falta de dado)
+- idade em anos completos usa ano e mês de nascimento
+- o DNO não é obrigatório: formulário só com outra seção preenchida passa na validação
 
 </details>
 
@@ -456,7 +468,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - F9 sínteses da escrita e da fala têm a coluna Aplicação e Sim/Não
 - F10 anamnese: sem 'Conclusão da anamnese' e sem 'Observações'; dados antigos não bloqueiam
 - F6 o sumário que vai ao médico é o item 4 (plano terapêutico), não a síntese 2.9
-- a Conduta é um formulário próprio, entre o SRS-2 (3) e o plano terapêutico (4)
+- a Conduta é um formulário próprio, logo antes do plano terapêutico (4); o SRS-2 saiu da fono em 06/nov/2026
 - as 4 áreas do PDF, com o texto literal, e Conclusão/Conduta ao final
 - a síntese 2.9 não carrega mais a conduta; dados antigos dela não bloqueiam o salvamento
 - não é sumário: só o plano terapêutico (item 4) vai ao médico
@@ -532,6 +544,18 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - exige motivo de acesso válido com pelo menos 5 caracteres
 - bloqueia acesso quando tenant ou escola não coincidem
 - permite acesso para perfil clínico autorizado e gera entrada de auditoria com eventId UUID
+
+</details>
+
+<details><summary><code>apps/api/src/services/justificativa.test.ts</code> — 7 · justificativa (REG-016)</summary>
+
+- texto de exemplo está dentro da faixa e é aceito
+- limites exatos: 100 e 150 passam; 99 e 151 não, e a mensagem diz quanto falta ou sobra
+- espaços extras e quebras de linha são normalizados antes de contar
+- recusa: ${nome}
+- palavras reais do português com muitas consoantes seguidas não são recusadas
+- zod: devolve o texto normalizado quando válido e a mesma mensagem quando inválido
+- medição devolve só contagens (nenhum texto)
 
 </details>
 
@@ -658,7 +682,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/re-observability.test.ts</code> — 6 · observabilidade do RE</summary>
+<details><summary><code>apps/api/src/services/re-observability.test.ts</code> — 11 · observabilidade do RE</summary>
 
 - mediana
 - oculta células com menos de 5 casos
@@ -666,6 +690,11 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - soma sessões do mesmo passo e ignora passo desconhecido
 - uso do G: considera o último registro do caso e oculta &lt;5
 - TEA: sem pontuação, só andamento
+- soma as partes de cada caso e calcula mediana, média e quartis
+- a mediana não é puxada por um caso muito longo (a média é)
+- menos de 5 casos: tudo oculto (sem número), mas informa que há casos
+- sem nenhum tempo: zero casos, não oculto
+- ignora passo desconhecido e tempo zero; resposta traz só números
 
 </details>
 
@@ -770,7 +799,17 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 224
+## API — E2E (banco de teste, fluxo pela API real) — 250
+
+<details><summary><code>apps/api/src/e2e/admin-kpis.e2e.test.ts</code> — 5 · KPIs do admin (REG-020)</summary>
+
+- só quem vê a saúde do sistema acessa: RE, médico e visitante não recebem número
+- mediana do FOGAP: soma as partes de cada caso enviado, ignora o rascunho e mostra a mediana em destaque
+- município com menos de 5 casos: números ocultos; sem filtro, soma os dois
+- filtro inválido é 400
+- volumetria das justificativas: soma contagens por formulário e nunca devolve o texto
+
+</details>
 
 <details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 11 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
@@ -794,7 +833,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/bi.e2e.test.ts</code> — 15 · BI do gestor (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/bi.e2e.test.ts</code> — 16 · BI do gestor (E2E)</summary>
 
 - quem não é de gestão/clínica da escola não acessa o BI
 - município vê a rede; escola pequena fica oculta e o total não é informado
@@ -811,6 +850,18 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - aprendizado: só gestão aprova direto; o aprovado volta como exemplo na próxima pergunta
 - feedback de outra pessoa ou de outro município é recusado
 - overview devolve os painéis básicos para cada papel permitido
+- RE não acessa o BI do gestor nem o assistente (403, sem dado)
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/etiquetas.e2e.test.ts</code> — 6 · Etiquetas (REG-018)</summary>
+
+- quem não é Administrador Master não cadastra, não altera e não lista a gestão (403, sem dado)
+- o Administrador Master cadastra; nome repetido (maiúscula/espaço) é 409; grupo e nome inválidos são 400
+- o RE vê só as ativas do próprio município; outro município não vê nada
+- a mesma etiqueta pode existir em outro município; o admin cadastra para o município que escolher
+- desativar tira da lista do RE mas mantém na do admin; renomear para nome existente é 409; id inexistente é 404
+- toda mudança fica na trilha de auditoria, só com o nome da etiqueta
 
 </details>
 
@@ -837,6 +888,19 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - linha de outro tenant que aponta para caso/aluno do demo não trava o reset
 - executa: zera o demo e NÃO toca Tarumã nem o real
 - rodar de novo é idempotente: demo já vazio, total 0, nada quebra
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/foto-no-postgres.e2e.test.ts</code> — 8 · Foto de perfil no Postgres (REG-017)</summary>
+
+- enviar: a foto vai para user_avatars, sem os metadados (EXIF/GPS), e o endereço é relativo e opaco
+- a foto é servida sem login, com cabeçalhos seguros e cache longo
+- persiste: uma instância nova da API (reinício) continua mostrando a mesma foto
+- trocar: a chave muda, a foto antiga deixa de existir e continua uma só linha por usuário
+- cada pessoa tem a própria foto: trocar a de uma não mexe na de outra
+- remover: apaga a linha e o endereço antigo passa a dar 404
+- chave antiga do Supabase sem foto no Postgres vira 'sem foto', não imagem quebrada
+- chaves inexistentes ou malformadas: 404 curto, sem pista do que existe
 
 </details>
 
@@ -901,6 +965,17 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - catálogo novo: seção concluída com versão antiga volta como rascunho, sem perder o texto
 - hipótese diagnóstica: só CID 10 e CID 11; o texto das células antigas não se perde
 - médico sem 'Ver tudo da escola': a API avisa (somenteSumario) e não manda as respostas do FOGAP
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/migracoes-lote-sp.e2e.test.ts</code> — 6 · Migrações do lote SP (REG-015)</summary>
+
+- 0030: foto fica no Postgres, só JPEG/PNG/WEBP até 2 MB, e some junto com o usuário
+- 0031: etiqueta repetida (ignorando maiúscula e espaços) é recusada no mesmo grupo, mas vale em outro grupo e outro município
+- 0032: devolução exige justificativa de 100 a 150 caracteres, tem UUID e não pode ser alterada nem apagada
+- 0033: volumetria guarda só contagens por dia, formulário e tipo
+- 0034: exceção que liberava gestão ao RE é removida; exceção de outro perfil ou de bloqueio fica
+- 0035: a ATA (passo h) pode ser pulada e retomada; passo desconhecido continua recusado; trilha é somente inserção
 
 </details>
 
