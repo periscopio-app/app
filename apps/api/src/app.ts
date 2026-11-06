@@ -4,6 +4,7 @@ import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { healthRoutes } from "./routes/health";
 import { observabilityRoutes } from "./routes/observability.routes";
+import { dataPanelRoutes } from "./routes/data-panel.routes";
 import { genRequestId, loggerOptions, registerObservability } from "./observability/http";
 import { triagemRoutes } from "./routes/triagem.routes";
 import { authRoutes } from "./routes/auth.routes";
@@ -129,6 +130,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   // 3. Registro das Rotas do Sistema
   app.register(healthRoutes);
   app.register(observabilityRoutes);
+  app.register(dataPanelRoutes);
   app.register(triagemRoutes);
   app.register(authRoutes);
   app.register(onboardingRoutes);

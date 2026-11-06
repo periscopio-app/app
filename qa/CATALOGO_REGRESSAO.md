@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos de teste automáticos** em 96 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **661 casos de teste automáticos** em 97 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -33,8 +33,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos 
 | REG-009f | varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-013 | painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 388
+## API — unitários — 395
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -329,6 +330,18 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos 
 - CPF com dígito verificador errado, repetido ou incompleto é recusado
 - CPF em branco é aceito (opcional)
 - exige nome completo e parentesco da lista
+
+</details>
+
+<details><summary><code>apps/api/src/services/databricks.service.test.ts</code> — 7 · [REG-013] painel de dados (Databricks)</summary>
+
+- sem variáveis fica desligado e diz só os NOMES que faltam
+- host sem https ou catálogo inválido não liga e não repete o valor
+- o SQL enviado vem só da lista fechada, com o token só no cabeçalho
+- há um painel por view e nenhum pede coluna de pessoa
+- células com total abaixo do mínimo são suprimidas (padrão 5)
+- credencial recusada, erro HTTP, consulta não concluída e rede viram mensagem segura
+- resposta boa fica em cache; erro não
 
 </details>
 
@@ -757,7 +770,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 223
+## API — E2E (banco de teste, fluxo pela API real) — 224
 
 <details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 11 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
@@ -1015,7 +1028,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/rotas-e-termo.e2e.test.ts</code> — 8 · [REG-009] jornada dos especialistas com a trava do termo ligada</summary>
+<details><summary><code>apps/api/src/e2e/rotas-e-termo.e2e.test.ts</code> — 9 · [REG-009] jornada dos especialistas com a trava do termo ligada</summary>
 
 - [REG-009a] sem aceitar o termo o especialista é barrado com o motivo certo; a janela do termo continua acessível
 - [REG-009b] depois de aceitar, cada especialista puxa o encaminhamento que o médico fez para ele
@@ -1025,6 +1038,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos 
 - [REG-009f] varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master
 - [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
 - [REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200
+- [REG-013] painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza
 
 </details>
 

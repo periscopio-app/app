@@ -252,4 +252,20 @@ describe("[REG-009] jornada dos especialistas com a trava do termo ligada", { sk
     assert.ok(!/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(JSON.stringify(ok.body)), "o mapa não carrega e-mail de ninguém");
     assert.ok(!/postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}/.test(JSON.stringify(ok.body)), "o mapa não carrega connection string nem chave");
   });
+
+  test("[REG-013] painel de dados: só o Admin Master; sem Databricks configurado responde 'desligado' e nada vaza", async () => {
+    for (const rota of ["/api/admin/data-panel", "/api/admin/data-panel/casos_por_estado"]) {
+      assert.equal((await call("GET", rota)).status, 401, rota);
+      for (const email of [U.md, U.re, U.fono]) assert.equal((await call("GET", rota, email)).status, 403, `${rota} ${email}`);
+    }
+    const lista = await call("GET", "/api/admin/data-panel", MASTER);
+    assert.equal(lista.status, 200);
+    assert.equal(lista.body.configured, false);
+    assert.match(lista.body.reason, /DATABRICKS_HOST/);
+    assert.equal(lista.body.paineis.length, 4);
+    const um = await call("GET", "/api/admin/data-panel/casos_por_estado", MASTER);
+    assert.equal(um.status, 200);
+    assert.equal(um.body.configured, false);
+    assert.equal((await call("GET", "/api/admin/data-panel/qualquer_outro", MASTER)).status, 404, "fora da lista fechada não existe");
+  });
 });
