@@ -50,6 +50,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
   const { me, has, hasAny, ready } = useCapabilities();
   const userRole = me?.role ?? null;
+  const isRE = userRole === "ppi" || userRole === "re" || userRole === "responsavel_escolar";
   // Nome e foto editados em "Meu painel" aparecem aqui na hora, sem recarregar a página.
   const [perfilEditado, setPerfilEditado] = useState<{ name?: string; avatarUrl?: string | null } | null>(null);
   useEffect(() => {
@@ -141,7 +142,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { show: has("management.view"), label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList },
     { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
-    { show: hasAny(["board.request", "board.manage"]), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
+    // A Agenda do Board não aparece no menu do RE (decisão do PM, 06/nov/2026); o RE ainda pede ajuda ao Board dentro do caso.
+    { show: hasAny(["board.request", "board.manage"]) && !isRE, label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
     { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity },
     { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3 },
     { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned },

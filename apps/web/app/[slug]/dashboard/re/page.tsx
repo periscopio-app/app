@@ -243,7 +243,7 @@ export default function REDashboardPage({
       setStudents((prev) => [...prev, ...data.students]);
       setBulkText("");
       setStudentMsgOk(true);
-      setStudentMsg(`${data.imported} alunos importados com código pseudonimizado.`);
+      setStudentMsg(`${data.imported} alunos importados com código de aluno.`);
     } catch (err: unknown) {
       setStudentMsgOk(false);
       setStudentMsg(err instanceof Error ? err.message : "Erro ao importar alunos.");
@@ -397,7 +397,7 @@ export default function REDashboardPage({
                 type="submit"
                 variant="primary" size="md" className="w-full"
               >
-                Gerar código pseudonimizado
+                Gerar código de aluno
               </Button>
             </form>
             <details className="mt-3 rounded-xl border border-linha p-3 bg-white">
