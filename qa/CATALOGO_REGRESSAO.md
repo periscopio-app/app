@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **652 casos de teste automáticos** em 96 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **653 casos de teste automáticos** em 96 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -32,6 +32,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **652 casos 
 | REG-009e | não troca quando o profissional já começou (nada é perdido) nem quando a seção não está pendente | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-009f | varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
 ## API — unitários — 388
 
@@ -756,7 +757,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **652 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 222
+## API — E2E (banco de teste, fluxo pela API real) — 223
 
 <details><summary><code>apps/api/src/e2e/attachments.e2e.test.ts</code> — 11 · Laudos em PDF/JPG/PNG (E2E)</summary>
 
@@ -1014,7 +1015,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **652 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/rotas-e-termo.e2e.test.ts</code> — 7 · [REG-009] jornada dos especialistas com a trava do termo ligada</summary>
+<details><summary><code>apps/api/src/e2e/rotas-e-termo.e2e.test.ts</code> — 8 · [REG-009] jornada dos especialistas com a trava do termo ligada</summary>
 
 - [REG-009a] sem aceitar o termo o especialista é barrado com o motivo certo; a janela do termo continua acessível
 - [REG-009b] depois de aceitar, cada especialista puxa o encaminhamento que o médico fez para ele
@@ -1023,6 +1024,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **652 casos 
 - [REG-009e] não troca quando o profissional já começou (nada é perdido) nem quando a seção não está pendente
 - [REG-009f] varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master
 - [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
+- [REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200
 
 </details>
 
