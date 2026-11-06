@@ -710,6 +710,62 @@ export const clinicalAttachments = pgTable("clinical_attachments", {
 
 
 
+/** Foto de perfil do profissional (nunca do aluno), guardada no Postgres. `key` é a chave opaca da URL pública (migração 0030). */
+export const userAvatars = pgTable(
+  "user_avatars",
+  {
+    userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    key: uuid("key").notNull().defaultRandom(),
+    content: bytea("content").notNull(),
+    contentType: varchar("content_type", { length: 30 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ keyUq: uniqueIndex("user_avatars_key_uq").on(t.key) })
+);
+
+/** Etiquetas do tenant, cadastradas só pelo Administrador Master (migração 0031). O RE escolhe; nunca digita. */
+export const etiquetas = pgTable("etiquetas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  grupo: varchar("grupo", { length: 40 }).notNull(),
+  rotulo: varchar("rotulo", { length: 80 }).notNull(),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoPor: uuid("criado_por").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Devolução formal do médico ao RE, com UUID auditável. Somente inserção (migração 0032). */
+export const caseReturns = pgTable("case_returns", {
+  returnId: uuid("return_id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  caseId: uuid("case_id").notNull().references(() => cases.id),
+  returnedBy: uuid("returned_by").references(() => users.id, { onDelete: "set null" }),
+  returnedByRole: varchar("returned_by_role", { length: 40 }).notNull(),
+  reason: text("reason").notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 80 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Volumetria agregada das justificativas (migração 0033). Sem texto, sem aluno, sem autor. */
+export const justificationMetrics = pgTable(
+  "justification_metrics",
+  {
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    day: date("day").notNull(),
+    form: varchar("form", { length: 40 }).notNull(),
+    kind: varchar("kind", { length: 40 }).notNull(),
+    n: integer("n").notNull().default(0),
+    chars: integer("chars").notNull().default(0),
+    words: integer("words").notNull().default(0),
+    estTokens: integer("est_tokens").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.tenantId, t.day, t.form, t.kind] }) })
+);
+
 /**
  * Privilégios configuráveis pelo Administrador Master.
  * Regra por PERFIL (escopo: rede/tenant, ou global com o UUID zero) e exceção por PESSOA.

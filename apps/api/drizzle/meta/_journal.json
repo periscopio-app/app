@@ -211,6 +211,48 @@
       "when": 1792975200000,
       "tag": "0029_termo_profissional_status",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793061600000,
+      "tag": "0030_user_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793148000000,
+      "tag": "0031_etiquetas",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793234400000,
+      "tag": "0032_case_returns",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793320800000,
+      "tag": "0033_justification_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793407200000,
+      "tag": "0034_re_sem_itens_de_gestao",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793493600000,
+      "tag": "0035_ata_pode_ser_pulada",
+      "breakpoints": true
     }
   ]
 }
