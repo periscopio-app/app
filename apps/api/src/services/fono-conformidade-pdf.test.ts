@@ -157,9 +157,10 @@ describe("[REG-007] fonoaudiologia conforme o PDF — anamnese e sumário", () =
 });
 
 describe("[REG-007] fonoaudiologia conforme o PDF — Conduta como item próprio (após o 3)", () => {
-  test("a Conduta é um formulário próprio, entre o SRS-2 (3) e o plano terapêutico (4)", () => {
+  test("a Conduta é um formulário próprio, logo antes do plano terapêutico (4); o SRS-2 saiu da fono em 06/nov/2026", () => {
     const ids = formsDaEspecialidade("fonoaudiologia").map((f) => f.id);
-    assert.deepEqual(ids.slice(-3), ["fono_srs2", "fono_conduta", "fono_plano_terapeutico"]);
+    assert.deepEqual(ids.slice(-2), ["fono_conduta", "fono_plano_terapeutico"]);
+    assert.ok(!ids.includes("fono_srs2"), "decisão do PM: SRS-2 só na neuropsicologia");
     assert.equal(form("fono_conduta").letra, "3.1");
   });
 

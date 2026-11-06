@@ -127,8 +127,10 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
     assert.equal(salvo.body.form.status, "rascunho");
 
     // em branco não conclui
-    await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_srs2`, "fono", { payload: {} });
-    assert.equal((await call("POST", `/api/cases/sections/${secaoFono}/forms/fono_srs2/complete`, "fono")).status, 400);
+    await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_conduta`, "fono", { payload: {} });
+    assert.equal((await call("POST", `/api/cases/sections/${secaoFono}/forms/fono_conduta/complete`, "fono")).status, 400);
+    // SRS-2 saiu da fonoaudiologia (06/nov/2026): o formulário nem existe para ela.
+    assert.equal((await call("PUT", `/api/cases/sections/${secaoFono}/forms/fono_srs2`, "fono", { payload: {} })).status, 404);
 
     assert.equal((await call("POST", `${base}/complete`, "fono")).status, 200);
     assert.equal((await call("PUT", base, "fono", { payload: { principais_achados: "outro" } })).status, 409, "concluído trava");
@@ -143,7 +145,8 @@ describe("Formulários das especialidades (E2E)", { skip }, () => {
 
     const { caseSpecialtyForms } = shared;
     const { eq } = await import("drizzle-orm");
-    const [row] = await dbx.select().from(caseSpecialtyForms).where(eq(caseSpecialtyForms.sectionId, secaoFono));
+    const linhas = await dbx.select().from(caseSpecialtyForms).where(eq(caseSpecialtyForms.sectionId, secaoFono));
+    const row = linhas.find((x) => x.formId === "fono_plano_terapeutico")!;
     assert.equal((row.history as any[])[0].reason, "Correção de digitação");
 
     assert.equal((await call("PUT", base, "fono", { payload: { principais_achados: TEXTO } })).status, 200);

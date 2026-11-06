@@ -9,6 +9,7 @@ import {
   idsDeSumarioDaEspecialidade,
   camposDoForm,
   formDaEspecialidade,
+  formsDaEspecialidade,
   isEspecialidadeId,
   normalizarPayloadDef,
   progressoDef,
@@ -78,14 +79,24 @@ describe("catálogo das especialidades", () => {
     assert.ok(camposDoForm(social).length <= 10);
   });
 
-  test("SRS-2 licenciado reproduz os 65 itens, com quatro respostas e sem cálculo", () => {
-    const f = formDaEspecialidade("fonoaudiologia", "fono_srs2")!;
+  test("SRS-2 licenciado reproduz os 65 itens, com quatro respostas e sem cálculo (agora só na neuropsicologia)", () => {
+    assert.equal(formDaEspecialidade("fonoaudiologia", "fono_srs2"), null, "fono não exibe mais o SRS-2");
+    const f = formDaEspecialidade("neuropsicologia", "neuro_srs2")!;
     const itens = camposDoForm(f).find((c) => c.key === "itens_srs2");
     assert.ok(itens && itens.tipo === "matriz");
     if (!itens || itens.tipo !== "matriz") throw new Error("matriz SRS-2 ausente");
     assert.equal(itens.linhas.length, 65);
     assert.deepEqual(itens.opcoes.map((o) => o.value), ["1", "2", "3", "4"]);
     assert.equal(itens.linhas[3]?.label, "na sobrecarga de estímulos, apresenta padrões rígidos ou inflexíveis de comportamento que parecem estranhos.");
+  });
+
+  test("neuropsicologia: SCARED no lugar do MASC, SRS-2 no fim, sem formulário repetido (06/nov/2026)", () => {
+    const ids = formsDaEspecialidade("neuropsicologia").map((f) => f.id);
+    assert.deepEqual(ids, ["psi_entrevista_inicial", "psi_scared", "anp_resultado_tecnico", "anp_sumario", "neuro_srs2"]);
+    assert.ok(!ids.includes("psi_masc"));
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(formDaEspecialidade("psicologia", "psi_masc")?.id, "psi_masc", "psicologia continua com o MASC");
+    assert.equal(ehFormularioDeSumario("neuropsicologia", "anp_sumario"), true, "o sumário do médico continua sendo o mesmo");
   });
 
   test("plano terapêutico fono preserva o item 4 do capítulo", () => {

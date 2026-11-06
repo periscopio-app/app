@@ -139,7 +139,8 @@ describe("[REG-009] jornada dos especialistas com a trava do termo ligada", { sk
     const lista0 = await call("GET", base, U.fono);
     assert.equal(lista0.status, 200, JSON.stringify(lista0.body));
     const ids0: string[] = lista0.body.forms.map((f: any) => f.id);
-    assert.ok(ids0.indexOf("fono_srs2") < ids0.indexOf("fono_conduta") && ids0.indexOf("fono_conduta") < ids0.indexOf("fono_plano_terapeutico"), "Conduta entre o item 3 e o 4");
+    assert.ok(ids0.indexOf("fono_conduta") >= 0 && ids0.indexOf("fono_conduta") < ids0.indexOf("fono_plano_terapeutico"), "Conduta antes do item 4");
+    assert.ok(!ids0.includes("fono_srs2"), "SRS-2 não aparece mais para a fonoaudiologia");
 
     const plano = {
       diagnostico: "Texto do profissional",

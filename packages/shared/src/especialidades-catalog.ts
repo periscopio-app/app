@@ -1020,9 +1020,10 @@ const FONO_CONDUTA = def(
 );
 
 
-const FONO_SRS2 = def(
-  "fono_srs2",
-  "3",
+/** SRS-2 (65 itens). Mesma definição para quem aplica: hoje só a neuropsicologia (ver ESPECIALIDADE_FORMS). */
+const srs2 = (id: string, letra: string) => def(
+  id,
+  letra,
   "Social Responsiveness Scale, 2nd Edition — SRS-2",
   "SRS-2",
   "Responsável descreve o comportamento da criança nos últimos 6 meses. O sistema registra as respostas, sem calcular ou interpretar o resultado.",
@@ -1053,8 +1054,15 @@ const FONO_SRS2 = def(
       tl("anotacao", "Anotações do profissional"),
     ]),
   ],
-  ["Uso dos 65 itens autorizado pelo titular da licença em 2026-10-29. O sistema não calcula escore, ponto de corte ou classificação."]
+  [
+    "Uso dos 65 itens autorizado pelo titular da licença em 2026-10-29. O sistema não calcula escore, ponto de corte ou classificação.",
+    "Decisão do PM em 06/nov/2026: o SRS-2 sai da fonoaudiologia e fica só na neuropsicologia. Confirmar com o titular da licença que o uso autorizado em 29/out vale para a neuropsicologia.",
+  ]
 );
+
+/** Fonoaudiologia: SRS-2 NÃO é exibido (decisão do PM, 06/nov/2026). Mantido aqui, fora de ESPECIALIDADE_FORMS, para dados antigos e para reativar se a clínica pedir. */
+export const FONO_SRS2_DESATIVADO = srs2("fono_srs2", "3");
+const NEURO_SRS2 = srs2("neuro_srs2", "E");
 
 const FONO_PLANO = def(
   "fono_plano_terapeutico",
@@ -3066,10 +3074,12 @@ const AS_ENCAMINHAMENTO = def(
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export const ESPECIALIDADE_FORMS: Record<EspecialidadeId, FormDef[]> = {
-  fonoaudiologia: [FONO_ANAMNESE, FONO_AUDICAO, FONO_LINGUAGEM_ORAL, FONO_LINGUAGEM_ESCRITA, FONO_FALA, FONO_SINTESE, FONO_SRS2, FONO_CONDUTA, FONO_PLANO],
+  // SRS-2 (FONO_SRS2_DESATIVADO) fica de fora da fonoaudiologia por decisão do PM em 06/nov/2026; os testes de anamnese seguem opcionais.
+  fonoaudiologia: [FONO_ANAMNESE, FONO_AUDICAO, FONO_LINGUAGEM_ORAL, FONO_LINGUAGEM_ESCRITA, FONO_FALA, FONO_SINTESE, FONO_CONDUTA, FONO_PLANO],
   psicopedagogia: [PPC_ANAMNESE, PPC_EOCA, PPC_AVALIACAO, PPC_PIAGET, PPC_CONCLUSAO, PPC_PLANO],
   psicologia: [PSI_ENTREVISTA, PSI_MASC, PSI_SEGUIMENTO, PSI_SCARED, PSI_TAC_SUMARIO, PSI_TAC_ALTA, PSI_GRUPO_INICIAL, PSI_GRUPO_SUMARIO, PSI_GRUPO_FINAL],
-  neuropsicologia: [PSI_ENTREVISTA, PSI_MASC, ANP_RESULTADO, ANP_SUMARIO],
+  // MASC sai e entra o SCARED (decisão do PM, 06/nov/2026). A letra B mantém a sequência A–D do formulário da neuropsicologia.
+  neuropsicologia: [PSI_ENTREVISTA, { ...PSI_SCARED, letra: "B" }, ANP_RESULTADO, ANP_SUMARIO, NEURO_SRS2],
   psicomotricidade: [PSM_AVALIACAO_1, PSM_AVALIACAO_2, PSM_AVALIACAO_3, PSM_PLANO, PSM_SEGUIMENTO, PSM_MANUTENCAO, PSM_ALTA, PSM_SUMARIO],
   servico_social: [AS_CADASTRO_QUEIXA, AS_GENOGRAMA, AS_ESCOLARIDADE_SAUDE, AS_ECONOMICA_MORADIA, AS_CONDUTA, AS_SEGUNDA, AS_DOMICILIO, AS_CBCL_ASQ, AS_SUMARIO, AS_ENCAMINHAMENTO],
 };
