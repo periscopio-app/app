@@ -409,9 +409,15 @@ function CampoView({
         <div className="mt-2 rounded-xl border border-linha bg-fundo p-3 text-xs text-black" data-testid={`legenda-${campo.key}`}>
           <p className="font-semibold">{campo.legenda.titulo}</p>
           <ol className="mt-1 list-none space-y-0.5 text-neutral-800">
-            {campo.legenda.itens.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
+            {campo.legenda.itens.map((t, i) =>
+              t.startsWith("## ") ? (
+                <li key={i} className="pt-1.5 font-semibold text-black">
+                  {t.slice(3)}
+                </li>
+              ) : (
+                <li key={i}>{t}</li>
+              ),
+            )}
           </ol>
         </div>
       )}

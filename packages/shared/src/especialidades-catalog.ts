@@ -2253,6 +2253,9 @@ const TIPO_APNEIA: ReOpcao[] = [
   o("acima_30", "Acima de 30 s"),
 ];
 
+/** Legenda de pontuação 1 a 4 impressa no PDF da psicomotricidade (Cap.PSICOMOT plataforma 1809). Só texto de leitura: o sistema não soma nem converte em perfil. Linhas "## " viram subtítulo. */
+const LEG_PSM = (titulo: string, grupos: [string, string[]][]) => ({ titulo, itens: grupos.flatMap(([g, itens]) => [`## ${g}`, ...itens]) });
+
 /** Cada prova da bateria psicomotora recebe um nível de 1 a 4 marcado pelo profissional. Nada é somado. */
 const nivel = (key: string, label: string, rows: [string, string][], extra: Partial<CampoMatriz> = {}) => mx(key, label, rows, NIVEL_1_4, extra);
 
@@ -2287,23 +2290,72 @@ const PSM_AVALIACAO_1 = def(
         ["membros_inferiores", "Membros inferiores"],
         ["membros_superiores", "Membros superiores"],
         ["passividade", "Passividade"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da extensibilidade", [
+          ["Membros inferiores (extensores da coxa)", [
+            "1. Valores inferiores a 60º, com sinais de hipotonia ou hipertonia, de hipermobilidade ou hipomobilidade",
+            "2. Afastamento de 60º a 100º nos adutores e extensores de coxa e afastamento de 20 a 25 cm no quadríceps femoral",
+            "3. Afastamento de 100º a 140º nos adutores e extensores de coxa e de 15 cm a 20 cm no quadríceps femoral",
+            "4. Afastamento de 140º a 180º nos adutores e extensores da coxa e de 10 cm a 15 cm no quadríceps femoral",
+          ]],
+          ["Membros superiores", [
+            "1. Sinais de resistência ou lassidez, de hipertonia ou hipotonia",
+            "2. Incapacidade de tocar os cotovelos e encostar os dedos nos antebraços, devido a rigidez",
+            "3. Resistência a mobilização assistida no toque dos cotovelos, polegares, extensão do antebraço e supinação da mão",
+            "4. Realização de todas as tarefas com menos resistência",
+          ]],
+          ["Passividade (membros inferiores)", [
+            "1. Não realiza, ou realiza a prova de forma incompleta",
+            "2. Não realiza os movimentos passivos e pendulares devido aos sinais involuntários de extremidades",
+            "3. Realiza as tarefas com pequenos movimentos voluntários de oscilação e pendulação",
+            "4. Realiza as tarefas com movimentos passivos, harmoniosos e pendulares",
+          ]],
+        ]),
+      }),
       nivel("tonicidade_paratonia", "Paratonia", [
         ["membros_inferiores", "Membros inferiores"],
         ["membros_superiores", "Membros superiores"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da paratonia", [
+          ["Paratonia (critério do PDF, descrito para membros inferiores)", [
+            "1. Presença de tensão e bloqueio muito forte na mobilização",
+            "2. Presença de tensão e bloqueio moderado na mobilização",
+            "3. Presença de ligeiras tensões e capacidade de abandono e relaxamento",
+            "4. Perfeita capacidade de abandono e relaxamento",
+          ]],
+        ]),
+      }),
       nivel("tonicidade_diadococinesia", "Diadococinesia", [
         ["mao_direita", "Mão direita"],
         ["mao_esquerda", "Mão esquerda"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da diadococinesia", [
+          ["Diadococinesia", [
+            "1. Não realiza movimento de pronação e supinação",
+            "2. Realiza movimentos de pronação e supinação descoordenados",
+            "3. Realiza movimentos de pronação e supinação com ligeira descoordenação",
+            "4. Realiza movimentos de pronação e supinação corretamente",
+          ]],
+        ]),
+      }),
       nivel("tonicidade_sincinesia", "Sincinesia", [
         ["bucais", "Bucais"],
         ["contralaterais", "Contralaterais"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da sincinesia", [
+          ["Sincinesia", [
+            "1. Presença de sincinesias faciais, linguais e contração contralateral dos dedos da mão",
+            "2. Presença de sincinesias bucais e desvios contralaterais de mão",
+            "3. Pequena evidência de sincinesias e movimentos contralaterais",
+            "4. Sem evidência de sincinesias e com movimentos controlados e isolados",
+          ]],
+        ]),
+      }),
     ]),
   ],
   [
-    "NAO IMPLEMENTAR ATE VALIDACAO: o PDF define, para cada nível 1 a 4, um critério em segundos, graus ou acertos. Esses critérios são da bateria psicomotora (confirmar autoria e licença). O sistema registra só o nível marcado pelo profissional.",
+    "As legendas 1 a 4 de cada prova (segundos, graus, acertos) são as impressas no PDF e aparecem abaixo de cada tabela como leitura. O sistema registra só o nível marcado pelo profissional. Confirmar autoria e licença da bateria.",
+    "PDF sem critério impresso para: Dismetria, Membros superiores e Membros inferiores (praxia global) e Paratonia de membros superiores (só há o critério de membros inferiores). Perguntar à Dra. se usam o mesmo critério.",
     "O 'Escore final' da habilidade motora básica ('3 tentativas com o maior número de letras') não é calculado.",
     "No PDF, o 'Data ... Médico' do bloco 1 está como assinatura de médico; aqui é a assinatura do próprio profissional que preenche. Confirmar.",
   ]
@@ -2317,13 +2369,40 @@ const PSM_AVALIACAO_2 = def(
   "Marque o nível de 1 a 4 de cada prova, conforme a bateria. O sistema não soma.",
   [
     sec("equilibracao", "Equilibração", [
-      nivel("equilibracao_imobilidade", "Imobilidade", [["imobilidade", "Imobilidade"]]),
+      nivel("equilibracao_imobilidade", "Imobilidade", [["imobilidade", "Imobilidade"]], {
+        legenda: LEG_PSM("Legenda: pontuação da imobilidade", [
+          ["Imobilidade", [
+            "1. Suporta 30s com presença de desequilíbrios ou queda",
+            "2. Suporta entre 31s a 45s com insegurança gravitacional",
+            "3. Suporta entre 46s a 60s com ligeiras gesticulações",
+            "4. Suporta acima de 60s com controle postural",
+          ]],
+        ]),
+      }),
       nivel("equilibracao_estatico", "Equilíbrio estático", [
         ["apoio_retilineo", "Apoio retilíneo"],
         ["ponta_dos_pes", "Ponta dos pés"],
         ["apoio_num_pe", "Apoio num pé, direito-esquerdo"],
-      ]),
-      nivel("equilibracao_dinamico", "Equilíbrio dinâmico", [["marcha_controlada", "Marcha controlada"]]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação do equilíbrio estático (maior de 6 anos)", [
+          ["Equilíbrio estático", [
+            "1. Mantém por menos de 10s sem abrir os olhos",
+            "2. Permanece entre 10s a 15s sem abrir os olhos",
+            "3. Permanece entre 16s a 20s sem abrir os olhos",
+            "4. Permanece por mais de 20s sem abrir os olhos",
+          ]],
+        ]),
+      }),
+      nivel("equilibracao_dinamico", "Equilíbrio dinâmico", [["marcha_controlada", "Marcha controlada"]], {
+        legenda: LEG_PSM("Legenda: pontuação do equilíbrio dinâmico", [
+          ["Equilíbrio dinâmico", [
+            "1. Não realiza a tarefa ou realiza de forma incompleta",
+            "2. Realiza a marcha com pausas frequentes e desequilíbrios",
+            "3. Realiza a marcha controlada com ligeiro desequilíbrios",
+            "4. Realiza a marcha perfeita sem desequilíbrio",
+          ]],
+        ]),
+      }),
       nivel("equilibracao_trave", "Evolução na trave", [
         ["frente", "Para frente"],
         ["tras", "Para trás"],
@@ -2334,7 +2413,28 @@ const PSM_AVALIACAO_2 = def(
         ["pes_juntos_frente", "Pés juntos para frente"],
         ["pes_juntos_tras", "Pés juntos para trás"],
         ["pes_juntos_olhos_fechados", "Pés juntos com os olhos fechados"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da evolução na trave", [
+          ["b) Evolução na trave: marcha normal com 4 subtarefas e mãos no quadril", [
+            "1. Não realiza as tarefas ou realiza apresentando mais de três quedas",
+            "2. Realiza as tarefas com pausas frequentes e com uma a três quedas",
+            "3. Realiza com ligeiros desequilíbrios, mas sem queda",
+            "4. Realiza sem desequilíbrios e com perfeito controle",
+          ]],
+          ["c) Apoio unipodal: 4 subtarefas em 3m, com as mãos no quadril", [
+            "1. A criança não completa os saltos a distância",
+            "2. A criança realiza os saltos com dismetria e desequilíbrios de mão",
+            "3. A criança realiza os saltos com ligeiros desequilíbrios",
+            "4. A criança realiza os saltos facilmente sem desequilíbrios",
+          ]],
+          ["d) Apoio bipodal: 4 subtarefas em 3m, com as mãos no quadril", [
+            "1. Não realiza a tarefa com os olhos fechados, apresenta desequilíbrio",
+            "2. Percorre mais de 2m sem abrir os olhos, com paradas frequentes",
+            "3. Realiza os saltos moderados, com ligeiros desequilíbrios",
+            "4. Realiza a tarefa, perfeitamente, sem abrir os olhos",
+          ]],
+        ]),
+      }),
     ]),
     sec("lateralidade", "Lateralidade", [
       mx(
@@ -2354,7 +2454,16 @@ const PSM_AVALIACAO_2 = def(
         ["auditivo", "Auditivo"],
         ["manual", "Manual"],
         ["pedal", "Pedal"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da lateralidade", [
+          ["Lateralidade", [
+            "1. Não realiza as tarefas, evocando lateralidade contrariada",
+            "2. Realiza as tarefas com permanentes perturbações",
+            "3. Realiza as tarefas com ligeiras perturbações",
+            "4. Realiza todas as tarefas espontaneamente sem perturbações",
+          ]],
+        ]),
+      }),
       ue("tipo_lateralidade", "Tipo de lateralidade observada", [
         o("contrariada", "Contrariada"),
         o("cruzada", "Cruzada"),
@@ -2369,7 +2478,40 @@ const PSM_AVALIACAO_2 = def(
         ["autoimagem", "Autoimagem"],
         ["imitacao_gestos", "Imitação de gestos"],
         ["desenho_corpo", "Desenho do corpo"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação de cada prova da noção do corpo", [
+          ["Desenho do corpo", [
+            "1. Não realiza ou realiza um desenho irreconhecível",
+            "2. Realiza um desenho muito pequeno ou muito grande",
+            "3. Realiza um desenho completo, mas com distorções",
+            "4. Realiza um desenho graficamente perfeito",
+          ]],
+          ["Sentido cinestésico", [
+            "1. Nomeia de quatro a seis pontos táteis",
+            "2. Nomeia de sete a onze pontos táteis",
+            "3. Nomeia doze pontos táteis",
+            "4. Nomeia todos os pontos táteis",
+          ]],
+          ["Reconhecimento direita-esquerda", [
+            "1. Não realiza as tarefas ou realiza uma ou duas ao acaso",
+            "2. Realiza duas ou quatro tarefas com confusão",
+            "3. Realiza três ou seis tarefas com ligeira confusão",
+            "4. Realiza as oito tarefas de forma perfeita",
+          ]],
+          ["Autoimagem", [
+            "1. Não acerta ou acerta uma vez na ponta do nariz",
+            "2. Acerta duas vezes na ponta do nariz",
+            "3. Falha uma ou duas vezes, mas com movimentos adequados",
+            "4. Toca quatro vezes exatamente no ponta do nariz",
+          ]],
+          ["Imitação de gestos", [
+            "1. Não reproduz nenhuma ou apenas uma das figuras com distorção",
+            "2. Reproduz duas figuras com distorção",
+            "3. Reproduz três figuras com ligeiras distorções",
+            "4. Reproduz com perfeição, precisão e acabamento",
+          ]],
+        ]),
+      }),
     ]),
   ],
   [
@@ -2390,7 +2532,34 @@ const PSM_AVALIACAO_3 = def(
         ["representacao_topografica", "Representação topográfica"],
         ["estruturacao_ritmica", "Estruturação rítmica"],
         ["estruturacao_dinamica", "Estruturação dinâmica"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da estruturação espaço-temporal", [
+          ["Organização (percurso)", [
+            "1. Realiza um dos três percursos, ou não completa nenhum",
+            "2. Realiza dois dos três percursos com confusão",
+            "3. Realiza os três percursos com ligeiro descontrole",
+            "4. Realiza as três tarefas com controle correto",
+          ]],
+          ["Representação topográfica", [
+            "1. Não realiza a trajetória",
+            "2. Realiza a trajetória com frequentes interrupções",
+            "3. Realiza a trajetória adequadamente, com algumas interrupções",
+            "4. Realiza a trajetória de maneira perfeita e bem orientada",
+          ]],
+          ["Estruturação rítmica", [
+            "1. Reproduz duas das cinco estruturas, ou é incapaz de realizar",
+            "2. Reproduz três das cinco estruturas revelando irregularidades",
+            "3. Reproduz quatro das cinco estruturas",
+            "4. Reproduz todas as estruturas",
+          ]],
+          ["Estruturação dinâmica", [
+            "1. Realiza duas das seis figuras",
+            "2. Realiza três das seis figuras",
+            "3. Realiza quatro das seis figuras",
+            "4. Realiza cinco ou seis figuras",
+          ]],
+        ]),
+      }),
     ]),
     sec("praxia_global", "Praxia global", [
       nivel("praxia_global", "Praxia global", [
@@ -2401,14 +2570,57 @@ const PSM_AVALIACAO_3 = def(
         ["membros_superiores", "Membros superiores"],
         ["membros_inferiores", "Membros inferiores"],
         ["agilidade", "Agilidade"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da praxia global", [
+          ["Coordenação oculomanual (lançamentos)", [
+            "1. Não acerta nenhum lançamento",
+            "2. Acerta um dos quatro lançamentos",
+            "3. Acerta dois dos quatro lançamentos",
+            "4. Acerta três ou quatro dos lançamentos",
+          ]],
+          ["Coordenação oculopedal (chutes)", [
+            "1. Não acerta nenhum chute",
+            "2. Acerta um dos quatro chutes",
+            "3. Acerta dois dos quatro chutes",
+            "4. Acerta três ou quatro chutes",
+          ]],
+          ["Dissociação de membros superiores e inferiores (a ordem 1 a 4 segue a ordem impressa no PDF)", [
+            "1. Não realiza nenhuma estrutura sequencial",
+            "2. Realiza uma das quatro estruturas sequenciais",
+            "3. Realiza duas das quatro estruturas sequenciais",
+            "4. Realiza três ou quatro das estruturas sequenciais",
+          ]],
+          ["Prova de agilidade (a ordem 1 a 4 segue a ordem impressa no PDF)", [
+            "1. Não realiza nenhuma estrutura sequencial",
+            "2. Realiza uma das quatro estruturas sequenciais",
+            "3. Realiza duas das quatro estruturas sequenciais",
+            "4. Realiza três ou quatro das estruturas sequenciais",
+          ]],
+        ]),
+      }),
     ]),
     sec("praxia_fina", "Praxia fina", [
       nivel("praxia_fina", "Praxia fina", [
         ["coordenacao_dinamica_manual", "Coordenação dinâmica manual"],
         ["tamborilar", "Tamborilar"],
         ["velocidade_precisao", "Velocidade-precisão"],
-      ]),
+      ], {
+        legenda: LEG_PSM("Legenda: pontuação da praxia fina", [
+          ["Coordenação dinâmica manual", ["1. Faz a torre", "2. Faz ponte", "3. Faz bolinha", "4. Dá nó"]],
+          ["Tamborilar", [
+            "1. Não realiza a tarefa, revelando sinais disfuncionais",
+            "2. Realiza o tamborilar com fraco planejamento",
+            "3. Realiza o tamborilar com adequado planejamento",
+            "4. Realiza o tamborilar com perfeito planejamento",
+          ]],
+          ["Velocidade-precisão: ponto x cruz", [
+            "1. Realiza menos de 15 pontos ou não completa a tarefa",
+            "2. Realiza entre 20 a 30 pontos",
+            "3. Realiza entre 31 e 50 pontos",
+            "4. Realiza mais de 50 pontos",
+          ]],
+        ]),
+      }),
     ]),
     sec("totais", "Totais informados pelo profissional (opcional)", [
       opc(t("total_tonicidade", "Tonicidade: total de pontos")),
