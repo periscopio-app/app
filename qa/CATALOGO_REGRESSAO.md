@@ -33,7 +33,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 | REG-009f | varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
-| REG-014 | seção de OUTRA especialidade na conta de quem recebeu: mostra os formulários da seção, lê, salva e o médico recebe | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
 ## API — unitários — 388
 
@@ -1026,7 +1026,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **654 casos 
 - [REG-009f] varredura: nenhuma rota GET responde 5xx para médico, RE, especialista nem Admin Master
 - [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
 - [REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200
-- [REG-014] seção de OUTRA especialidade na conta de quem recebeu: mostra os formulários da seção, lê, salva e o médico recebe
+- [REG-014] cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada
 
 </details>
 

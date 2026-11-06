@@ -759,9 +759,8 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                     <div className="space-y-3">
                       {SPECIALTIES.map((spec) => {
                         const jaDesignada = designadas.find((d) => d.specialty === spec.id);
-                        const opcoes = professionals
-                          .filter((p) => p.role === "specialist" || p.specialty === spec.id || p.role === spec.id)
-                          .sort((a, b) => Number(b.specialty === spec.id) - Number(a.specialty === spec.id));
+                        // Cada vaga só lista profissionais da própria especialidade; o servidor também recusa qualquer outro.
+                        const opcoes = professionals.filter((p) => p.specialty === spec.id);
                         const podeEscolher = (activeCase.journeyState === "revisao_medica" || activeCase.journeyState === "delegado") && !jaDesignada;
                         return (
                           <div key={spec.id} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-2 sm:gap-3">
@@ -793,7 +792,6 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                       {opcoes.map((p) => (
                                         <option key={p.id} value={p.id}>
                                           {p.name}
-                                          {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
                                         </option>
                                       ))}
                                     </select>
@@ -817,22 +815,13 @@ export default function MedicoDashboardPage({ params }: { params: Promise<{ slug
                                   {opcoes.map((p) => (
                                     <option key={p.id} value={p.id}>
                                       {p.name}
-                                      {p.specialty && p.specialty !== spec.id ? ` — ${p.specialty}` : ""}
                                       {p.classCode ? ` · ${p.classCode}` : ""}
                                     </option>
                                   ))}
                                 </select>
-                                {(() => {
-                                  const escolhido = professionals.find((p) => p.id === delegations[spec.id]);
-                                  return escolhido && escolhido.specialty && escolhido.specialty !== spec.id ? (
-                                    <p role="status" className="rounded-lg border border-ouro/40 bg-ouro-50 px-2 py-1 text-[11px] text-black" data-testid={`aviso-especialidade-${spec.id}`}>
-                                      Atenção: {escolhido.name} é de <strong>{escolhido.specialty}</strong>. A seção de {spec.label} aparecerá no painel dele, e não no de quem é dessa especialidade.
-                                    </p>
-                                  ) : null;
-                                })()}
                                 {opcoes.length === 0 && (
                                   <p className="text-[11px] text-neutral-800">
-                                    Nenhum especialista cadastrado neste município. Peça ao Administrador para convidar o profissional (Usuários e perfis).
+                                    Nenhum profissional de {spec.label} cadastrado neste município. Peça ao Administrador para convidar o profissional (Usuários e perfis).
                                   </p>
                                 )}
                               </div>

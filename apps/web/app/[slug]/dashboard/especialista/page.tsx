@@ -44,6 +44,18 @@ interface AssignedSection extends CaseSection {
   caseId: string;
   studentCode: string;
   birthYear: number | null;
+  /** Posição na fila (ordem de chegada). Nula quando a seção já foi concluída. */
+  posicao: number | null;
+  delegatedAt: string;
+  /** Seção de outra especialidade (designação antiga errada): o médico precisa redesignar. */
+  especialidadeDivergente: boolean;
+}
+
+/** "hoje", "1 dia", "3 dias": só para o profissional saber há quanto tempo o aluno aguarda. */
+function aguardandoHa(iso: string): string {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (!Number.isFinite(dias) || dias <= 0) return "hoje";
+  return dias === 1 ? "há 1 dia" : `há ${dias} dias`;
 }
 
 interface CaseContext {
@@ -274,38 +286,57 @@ export default function EspecialistaDashboardPage({
         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Section list */}
           <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-            <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-black flex items-center gap-2">
               <Stethoscope className="h-4 w-4 text-black" />
-              Seções atribuídas ({sections.length})
+              Fila de pacientes
             </h2>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            <p className="mb-3 mt-1 text-xs text-neutral-800" data-testid="fila-resumo">
+              {sections.filter((x) => x.posicao !== null).length} aguardando ou em andamento
+              {sections.some((x) => x.posicao === null) ? ` · ${sections.filter((x) => x.posicao === null).length} concluído(s)` : ""}. Ordem de chegada: quem foi encaminhado primeiro vem primeiro. O sistema não define prioridade clínica.
+            </p>
+            <ol className="space-y-2 max-h-[60vh] overflow-y-auto pr-1" aria-label="Fila de pacientes">
               {sections.map((sec) => (
-                <button
-                  key={sec.id}
-                  onClick={() => selectSection(sec)}
-                  className={`min-h-[44px] w-full text-left rounded-xl border px-3 py-2.5 transition ${
-                    activeSection?.id === sec.id
-                      ? "border-roxo bg-roxo-100"
-                      : "border-linha hover:bg-fundo"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-black">{sec.studentCode}</span>
-                    <Badge variant={STATUS_VARIANT[sec.status as keyof typeof STATUS_VARIANT] ?? "secondary"}>
-                      {STATUS_LABELS[sec.status] ?? sec.status}
-                    </Badge>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline">
-                      {SPECIALTY_NAMES[sec.specialty] ?? sec.specialty}
-                    </Badge>
-                    {sec.birthYear && (
-                      <span className="text-[11px] text-neutral-800">nasc. {sec.birthYear}</span>
+                <li key={sec.id}>
+                  <button
+                    onClick={() => selectSection(sec)}
+                    data-testid={`fila-${sec.id}`}
+                    className={`min-h-[44px] w-full text-left rounded-xl border px-3 py-2.5 transition ${
+                      activeSection?.id === sec.id
+                        ? "border-roxo bg-roxo-100"
+                        : "border-linha hover:bg-fundo"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2 text-xs font-semibold text-black">
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-roxo/40 bg-white px-1.5 text-[11px] font-bold">
+                          {sec.posicao ?? "✓"}
+                        </span>
+                        {sec.studentCode}
+                      </span>
+                      <Badge variant={STATUS_VARIANT[sec.status as keyof typeof STATUS_VARIANT] ?? "secondary"}>
+                        {STATUS_LABELS[sec.status] ?? sec.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline">
+                        {SPECIALTY_NAMES[sec.specialty] ?? sec.specialty}
+                      </Badge>
+                      {sec.birthYear && (
+                        <span className="text-[11px] text-neutral-800">nasc. {sec.birthYear}</span>
+                      )}
+                      {sec.posicao !== null && (
+                        <span className="text-[11px] text-neutral-800">aguardando {aguardandoHa(sec.delegatedAt)}</span>
+                      )}
+                    </div>
+                    {sec.especialidadeDivergente && (
+                      <p role="status" className="mt-1.5 rounded-lg border border-ouro/40 bg-ouro-50 px-2 py-1 text-[11px] text-black" data-testid={`divergente-${sec.id}`}>
+                        Esta seção é de outra especialidade. Peça ao médico para designar o profissional certo.
+                      </p>
                     )}
-                  </div>
-                </button>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
 
           {/* Editor panel */}

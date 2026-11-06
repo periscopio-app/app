@@ -20,6 +20,7 @@ import {
 } from "@periscopio/shared";
 import { requireActor, requireCapability, type Actor } from "../security/actor";
 import { canonicalRole } from "../security/capabilities";
+import { mensagemVagaErrada, ordenarFila, profissionalServeVaga, especialidadeDoProfissional } from "../services/delegation-rules";
 import { can, leituraIntegral } from "../services/privilege.service";
 import { encryptText } from "../services/identity-crypto.service";
 import { auditarLeituraDoNome, auditarLeituraNaFila, carregarNomes, podeVerNomes } from "../services/student-name.service";
@@ -414,7 +415,8 @@ export async function casesRoutes(app: FastifyInstance) {
       .select({ id: users.id, name: users.name, specialty: users.specialty, role: users.role, classCode: users.classCode })
       .from(users)
       .where(and(eq(users.tenantId, actor.tenantId), eq(users.role, "specialist"), eq(users.accessEnabled, true)));
-    return { professionals: list };
+    // `specialty` já vem resolvida (cadastro ou perfil), a mesma que o servidor usa para aceitar a designação.
+    return { professionals: list.map((u) => ({ ...u, specialty: especialidadeDoProfissional(u) })) };
   });
 
   // ── Casos ───────────────────────────────────────────────────────────────
@@ -1002,6 +1004,21 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       }
     }
 
+    // Cada vaga só aceita profissional da mesma especialidade (validado antes de gravar qualquer coisa).
+    for (const d of delegations) {
+      const [professional] = await db
+        .select({ id: users.id, role: users.role, specialty: users.specialty, accessEnabled: users.accessEnabled })
+        .from(users)
+        .where(and(eq(users.id, d.professionalId), eq(users.tenantId, actor.tenantId)))
+        .limit(1);
+      if (!professional || !professional.accessEnabled) {
+        return reply.status(400).send({ error: "Profissional inválido para este município." });
+      }
+      if (!profissionalServeVaga(professional, d.specialty)) {
+        return reply.status(400).send({ error: mensagemVagaErrada(d.specialty, professional) });
+      }
+    }
+
     await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
 
@@ -1101,11 +1118,12 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     }
 
     const [novo] = await db
-      .select({ id: users.id, name: users.name })
+      .select({ id: users.id, name: users.name, role: users.role, specialty: users.specialty })
       .from(users)
       .where(and(eq(users.id, parse.data.professionalId), eq(users.tenantId, actor.tenantId), eq(users.role, "specialist"), eq(users.accessEnabled, true)))
       .limit(1);
     if (!novo) return reply.status(400).send({ error: "Profissional inválido para este município." });
+    if (!profissionalServeVaga(novo, section.specialty)) return reply.status(400).send({ error: mensagemVagaErrada(section.specialty, novo) });
     if (novo.id === section.assignedProfessionalId) return reply.send({ success: true, unchanged: true });
 
     await db.transaction(async (tx) => {
@@ -1219,6 +1237,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         notes: caseSummaries.notes,
         summary: caseSummaries.summary,
         updatedAt: caseSummaries.updatedAt,
+        delegatedAt: caseSummaries.createdAt,
         studentCode: students.studentCode,
         birthYear: students.birthYear,
       })
@@ -1232,7 +1251,18 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         )
       );
 
-    return { assignedSections: sections };
+    // Fila de pacientes: ordem de chegada (primeiro designado, primeiro da fila), feita no próprio Postgres, sem Redis.
+    // Concluídas ficam no fim. Não há prioridade clínica: o sistema não decide quem é mais urgente.
+    const minhaEspecialidade = especialidadeDoProfissional({ role: actor.role, specialty: actor.specialty });
+    const fila = ordenarFila(sections).map((s) => ({
+      ...s,
+      // Seção de outra especialidade (designação antiga errada): o médico precisa redesignar.
+      especialidadeDivergente: !!minhaEspecialidade && minhaEspecialidade !== s.specialty,
+    }));
+    return {
+      assignedSections: fila,
+      fila: { abertos: fila.filter((s) => s.posicao !== null).length, concluidos: fila.filter((s) => s.posicao === null).length },
+    };
   });
 
   // Contexto do caso para o especialista: SOMENTE o sumário executivo do médico (ver specialist-view.service).
