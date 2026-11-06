@@ -13,3 +13,4 @@ export * from "./genograma";
 export * from "./especialidades-catalog";
 export * from "./resumo-visual";
 export * from "./justificativa";
+export * from "./etiquetas";

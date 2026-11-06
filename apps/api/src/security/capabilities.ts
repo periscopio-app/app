@@ -119,6 +119,7 @@ const ATTACHMENT_ROLES = [...RE_ROLES, ...MD_ROLES] as const; // laudos dos pais
 export const CAPABILITIES = [
   // ── Plataforma ──────────────────────────────────────────────────────────
   { key: "privileges.manage", group: "plataforma", label: "Definir privilégios (esta tela)", description: "Marcar e desmarcar o que cada perfil e cada pessoa pode ver e fazer.", defaultRoles: ADMIN, locked: true },
+  { key: "labels.manage", group: "plataforma", label: "Cadastrar etiquetas", description: "Criar, renomear e desativar as etiquetas que o RE escolhe (ex.: opção \"Outra\" das dificuldades persistentes).", defaultRoles: ADMIN, locked: true },
   { key: "users.manage", group: "plataforma", label: "Gerir usuários e convites", description: "Criar, alterar perfil, desativar e reativar usuários.", defaultRoles: ADMIN, locked: true },
   { key: "schools.provision", group: "plataforma", label: "Provisionar escolas e redes", description: "Criar escola/rede e abrir a instância do município.", defaultRoles: ADMIN, locked: true },
   { key: "population.import", group: "plataforma", label: "Importar dados populacionais (Tarumã)", description: "Carga de dados agregados do município.", defaultRoles: ADMIN, locked: true },

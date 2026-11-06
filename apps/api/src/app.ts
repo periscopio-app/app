@@ -17,6 +17,7 @@ import { specialtyFormsRoutes } from "./routes/specialty-forms.routes";
 import { leadsRoutes } from "./routes/leads.routes";
 import { usersRoutes } from "./routes/users.routes";
 import { privilegesRoutes } from "./routes/privileges.routes";
+import { etiquetasRoutes } from "./routes/etiquetas.routes";
 import { teaRoutes } from "./routes/tea.routes";
 import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
@@ -130,6 +131,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   // 3. Registro das Rotas do Sistema
   app.register(healthRoutes);
   app.register(observabilityRoutes);
+  app.register(etiquetasRoutes);
   app.register(dataPanelRoutes);
   app.register(triagemRoutes);
   app.register(authRoutes);
