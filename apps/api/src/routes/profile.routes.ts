@@ -156,7 +156,7 @@ export async function profileRoutes(app: FastifyInstance) {
     return montarResposta(novo!);
   });
 
-  /** Enviar ou trocar a foto (base64, até 2 MB). A foto antiga é apagada do Supabase. */
+  /** Enviar ou trocar a foto (base64, até 2 MB). A foto antiga é substituída no Postgres. */
   app.put("/api/me/photo", { bodyLimit: 4 * 1024 * 1024 }, async (request, reply) => {
     const actor = await requireActor(request, reply);
     if (!actor) return;
@@ -204,6 +204,30 @@ export async function profileRoutes(app: FastifyInstance) {
       request
     );
     return { avatarUrl: await urlDoAvatar(key), avatarUpdatedAt: agora };
+  });
+
+  /**
+   * Foto pela chave pública opaca (uuid). Sem login: o endereço não revela quem é a pessoa e só existe para quem recebeu a URL.
+   * Cada troca gera uma chave nova, então a resposta pode ficar em cache por um ano.
+   */
+  app.get("/api/avatars/:key", async (request, reply) => {
+    const { key } = request.params as { key: string };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+      reply.status(404);
+      return { error: "Não encontrado." };
+    }
+    const foto = await (await import("../services/avatar-db.service")).lerFotoPelaChave(key.toLowerCase());
+    if (!foto) {
+      reply.status(404);
+      return { error: "Não encontrado." };
+    }
+    reply
+      .header("Content-Type", foto.contentType)
+      .header("Cache-Control", "public, max-age=31536000, immutable")
+      .header("X-Content-Type-Options", "nosniff")
+      .header("Content-Security-Policy", "default-src 'none'; sandbox")
+      .header("Cross-Origin-Resource-Policy", "cross-origin");
+    return reply.send(Buffer.from(foto.content));
   });
 
   /** Remover a foto. */

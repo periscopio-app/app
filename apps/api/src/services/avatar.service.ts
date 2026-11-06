@@ -173,11 +173,12 @@ export function chavePertenceAoUsuario(key: string | null | undefined, tenantId:
   return !!key && key.startsWith(`avatars/${tenantId}/${userId}/`);
 }
 
-/** Armazenamento da foto. O padrão usa o Supabase do projeto; os testes trocam por uma versão em memória. */
+/** Armazenamento da foto. O padrão é o próprio Postgres (user_avatars); os testes trocam por uma versão em memória. */
 export interface AvatarStorage {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   remove(key: string): Promise<void>;
-  publicUrl(key: string): string;
+  /** Endereço da imagem, ou null quando a foto não existe mais. */
+  publicUrl(key: string): string | null | Promise<string | null>;
 }
 
 let override: AvatarStorage | null = null;
@@ -188,19 +189,14 @@ export function setAvatarStorage(storage: AvatarStorage | null) {
 
 export async function getAvatarStorage(): Promise<AvatarStorage> {
   if (override) return override;
-  const store = await import("../storage");
-  return {
-    put: (key, body, contentType) => store.putAvatar(key, body, contentType),
-    remove: (key) => store.removeAvatar(key),
-    publicUrl: (key) => store.avatarPublicUrl(key),
-  };
+  return (await import("./avatar-db.service")).avatarNoPostgres;
 }
 
-/** URL pública da foto (ou null quando o usuário não tem foto ou o armazenamento não está configurado). */
+/** URL pública da foto (ou null quando o usuário não tem foto). */
 export async function urlDoAvatar(key: string | null | undefined): Promise<string | null> {
   if (!key) return null;
   try {
-    return (await getAvatarStorage()).publicUrl(key);
+    return (await (await getAvatarStorage()).publicUrl(key)) ?? null;
   } catch {
     return null;
   }
