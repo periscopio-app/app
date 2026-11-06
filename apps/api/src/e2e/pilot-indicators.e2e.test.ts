@@ -254,8 +254,10 @@ describe("Indicadores do piloto (E2E)", { skip }, () => {
     const own = await call("GET", "/api/pilot/indicators", "gestorGL");
     assert.deepEqual(own.body.bySchool.map((s: any) => s.schoolName), ["Escola GL"]);
     assert.equal((await call("GET", `/api/pilot/indicators?schoolId=${schoolNova}`, "gestorGL")).status, 404);
+    // Mudança de 06/nov/2026 (R2): o RE não vê os indicadores de grupo do piloto; segue vendo o percurso do próprio aluno.
     const re = await call("GET", "/api/pilot/indicators", "reNova");
-    assert.deepEqual(re.body.bySchool.map((s: any) => s.schoolName), ["Escola Nova"]);
+    assert.equal(re.status, 403);
+    assert.ok(!re.body?.bySchool, "nada de indicador na recusa");
   });
 
   test("tenantId de outro município só vale para o admin da plataforma", async () => {

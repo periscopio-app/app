@@ -134,6 +134,7 @@ describe("BI do gestor (E2E)", { skip }, () => {
       { key: "municipal", email: "municipal@teste.local", role: "municipal_manager", tenant: tA.id, school: null },
       { key: "gestorGL", email: "gestor@teste.local", role: "school_manager", tenant: tA.id, school: sGL.id },
       { key: "re", email: "re@teste.local", role: "ppi", tenant: tA.id, school: sGL.id },
+      { key: "boardA", email: "draa@teste.local", role: "board", tenant: tA.id, school: null },
       { key: "esp", email: "esp@teste.local", role: "specialist", tenant: tA.id, school: sGL.id },
       { key: "prof", email: "prof@teste.local", role: "teacher", tenant: tA.id, school: sGL.id },
       { key: "boardB", email: "drab@teste.local", role: "board", tenant: tB.id, school: null },
@@ -286,15 +287,15 @@ describe("BI do gestor (E2E)", { skip }, () => {
 
   test("aprendizado: só gestão aprova direto; o aprovado volta como exemplo na próxima pergunta", async () => {
     ragMode = "ok";
-    const a = await call("POST", "/api/bi/ask", "re", { question: "panorama de casos por escola" });
+    const a = await call("POST", "/api/bi/ask", "gestorGL", { question: "panorama de casos por escola" });
     assert.equal(a.status, 200);
-    const fb = await call("POST", "/api/bi/feedback", "re", { questionId: a.body.questionId, rating: 1 });
+    const fb = await call("POST", "/api/bi/feedback", "gestorGL", { questionId: a.body.questionId, rating: 1 });
     assert.equal(fb.body.approved, false);
     assert.equal(fb.body.pendingReview, true);
 
     ragCalls.length = 0;
     await call("POST", "/api/bi/ask", "municipal", { question: "outra pergunta qualquer" });
-    assert.equal(ragCalls[0].req.examples.length, 0, "feedback de RE não vira exemplo");
+    assert.equal(ragCalls[0].req.examples.length, 0, "feedback de quem não aprova (gestor escolar) não vira exemplo");
 
     const b = await call("POST", "/api/bi/ask", "municipal", { question: "visão geral dos casos por escola" });
     const ok = await call("POST", "/api/bi/feedback", "municipal", { questionId: b.body.questionId, rating: 1 });
@@ -312,13 +313,13 @@ describe("BI do gestor (E2E)", { skip }, () => {
     assert.ok(pend);
     const ap = await call("POST", `/api/bi/questions/${a.body.questionId}/approve`, "municipal", { approve: true });
     assert.equal(ap.body.approved, true);
-    assert.equal((await call("GET", "/api/bi/questions", "re")).status, 403);
+    assert.equal((await call("GET", "/api/bi/questions", "gestorGL")).status, 403);
   });
 
   test("feedback de outra pessoa ou de outro município é recusado", async () => {
     const a = await call("POST", "/api/bi/ask", "municipal", { question: "casos por escola" });
     assert.equal((await call("POST", "/api/bi/feedback", "boardB", { questionId: a.body.questionId, rating: 1 })).status, 404);
-    assert.equal((await call("POST", "/api/bi/feedback", "re", { questionId: a.body.questionId, rating: 1 })).status, 404);
+    assert.equal((await call("POST", "/api/bi/feedback", "gestorGL", { questionId: a.body.questionId, rating: 1 })).status, 404);
 
     const otherTenantQuestion = await call("POST", "/api/bi/ask", "boardB", { question: "casos por escola" });
     assert.equal(otherTenantQuestion.status, 200);
@@ -329,12 +330,21 @@ describe("BI do gestor (E2E)", { skip }, () => {
   });
 
   test("overview devolve os painéis básicos para cada papel permitido", async () => {
-    for (const who of ["admin", "municipal", "gestorGL", "re"]) {
+    for (const who of ["admin", "municipal", "gestorGL", "boardA"]) {
       const r = await call("GET", "/api/bi/overview", who);
       assert.equal(r.status, 200, who);
       assert.ok(r.body.casesByState && r.body.professionals && r.body.cycle);
     }
     const gl = await call("GET", "/api/bi/overview", "gestorGL");
     assert.equal(gl.body.cases.rows[0].value, 10);
+  });
+
+  // Mudança de 06/nov/2026 (mudancas_demo_sp_presencial, R2): o RE não vê mais o BI do gestor.
+  test("RE não acessa o BI do gestor nem o assistente (403, sem dado)", async () => {
+    for (const [method, path] of [["GET", "/api/bi/overview"], ["POST", "/api/bi/ask"], ["GET", "/api/bi/questions"]] as const) {
+      const r = await call(method, path, "re", method === "POST" ? { question: "panorama de casos por escola" } : undefined);
+      assert.equal(r.status, 403, `${method} ${path}`);
+      assert.ok(!r.body?.casesByState && !r.body?.plan, "nada de dado do BI na recusa");
+    }
   });
 });
