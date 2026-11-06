@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ClipboardList, Eye, Lock, Pencil, RotateCcw, Save } from "lucide-react";
-import { ESPECIALIDADE_FORMS, ehFormularioDeSumario, isEspecialidadeId, progressoDef, type FormDef } from "@periscopio/shared";
+import { ESPECIALIDADE_FORMS, ehFormularioDeSumario, isEspecialidadeId, progressoDef, secoesParaIdade, type FormDef } from "@periscopio/shared";
 import { api, ApiError } from "@/lib/api";
 import { ReFormRenderer } from "@/components/re/ReFormRenderer";
 import { ResumoVisual } from "@/components/formularios/ResumoVisual";
@@ -40,8 +40,9 @@ const COR: Record<Status, string> = {
  * (catálogo `esp-0.1-rascunho`, pendente de validação clínica). O sistema não preenche, não soma e não classifica.
  * Instrumentos licenciados guardam só o resultado digitado.
  */
-export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange }: { sectionId: string; specialty: string; onSectionChange?: () => void }) {
-  const catalogo: FormDef[] = useMemo(() => (isEspecialidadeId(specialty) ? ESPECIALIDADE_FORMS[specialty] : []), [specialty]);
+export function EspecialidadeFormsPanel({ sectionId, specialty, onSectionChange, idadeAnos = null }: { sectionId: string; specialty: string; onSectionChange?: () => void; idadeAnos?: number | null }) {
+  // Seções com idade mínima (ex.: DNO, a partir de 6 anos) somem para o aluno mais novo. Idade desconhecida: tudo aparece.
+  const catalogo: FormDef[] = useMemo(() => (isEspecialidadeId(specialty) ? ESPECIALIDADE_FORMS[specialty].map((f) => secoesParaIdade(f, idadeAnos)) : []), [specialty, idadeAnos]);
   const [d, setD] = useState<Resp | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [rascunhos, setRascunhos] = useState<Record<string, Payload>>({});

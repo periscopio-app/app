@@ -10,6 +10,7 @@ import { Stethoscope, AlertCircle, Lock, CheckCircle, ChevronDown, RefreshCw } f
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { useNomeDoAluno } from "@/lib/nome-aluno";
 import { EspecialidadeFormsPanel } from "@/components/especialista/EspecialidadeFormsPanel";
+import { idadeEmAnos } from "@periscopio/shared";
 import { Alert, Badge, Button } from "@/components/ui";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,6 +45,7 @@ interface AssignedSection extends CaseSection {
   caseId: string;
   studentCode: string;
   birthYear: number | null;
+  birthMonth?: number | null;
   /** Posição na fila (ordem de chegada). Nula quando a seção já foi concluída. */
   posicao: number | null;
   delegatedAt: string;
@@ -414,7 +416,7 @@ export default function EspecialistaDashboardPage({
 
                         {ctx && <CaseContextPanel ctx={ctx} isReadOnly={isReadOnly ?? false} />}
 
-                        <EspecialidadeFormsPanel key={`${activeSection.id}:${activeSection.status}`} sectionId={activeSection.id} specialty={activeSection.specialty} />
+                        <EspecialidadeFormsPanel key={`${activeSection.id}:${activeSection.status}`} sectionId={activeSection.id} specialty={activeSection.specialty} idadeAnos={idadeEmAnos(activeSection.birthYear, activeSection.birthMonth)} />
 
                         <div>
                           <div className="flex items-center justify-between mb-1.5">

@@ -159,6 +159,8 @@ const opc = (c: ReCampo): ReCampo => ({ ...c, opcional: true });
 /** Tira a observação por pergunta que o motor põe nas marcações: o PDF da fono não tem esse campo nessas tabelas. */
 const semObs = <T extends ReCampo>(c: T): T => ({ ...c, comObs: false });
 const sec = (id: string, titulo: string, campos: ReCampo[], descricao?: string): ReSecao => ({ id, titulo, descricao, campos });
+/** Seção que só aparece a partir de certa idade do aluno (ex.: DNO, 6 a 12 anos). Nunca obrigatória. */
+const comIdadeMinima = (anos: number, secao: ReSecao): ReSecao => ({ ...secao, idadeMinimaAnos: anos });
 
 function def(
   id: string,
@@ -421,7 +423,7 @@ const FONO_LINGUAGEM_ORAL = def(
         { numeros: [num("escore_bruto", "Escore bruto"), num("n", "Escore padrão")], numerosAntes: true, comObs: false }
       ),
     ]),
-    sec("dno", "DNO — Discurso narrativo oral (6 a 12 anos)", [
+    comIdadeMinima(6, sec("dno", "DNO — Discurso narrativo oral (6 a 12 anos)", [
       mx(
         "dno",
         "Resultados do DNO",
@@ -447,7 +449,7 @@ const FONO_LINGUAGEM_ORAL = def(
         ],
         ESP_ALT
       ),
-    ]),
+    ])),
     sec("tin", "TNI — Teste de nomeação infantil (3 a 14 anos)", [
       t("tin_bruta", "Pontuação bruta (____/60)"),
       ue("tin_classe", "Pontuação-padrão de acordo com idade", PADRAO_PDF),

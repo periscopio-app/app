@@ -10,6 +10,8 @@ import {
   camposDoForm,
   formDaEspecialidade,
   formsDaEspecialidade,
+  idadeEmAnos,
+  secoesParaIdade,
   isEspecialidadeId,
   normalizarPayloadDef,
   progressoDef,
@@ -229,5 +231,41 @@ describe("sumário de cada especialidade (o que sai do bloco de notas)", () => {
     assert.equal(ehFormularioDeSumario("fonoaudiologia", "fono_srs2"), false);
     assert.equal(ehFormularioDeSumario("servico_social", "as_cbcl_asq"), false);
     assert.deepEqual(idsDeSumarioDaEspecialidade("medico"), []);
+  });
+});
+
+describe("[REG-022] DNO só a partir de 6 anos e nunca obrigatório (fonoaudiologia)", () => {
+  const oral = () => formDaEspecialidade("fonoaudiologia", "fono_linguagem_oral")!;
+
+  test("a seção do DNO tem idade mínima 6 e as outras seções do formulário não têm", () => {
+    const comIdade = oral().secoes.filter((s) => s.idadeMinimaAnos !== undefined);
+    assert.deepEqual(comIdade.map((s) => [s.id, s.idadeMinimaAnos]), [["dno", 6]]);
+  });
+
+  test("aluno de 5 anos não vê o DNO; aos 6 e acima vê; sem idade conhecida vê (nada some por falta de dado)", () => {
+    const ids = (n: number | null) => secoesParaIdade(oral(), n).secoes.map((s) => s.id);
+    assert.ok(!ids(5).includes("dno"));
+    assert.ok(!ids(0).includes("dno"));
+    assert.ok(ids(6).includes("dno"));
+    assert.ok(ids(12).includes("dno"));
+    assert.ok(ids(null).includes("dno"));
+    assert.equal(ids(5).length, ids(6).length - 1, "só o DNO sai");
+  });
+
+  test("idade em anos completos usa ano e mês de nascimento", () => {
+    const hoje = new Date(2026, 10, 6); // 6/nov/2026
+    assert.equal(idadeEmAnos(2020, 11, hoje), 6, "nasceu em nov/2020: já fez 6");
+    assert.equal(idadeEmAnos(2020, 12, hoje), 5, "nasceu em dez/2020: ainda tem 5");
+    assert.equal(idadeEmAnos(2020, null, hoje), 6, "sem mês: conta pelo ano");
+    assert.equal(idadeEmAnos(null, 3, hoje), null);
+    assert.equal(idadeEmAnos(2030, 1, hoje), null, "data futura não vira idade negativa");
+  });
+
+  test("o DNO não é obrigatório: formulário só com outra seção preenchida passa na validação", () => {
+    const f = oral();
+    const campo = camposDoForm(f).find((c) => c.key === "dno");
+    assert.ok(campo, "campo do DNO existe");
+    const r = validarPayloadDef(f, {});
+    assert.ok(!JSON.stringify(r).includes("dno"), "validação não cobra o DNO");
   });
 });

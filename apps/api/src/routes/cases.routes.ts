@@ -1288,6 +1288,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         delegatedAt: caseSummaries.createdAt,
         studentCode: students.studentCode,
         birthYear: students.birthYear,
+        birthMonth: students.birthMonth,
       })
       .from(caseSummaries)
       .innerJoin(cases, eq(caseSummaries.caseId, cases.id))

@@ -177,6 +177,23 @@ export interface ReSecao {
   titulo: string;
   descricao?: string;
   campos: ReCampo[];
+  /** Seção só aparece para aluno com esta idade (anos completos) ou mais. Idade desconhecida: a seção aparece. Nunca é obrigatória. */
+  idadeMinimaAnos?: number;
+}
+
+/** Idade em anos completos a partir de ano e mês de nascimento (o sistema não guarda o dia). Sem dado: null. */
+export function idadeEmAnos(birthYear: number | null | undefined, birthMonth: number | null | undefined, hoje: Date = new Date()): number | null {
+  if (!birthYear || birthYear < 1900) return null;
+  let anos = hoje.getFullYear() - birthYear;
+  if (birthMonth && birthMonth >= 1 && birthMonth <= 12 && hoje.getMonth() + 1 < birthMonth) anos -= 1;
+  return anos < 0 ? null : anos;
+}
+
+/** Formulário só com as seções que cabem na idade do aluno (ex.: DNO a partir de 6 anos). Sem idade, devolve tudo. */
+export function secoesParaIdade<T extends { secoes: ReSecao[] }>(form: T, idadeAnos: number | null): T {
+  if (idadeAnos === null) return form;
+  const visiveis = form.secoes.filter((s) => s.idadeMinimaAnos === undefined || idadeAnos >= s.idadeMinimaAnos);
+  return visiveis.length === form.secoes.length ? form : { ...form, secoes: visiveis };
 }
 
 /**
