@@ -12,3 +12,4 @@ export * from "./medico-forms-catalog";
 export * from "./genograma";
 export * from "./especialidades-catalog";
 export * from "./resumo-visual";
+export * from "./justificativa";
