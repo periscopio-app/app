@@ -6,11 +6,13 @@ import { inserirAuditoria } from "../services/audit.service";
 import {
   auditLogs,
   caseMedicalForms,
+  caseReturns,
   caseSpecialtyForms,
   caseSummaries,
   caseTimeline,
   caseTransitions,
   cases,
+  justificativaSchema,
   reAssessments,
   schools,
   studentIdentityVault,
@@ -25,7 +27,7 @@ import { can, leituraIntegral } from "../services/privilege.service";
 import { encryptText } from "../services/identity-crypto.service";
 import { auditarLeituraDoNome, auditarLeituraNaFila, carregarNomes, podeVerNomes } from "../services/student-name.service";
 import { canAccessSchool } from "../security/tenancy";
-import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES } from "../security/roles";
+import { isSuperAdminEmail, SPECIALIST_CLINICAL_ROLES, VIRTUAL_ADMIN_ID } from "../security/roles";
 import { CASE_LIST_ROLES, NUCLEO_DIRECTORY_ROLES, REGISTRY_ROLES, STAFF_DIRECTORY_ROLES } from "../security/permissions";
 import { ageBracketOf, generateStudentCode, normalizeGrade, validateBirth, validatePilotAge } from "../services/student-code";
 import { SUMARIO_MEDICO_FORM_ID, sumarioExecutivoMedico } from "../services/specialist-view.service";
@@ -1166,8 +1168,9 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
 
   // ── Devolução ao RE (md1 apenas) ────────────────────────────────────────
 
+  // Justificativa de 100 a 150 caracteres, sem texto de enchimento (REG-016). O mesmo validador roda no navegador.
   const returnSchema = z.object({
-    reason: z.string().min(1, "Motivo é obrigatório"),
+    reason: justificativaSchema,
   });
 
   app.post("/api/cases/:caseId/return", async (request, reply) => {
@@ -1178,16 +1181,29 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
     const visible = await caseVisibleTo(actor, caseId);
     if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
 
+    const parse = returnSchema.safeParse(request.body);
+    if (!parse.success) {
+      return reply.status(400).send({ error: parse.error.issues[0]?.message ?? "Dados inválidos" });
+    }
+    const { reason } = parse.data;
+
+    // Repetir a mesma chamada (clique duplo, rede ruim) devolve a mesma devolução, sem criar outra.
+    const rawKey = request.headers["idempotency-key"];
+    const idempotencyKey = typeof rawKey === "string" && /^[\w.:-]{8,80}$/.test(rawKey) ? rawKey : null;
+    if (idempotencyKey) {
+      const [ja] = await db
+        .select({ returnId: caseReturns.returnId, createdAt: caseReturns.createdAt })
+        .from(caseReturns)
+        .where(and(eq(caseReturns.tenantId, actor.tenantId), eq(caseReturns.caseId, caseId), eq(caseReturns.idempotencyKey, idempotencyKey)))
+        .limit(1);
+      if (ja) return { success: true, returnId: ja.returnId, createdAt: ja.createdAt, replay: true, message: "Caso já devolvido ao RE." };
+    }
+
     if (visible.caseItem.journeyState !== "revisao_medica") {
       return reply.status(409).send({ error: "Devolução disponível apenas quando o caso está em revisão médica" });
     }
 
-    const parse = returnSchema.safeParse(request.body);
-    if (!parse.success) return reply.status(400).send({ error: "Dados inválidos", issues: parse.error.issues });
-
-    const { reason } = parse.data;
-
-    await db.transaction(async (tx) => {
+    const devolucao = await db.transaction(async (tx) => {
       const txDb = tx as unknown as AnyDb;
 
       // Marca a avaliação RE como devolvida
@@ -1197,6 +1213,36 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         .where(and(eq(reAssessments.caseId, caseId), eq(reAssessments.tenantId, actor.tenantId)));
 
       await applyTransitionInTx(txDb, caseId, "rascunho", actor, reason);
+
+      // Devolução com UUID próprio (somente inserção), ligada à transição e à linha do tempo na mesma transação.
+      const [nova] = await txDb
+        .insert(caseReturns)
+        .values({
+          tenantId: actor.tenantId,
+          caseId,
+          returnedBy: actor.id === VIRTUAL_ADMIN_ID ? null : actor.id,
+          returnedByRole: actor.role,
+          reason,
+          idempotencyKey,
+        })
+        .returning({ returnId: caseReturns.returnId, createdAt: caseReturns.createdAt });
+      await txDb.insert(caseTimeline).values({
+        tenantId: actor.tenantId,
+        caseId,
+        actorId: actor.id === VIRTUAL_ADMIN_ID ? null : actor.id,
+        event: "case:returned_to_re",
+        payload: { returnId: nova.returnId, actorRole: actor.role },
+      });
+      await inserirAuditoria(txDb, {
+        tenantId: actor.tenantId,
+        actorId: actor.id,
+        userEmail: actor.email,
+        action: "case.returned_to_re",
+        entity: "case",
+        entityId: caseId,
+        payload: { returnId: nova.returnId },
+      });
+      return nova;
     });
 
     // Notifica RE do caso (persistente)
@@ -1219,7 +1265,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
       });
     }
 
-    return { success: true, message: "Caso devolvido ao RE para revisão." };
+    return { success: true, returnId: devolucao.returnId, createdAt: devolucao.createdAt, message: "Caso devolvido ao RE para revisão." };
   });
 
   // ── Seções do especialista ──────────────────────────────────────────────

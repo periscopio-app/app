@@ -23,8 +23,10 @@ describe("jornada clínica (E2E)", { skip }, () => {
   let studentId = "";
   let caseId = "";
 
-  async function call(method: string, path: string, who?: string, body?: unknown): Promise<Res> {
-    const headers: Record<string, string> = { origin: "http://localhost:3000" };
+  const MOTIVO_DEVOLUCAO = "Preciso completar a entrevista com o aluno, pois as respostas do bloco familiar parecem incompletas e quero alinhar isso com o RE.";
+
+  async function call(method: string, path: string, who?: string, body?: unknown, extraHeaders?: Record<string, string>): Promise<Res> {
+    const headers: Record<string, string> = { origin: "http://localhost:3000", ...(extraHeaders ?? {}) };
     if (who) headers.cookie = cookies[who];
     if (body !== undefined) headers["content-type"] = "application/json";
     const r = await app.inject({ method: method as any, url: path, headers, payload: body === undefined ? undefined : JSON.stringify(body) });
@@ -519,8 +521,35 @@ describe("jornada clínica (E2E)", { skip }, () => {
     assert.equal(cons.body.student.schoolName, "Escola A1");
     assert.equal(cons.body.student.birthMonth, 3);
 
-    const dev = await call("POST", `/api/cases/${cid}/return`, "md", { reason: "Completar a entrevista com o aluno." });
+    // REG-016: a justificativa da devolução exige 100 a 150 caracteres e texto de verdade; nada é gravado se for recusada.
+    for (const ruim of ["curto demais", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim.", "asdfgh qwerty zxcvbn ".repeat(7)]) {
+      const recusada = await call("POST", `/api/cases/${cid}/return`, "md", { reason: ruim });
+      assert.equal(recusada.status, 400, ruim.slice(0, 20));
+      assert.ok(typeof recusada.body.error === "string" && recusada.body.error.length > 5);
+    }
+    assert.equal((await call("POST", `/api/cases/${cid}/return`, "md", {})).status, 400);
+    assert.equal(
+      (await H.db.select().from(H.caseReturns).where(eq(H.caseReturns.caseId, cid))).length,
+      0,
+      "devolução recusada não grava nada"
+    );
+    assert.equal((await call("POST", `/api/cases/${cid}/return`, "re", { reason: MOTIVO_DEVOLUCAO })).status, 403, "só o médico devolve");
+
+    const chave = "idem-devolucao-0001";
+    const dev = await call("POST", `/api/cases/${cid}/return`, "md", { reason: MOTIVO_DEVOLUCAO }, { "idempotency-key": chave });
     assert.equal(dev.status, 200, JSON.stringify(dev.body));
+    assert.match(dev.body.returnId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, "UUID auditável da devolução");
+    const gravadas = await H.db.select().from(H.caseReturns).where(eq(H.caseReturns.caseId, cid));
+    assert.equal(gravadas.length, 1);
+    assert.equal(gravadas[0].returnId, dev.body.returnId);
+    assert.equal(gravadas[0].returnedByRole, "md1");
+    assert.equal(gravadas[0].reason, MOTIVO_DEVOLUCAO);
+    const evento = (await H.db.select().from(H.caseTimeline).where(eq(H.caseTimeline.caseId, cid))).find((e: { event: string }) => e.event === "case:returned_to_re");
+    assert.equal((evento?.payload as any)?.returnId, dev.body.returnId, "linha do tempo aponta para o mesmo UUID");
+    const repetida = await call("POST", `/api/cases/${cid}/return`, "md", { reason: MOTIVO_DEVOLUCAO }, { "idempotency-key": chave });
+    assert.equal(repetida.status, 200);
+    assert.equal(repetida.body.returnId, dev.body.returnId, "repetir a chamada não cria outra devolução");
+    assert.equal((await H.db.select().from(H.caseReturns).where(eq(H.caseReturns.caseId, cid))).length, 1);
     const edita = await call("PUT", `${base}/forms/a`, "re", { payload: { gosta_escola: ["sim"] } });
     assert.equal(edita.status, 200, JSON.stringify(edita.body));
     assert.equal((await call("PATCH", `/api/students/${sid}`, "re", { grade: "3º ano" })).status, 200, "devolvido: o cadastro volta a ser editável");
