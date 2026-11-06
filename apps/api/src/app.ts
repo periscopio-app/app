@@ -18,6 +18,7 @@ import { leadsRoutes } from "./routes/leads.routes";
 import { usersRoutes } from "./routes/users.routes";
 import { privilegesRoutes } from "./routes/privileges.routes";
 import { etiquetasRoutes } from "./routes/etiquetas.routes";
+import { adminKpisRoutes } from "./routes/admin-kpis.routes";
 import { teaRoutes } from "./routes/tea.routes";
 import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
@@ -132,6 +133,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(healthRoutes);
   app.register(observabilityRoutes);
   app.register(etiquetasRoutes);
+  app.register(adminKpisRoutes);
   app.register(dataPanelRoutes);
   app.register(triagemRoutes);
   app.register(authRoutes);

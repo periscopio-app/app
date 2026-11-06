@@ -172,3 +172,54 @@ export function resumirTea(rows: TeaRow[], ataAguardando: number): TeaResumo {
     porRespondente: [...resp.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([respondent, n]) => ({ respondent, enviados: celula(n, n) })),
   };
 }
+
+function percentil(ordenado: number[], p: number): number {
+  if (ordenado.length === 1) return ordenado[0]!;
+  const pos = (ordenado.length - 1) * p;
+  const baixo = Math.floor(pos);
+  const alto = Math.ceil(pos);
+  return Math.round(ordenado[baixo]! + (ordenado[alto]! - ordenado[baixo]!) * (pos - baixo));
+}
+
+export interface TempoFogapResumo {
+  /** Casos enviados com algum tempo registrado (cada caso conta uma vez). */
+  casos: number;
+  suppressed: boolean;
+  medianaSegundos: number | null;
+  mediaSegundos: number | null;
+  p25Segundos: number | null;
+  p75Segundos: number | null;
+  /** Mediana por parte (A–I), para ver onde o RE gasta mais tempo. */
+  passos: { step: Passo; casos: number; medianaSegundos: number | null; suppressed: boolean }[];
+}
+
+/**
+ * KPI interno do Administrador Master: tempo ativo de preenchimento do FOGAP pelo RE, por caso.
+ * O tempo de um caso é a soma das partes A–I (todas as pessoas que preencheram). Menos de 5 casos ficam ocultos, como no BI.
+ * Só números: nenhum aluno, escola ou RE aparece.
+ */
+export function resumirTempoFogap(rows: TimingRow[]): TempoFogapResumo {
+  const porCaso = new Map<string, number>();
+  for (const r of rows) {
+    if (!(PASSOS as readonly string[]).includes(r.step)) continue;
+    porCaso.set(r.caseId, (porCaso.get(r.caseId) ?? 0) + r.activeSeconds);
+  }
+  const totais = [...porCaso.values()].filter((s) => s > 0).sort((a, b) => a - b);
+  const n = totais.length;
+  const visivel = n >= SMALL_CELL;
+  const passos = resumirTempos(rows, {}).passos.map((p) => ({
+    step: p.step,
+    casos: p.casos,
+    medianaSegundos: p.medianaSegundos.value,
+    suppressed: p.medianaSegundos.suppressed,
+  }));
+  return {
+    casos: n,
+    suppressed: n > 0 && !visivel,
+    medianaSegundos: visivel ? mediana(totais) : null,
+    mediaSegundos: visivel ? Math.round(totais.reduce((a, b) => a + b, 0) / n) : null,
+    p25Segundos: visivel ? percentil(totais, 0.25) : null,
+    p75Segundos: visivel ? percentil(totais, 0.75) : null,
+    passos,
+  };
+}

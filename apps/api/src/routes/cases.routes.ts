@@ -56,6 +56,7 @@ import {
 } from "../services/case-state.service";
 import { notificar } from "../services/notifications.service";
 import { recordAudit } from "../services/audit.service";
+import { registrarJustificativa } from "../services/justification-metrics.service";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@periscopio/shared";
 
@@ -1233,6 +1234,7 @@ Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação d
         event: "case:returned_to_re",
         payload: { returnId: nova.returnId, actorRole: actor.role },
       });
+      await registrarJustificativa(tx, { tenantId: actor.tenantId, form: "devolucao", kind: "devolucao", texto: reason });
       await inserirAuditoria(txDb, {
         tenantId: actor.tenantId,
         actorId: actor.id,
