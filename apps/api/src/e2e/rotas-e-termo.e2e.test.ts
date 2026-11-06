@@ -252,4 +252,31 @@ describe("[REG-009] jornada dos especialistas com a trava do termo ligada", { sk
     assert.ok(!/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(JSON.stringify(ok.body)), "o mapa não carrega e-mail de ninguém");
     assert.ok(!/postgres(ql)?:\/\/|eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}/.test(JSON.stringify(ok.body)), "o mapa não carrega connection string nem chave");
   });
+
+  test("[REG-014] seção de OUTRA especialidade na conta de quem recebeu: mostra os formulários da seção, lê, salva e o médico recebe", async () => {
+    const { ESPECIALIDADE_FORMS } = await import("@periscopio/shared");
+    const { eq } = await import("drizzle-orm");
+    // Como em produção: serviço social atribuído à conta da psicologia; psicologia atribuída à conta da psicopedagogia.
+    const [row] = await H.db.select().from(H.caseSummaries).where(eq(H.caseSummaries.id, sec.psicologia));
+    const [as] = await H.db.insert(H.caseSummaries).values({ caseId, tenantId: row.tenantId, schoolId: row.schoolId, specialty: "servico_social", assignedProfessionalId: ids.psico, status: "pendente" }).returning();
+    sec.servico_social = as.id;
+    const casos: [string, string, string][] = [
+      ["servico_social", sec.servico_social, U.psico],
+      ["psicologia", sec.psicologia, U.psicoped],
+    ];
+    for (const [esp, secaoId, quem] of casos) {
+      const lista = await call("GET", `/api/cases/sections/${secaoId}/forms`, quem);
+      assert.equal(lista.status, 200, `${esp}: ${JSON.stringify(lista.body)}`);
+      assert.equal(lista.body.specialty, esp);
+      assert.deepEqual(lista.body.forms.map((f: any) => f.id), (ESPECIALIDADE_FORMS as any)[esp].map((f: any) => f.id), `${esp}: os formulários são os da seção, não os da conta`);
+      const primeiro = (ESPECIALIDADE_FORMS as any)[esp][0];
+      const salvar = await call("PUT", `/api/cases/sections/${secaoId}/forms/${primeiro.id}`, quem, { payload: {} });
+      assert.equal(salvar.status, 200, `${esp}: salvar ${JSON.stringify(salvar.body)}`);
+      const minhas = (await call("GET", "/api/cases/my-delegated-sections", quem)).body.assignedSections as { id: string; specialty: string }[];
+      assert.ok(minhas.some((m) => m.id === secaoId && m.specialty === esp), `${esp}: aparece na lista de quem recebeu`);
+    }
+    assert.equal((await call("GET", `/api/cases/${caseId}/specialist-view`, U.psico)).status, 200);
+    // Quem NÃO recebeu a seção continua sem acesso, mesmo tendo a especialidade certa.
+    assert.equal((await call("GET", `/api/cases/sections/${sec.servico_social}/forms`, U.psicoped)).status, 403);
+  });
 });
