@@ -32,17 +32,33 @@ export interface EscalaSnap4Resumo {
 
 export interface EscalasSumario {
   versao: string;
-  /** ATA enviada pelo RE (null = não enviada). */
+  /** ATA enviada pelo RE (null = não enviada ou "Não vou aplicar"). */
   ata: EscalaAtaResumo | null;
+  /** O RE escolheu "Não vou aplicar" a ATA. Ausente em retratos gravados antes da mudança. */
+  ata_nao_aplicada?: boolean;
   /** SNAP-IV opcional (null = não aplicado ou sem nenhuma resposta). */
   snap4: EscalaSnap4Resumo | null;
 }
 
 const objeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
-export function montarEscalasSumario(entrada: { ataAnswers?: unknown; ataEnviada?: boolean; snap4?: unknown }): EscalasSumario {
+/** A ATA (rascunho ou enviada) já tem alguma marca? Usado para recusar "Não vou aplicar" quando já houve preenchimento. */
+export function ataTemRespostas(answers: unknown): boolean {
+  if (!objeto(answers)) return false;
+  const marcados = objeto(answers.marcados) ? answers.marcados : {};
+  const algumaMarca = Object.values(marcados).some((v) => Array.isArray(v) && v.length > 0);
+  return algumaMarca || typeof answers.antes36meses === "boolean";
+}
+
+export function montarEscalasSumario(entrada: {
+  ataAnswers?: unknown;
+  ataEnviada?: boolean;
+  /** "Não vou aplicar" a ATA: o retrato não leva pontuação da ATA. */
+  ataPulada?: boolean;
+  snap4?: unknown;
+}): EscalasSumario {
   let ata: EscalaAtaResumo | null = null;
-  if (entrada.ataEnviada && objeto(entrada.ataAnswers)) {
+  if (!entrada.ataPulada && entrada.ataEnviada && objeto(entrada.ataAnswers)) {
     const a = entrada.ataAnswers as unknown as AtaAnswers;
     const s = scoreAta({ marcados: objeto(a.marcados) ? (a.marcados as AtaAnswers["marcados"]) : {}, antes36meses: a.antes36meses ?? null });
     ata = {
@@ -68,5 +84,5 @@ export function montarEscalasSumario(entrada: { ataAnswers?: unknown; ataEnviada
       };
     }
   }
-  return { versao: ESCALAS_SUMARIO_VERSION, ata, snap4 };
+  return { versao: ESCALAS_SUMARIO_VERSION, ata, snap4, ...(entrada.ataPulada ? { ata_nao_aplicada: true } : {}) };
 }
