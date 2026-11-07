@@ -403,7 +403,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
     setDrafts((d) => ({ ...d, [id]: next }));
   }
 
-  async function alternar(passo: "g/skip" | "h/await", valor: boolean) {
+  async function alternar(passo: "g/skip" | "h/await" | "h/skip", valor: boolean) {
     setBusy(true);
     setMsg(null);
     try {
@@ -621,6 +621,8 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                   caseId={caseId}
                   readOnly={readOnly}
                   busy={busy}
+                  pulado={j.meta!.h_pulado}
+                  onPular={(v) => void alternar("h/skip", v)}
                   onAguardar={(v) => void alternar("h/await", v)}
                   onMudou={() => void carregar(false)}
                 />
@@ -917,6 +919,8 @@ function AtaPasso({
   caseId,
   readOnly,
   busy,
+  pulado,
+  onPular,
   onAguardar,
   onMudou,
 }: {
@@ -925,9 +929,24 @@ function AtaPasso({
   caseId: string;
   readOnly: boolean;
   busy: boolean;
+  pulado: boolean;
+  onPular: (v: boolean) => void;
   onAguardar: (v: boolean) => void;
   onMudou: () => void;
 }) {
+  if (pulado) {
+    return (
+      <div className="rounded-2xl border border-ouro-300 bg-ouro-50 p-4 text-sm text-black">
+        <p className="flex items-center gap-2"><Lock className="h-4 w-4 shrink-0" aria-hidden /> <span><strong>ATA não aplicada.</strong> O Formulário H é opcional: o bloco ficou travado e a decisão está registrada.</span></p>
+        {!readOnly && (
+          <button type="button" className={`${btnSecundario} mt-3`} disabled={busy} onClick={() => onPular(false)} data-testid="re-h-retomar">
+            Quero aplicar a ATA
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-linha bg-white p-4 text-sm text-black shadow-suave">
@@ -957,6 +976,14 @@ function AtaPasso({
               </button>
             </>
           )}
+        </div>
+      )}
+      {!readOnly && !ataEnviada && (
+        <div className="rounded-2xl border border-dashed border-linha p-4">
+          <p className="text-sm text-black">Não vai aplicar a ATA agora? Ela é opcional. Ao clicar, o bloco trava, a jornada segue e o uso desta opção fica registrado para auditoria.</p>
+          <button type="button" className={`${btnSecundario} mt-2`} disabled={busy} onClick={() => onPular(true)} data-testid="re-h-pular">
+            <SkipForward className="h-4 w-4" aria-hidden /> Não vou aplicar a ATA (travar este bloco)
+          </button>
         </div>
       )}
     </div>

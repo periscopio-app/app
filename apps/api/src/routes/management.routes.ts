@@ -187,7 +187,7 @@ export async function managementRoutes(app: FastifyInstance) {
 
     const escolaUso = scope.schoolId ? eq(reOptionalStepUsage.schoolId, scope.schoolId) : undefined;
     const usos = await db
-      .select({ caseId: reOptionalStepUsage.caseId, action: reOptionalStepUsage.action, createdAt: reOptionalStepUsage.createdAt })
+      .select({ caseId: reOptionalStepUsage.caseId, step: reOptionalStepUsage.step, action: reOptionalStepUsage.action, createdAt: reOptionalStepUsage.createdAt })
       .from(reOptionalStepUsage)
       .where(and(eq(reOptionalStepUsage.tenantId, actor.tenantId), escolaUso));
 
@@ -242,7 +242,8 @@ export async function managementRoutes(app: FastifyInstance) {
       tempo: resumirTempos(timings, baselines),
       baselines: baselinesRows,
       podeEditarBaselines: (await decideCapability(actor, "management.baselines.edit")).allowed,
-      usoOpcional: resumirUsoOpcional(usos, casosComJornada),
+      usoOpcional: resumirUsoOpcional(usos, casosComJornada, "g"),
+      usoOpcionalAta: resumirUsoOpcional(usos, casosComJornada, "h"),
       tea: resumirTea(tea, ataAguardando),
       notas: [
         "Tempo ativo = tempo com a página aberta e em uso; pausas longas não contam.",

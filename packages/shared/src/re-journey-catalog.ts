@@ -3,7 +3,8 @@
  *
  * Fonte: "Avaliação e Intervenção do Pedagogo Responsável Escolar (RE) pela observação e avaliação
  * do aluno com dificuldade persistente" (Cap RE ESCOLAR Plataforma 1809), formulários A a I.
- * A ordem de apresentação é A → B → C → D → E → F → G (opcional) → H → I, em um formulário único e contínuo
+ * A ordem de apresentação é H (ATA, opcional) → A → B → C → D → E → F → G (opcional) → I, em um formulário único e contínuo
+ * (R7: a ATA vem primeiro; ids e letras não mudam, só a ordem)
  * (sem bloqueio entre blocos). Ao enviar, o sistema lista o que ficou em branco e o RE decide se envia assim mesmo.
  *
  * Regras de produto (não mudar sem validação clínica):
@@ -913,6 +914,15 @@ export interface RePasso {
 }
 
 export const RE_PASSOS: RePasso[] = [
+  {
+    id: "h",
+    letra: "H",
+    titulo: "Formulário H — Escala de Traços Autísticos (ATA), respondida pelo responsável",
+    tituloCurto: "ATA (responsável)",
+    tipo: "ata",
+    // R5/R7: a ATA pode ser pulada com "Não vou aplicar" (mesmo botão do SNAP-IV). Sem decisão (preencher, aguardar ou pular), segue pendente.
+    opcional: true,
+  },
   { id: "a", letra: "A", titulo: RE_FORMS.a.titulo, tituloCurto: RE_FORMS.a.tituloCurto, tipo: "formulario", opcional: false },
   { id: "b", letra: "B", titulo: RE_FORMS.b.titulo, tituloCurto: RE_FORMS.b.tituloCurto, tipo: "formulario", opcional: false },
   { id: "c", letra: "C", titulo: RE_FORMS.c.titulo, tituloCurto: RE_FORMS.c.tituloCurto, tipo: "formulario", opcional: false },
@@ -920,14 +930,6 @@ export const RE_PASSOS: RePasso[] = [
   { id: "e", letra: "E", titulo: RE_FORMS.e.titulo, tituloCurto: RE_FORMS.e.tituloCurto, tipo: "formulario", opcional: false },
   { id: "f", letra: "F", titulo: RE_FORMS.f.titulo, tituloCurto: RE_FORMS.f.tituloCurto, tipo: "formulario", opcional: false },
   { id: "g", letra: "G", titulo: "Formulário G — SNAP-IV (opcional)", tituloCurto: "SNAP-IV (opcional)", tipo: "snap4", opcional: true },
-  {
-    id: "h",
-    letra: "H",
-    titulo: "Formulário H — Escala de Traços Autísticos (ATA), respondida pelo responsável",
-    tituloCurto: "ATA (responsável)",
-    tipo: "ata",
-    opcional: false,
-  },
   { id: "i", letra: "I", titulo: "Formulário I — Sumário da avaliação do RE", tituloCurto: "Sumário do RE", tipo: "sumario", opcional: false },
 ];
 
@@ -962,10 +964,12 @@ export interface ReJornadaMeta {
   g_pulado: boolean;
   /** H: o responsável ainda não respondeu; a jornada segue. */
   h_aguardando: boolean;
+  /** H é opcional: o RE escolheu "Não vou aplicar" a ATA (auditado em `re_optional_step_usage`). Diferente de `h_aguardando`. */
+  h_pulado: boolean;
 }
 
 export function metaVazia(): ReJornadaMeta {
-  return { concluidos: {}, g_pulado: false, h_aguardando: false };
+  return { concluidos: {}, g_pulado: false, h_aguardando: false, h_pulado: false };
 }
 
 export function metaComPadroes(raw: unknown): ReJornadaMeta {
@@ -976,7 +980,8 @@ export function metaComPadroes(raw: unknown): ReJornadaMeta {
       if (isRePassoId(k) && typeof v === "string") concluidos[k] = v;
     }
   }
-  return { concluidos, g_pulado: r.g_pulado === true, h_aguardando: r.h_aguardando === true };
+  // Registros antigos não têm `h_pulado`: lê como false.
+  return { concluidos, g_pulado: r.g_pulado === true, h_aguardando: r.h_aguardando === true, h_pulado: r.h_pulado === true };
 }
 
 // ── Situação e pendências (formulário único, sem bloqueio entre blocos) ────────────────────────
@@ -1197,7 +1202,8 @@ export function lacunasFogapItens(fogapPayload: unknown): Lacuna[] {
 /**
  * Situação de cada formulário e lista do que está em branco.
  *  - G: "pulado" (botão "Não vou aplicar") ou itens do SNAP-IV; sem nenhuma das duas coisas, vira lacuna de decisão;
- *  - H: ATA enviada, "aguardando o responsável" ou lacuna de decisão;
+ *  - H: "pulado" (botão "Não vou aplicar", sem lacuna), ATA enviada, "aguardando o responsável" (continua bloqueando)
+ *       ou lacuna de decisão (preencher ou pular);
  *  - I: campos do Sumário + todos os itens de desenvolvimento e comportamentos (todos bloqueantes).
  */
 export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
@@ -1232,9 +1238,14 @@ export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
         total: sn.total,
       });
     } else if (passo.tipo === "ata") {
+      if (entrada.meta.h_pulado) {
+        // "Não vou aplicar": decisão do RE, não é pendência. Diferente de "aguardando o responsável", que segue bloqueando.
+        passos.push({ ...base, estado: "pulado", respondidos: 0, total: 0 });
+        continue;
+      }
       if (entrada.ata.enviada) passos.push({ ...base, estado: "completo", respondidos: 1, total: 1 });
       else if (entrada.meta.h_aguardando) {
-        // Aguardando o responsável não libera o envio: a ATA é obrigatória.
+        // Aguardando o responsável não libera o envio: só "Não vou aplicar" (pulado) ou a ATA enviada resolvem.
         lacunas.push({ passo: "h", campo: "", rotulo: "Formulário H › ATA aguardando o responsável: o envio só é liberado com a ATA enviada", bloqueante: true });
         passos.push({ ...base, estado: "aguardando_responsavel", respondidos: 0, total: 1 });
       } else {
@@ -1242,8 +1253,8 @@ export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
           passo: "h",
           campo: "",
           rotulo: entrada.ata.existe
-            ? "Formulário H › ATA em rascunho: a ATA é obrigatória, finalize e envie"
-            : "Formulário H › ATA não registrada: a ATA é obrigatória",
+            ? 'Formulário H › ATA em rascunho: finalize e envie, ou volte e clique em "Não vou aplicar"'
+            : 'Formulário H › ATA não registrada: preencha ou clique em "Não vou aplicar"',
           bloqueante: true,
         });
         passos.push({ ...base, estado: entrada.ata.existe ? "parcial" : "vazio", respondidos: 0, total: 1 });

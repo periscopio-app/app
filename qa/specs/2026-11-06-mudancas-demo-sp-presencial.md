@@ -303,7 +303,7 @@ Suíte da API: **683 de 683** passando; typecheck e lint verdes. Nada foi aplica
 | E2 SRS-2 só na neuropsicologia | feito (`neuro_srs2`); licença a confirmar | catálogo |
 | E10 SCARED no lugar do MASC (neuro) | feito | catálogo |
 | R4 formulário por etapa com autosave | **não iniciado** | — |
-| R5/R7 ATA opcional, "Não vou aplicar", primeira da ordem | **não iniciado** (banco já aceita o passo `h`) | — |
+| R5/R7 ATA opcional, "Não vou aplicar", primeira da ordem | feito (07/nov/2026): rota `steps/h/skip`, botão, sumário "ATA não aplicada", relatório por passo e ordem H A B C D E F G I (ids e letras não mudam). O e2e da rota foi escrito e **não rodou** (banco compartilhado) | `re-journey.test.ts`; e2e em `journey.e2e.test.ts` |
 | R6 ATA de uso livre | **não iniciado** | — |
 | R12 só o RE atribuído emite ao responsável | **não iniciado** (Q9) | — |
 | R14, justificativa nas perguntas do RE | **não iniciado** (Q1) | — |

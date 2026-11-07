@@ -394,7 +394,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
     });
     assert.equal(salvo.status, 200, JSON.stringify(salvo.body));
     assert.equal(salvo.body.form.payload.mae_trabalha, undefined, "em branco não vira 'não'");
-    assert.equal(salvo.body.situacao.passos[0].estado, "parcial");
+    assert.equal(salvo.body.situacao.passos.find((x: any) => x.id === "a").estado, "parcial");
 
     // Professor do Formulário B: vem do cadastro da escola; o nome oficial prevalece
     const prof = await call("PUT", `${base}/forms/b`, "re", { payload: { professor: { id: ids.prof, nome: "Nome digitado" } } });
@@ -423,7 +423,7 @@ describe("jornada clínica (E2E)", { skip }, () => {
     // G opcional: "Não vou aplicar" fica registrado e auditável (somente inserção)
     const pula = await call("POST", `${base}/steps/g/skip`, "re", { valor: true });
     assert.equal(pula.status, 200, JSON.stringify(pula.body));
-    assert.equal(pula.body.situacao.passos[6].estado, "pulado");
+    assert.equal(pula.body.situacao.passos.find((x: any) => x.id === "g").estado, "pulado");
     await call("POST", `${base}/steps/g/skip`, "re", { valor: true }); // repetir não duplica
     await call("POST", `${base}/steps/g/skip`, "re", { valor: false });
     await call("POST", `${base}/steps/g/skip`, "re", { valor: true });
@@ -438,10 +438,33 @@ describe("jornada clínica (E2E)", { skip }, () => {
       (error: any) => /somente inserção|inserção/.test(String(error?.cause?.message ?? error?.message)),
     );
 
+    // H opcional (R5/R7): "Não vou aplicar" a ATA, mesmo desenho do G. NÃO RODADO contra banco compartilhado.
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "reB", { valor: true })).status, 404, "outro município não pula a ATA deste caso");
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "re", { valor: "sim" })).status, 400);
+    const pulaAta = await call("POST", `${base}/steps/h/skip`, "re", { valor: true });
+    assert.equal(pulaAta.status, 200, JSON.stringify(pulaAta.body));
+    assert.equal(pulaAta.body.meta.h_pulado, true);
+    assert.equal(pulaAta.body.situacao.passos.find((x: any) => x.id === "h").estado, "pulado");
+    assert.ok(!pulaAta.body.situacao.lacunas.some((l: any) => l.passo === "h"), "ATA pulada não é lacuna de envio");
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: true }); // repetir não duplica
+    assert.equal((await call("POST", `${base}/steps/h/await`, "re", { valor: true })).status, 409, "pulada não fica aguardando");
+    const retomaAta = await call("POST", `${base}/steps/h/skip`, "re", { valor: false });
+    assert.equal(retomaAta.status, 200);
+    assert.equal(retomaAta.body.situacao.passos.find((x: any) => x.id === "h").estado, "vazio");
+    assert.ok(retomaAta.body.situacao.lacunas.some((l: any) => l.passo === "h" && l.bloqueante), "retomada volta a pedir a ATA");
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: true });
+    const usosAta = (await db.select().from(reOptionalStepUsage).where(eq(reOptionalStepUsage.caseId, cid))).filter((u: any) => u.step === "h");
+    assert.deepEqual(usosAta.map((u: any) => u.action).sort(), ["pulado", "pulado", "retomado"]);
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: false });
+    // Com respostas na ATA, não dá para dizer que não vai aplicar
+    const ataRasc = await call("PUT", `/api/cases/${cid}/tea/ata`, "re", { answers: { marcados: { "1": [0] }, antes36meses: null }, respondent: "mae_pai" });
+    assert.equal(ataRasc.status, 200, JSON.stringify(ataRasc.body));
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "re", { valor: true })).status, 409);
+
     // H: "aguardando o responsável" NÃO libera o envio (a ATA é obrigatória)
     const aguardando = await call("POST", `${base}/steps/h/await`, "re", { valor: true });
     assert.equal(aguardando.status, 200);
-    assert.equal(aguardando.body.situacao.passos[7].estado, "aguardando_responsavel");
+    assert.equal(aguardando.body.situacao.passos.find((x: any) => x.id === "h").estado, "aguardando_responsavel");
     assert.ok(aguardando.body.situacao.lacunas.some((l: any) => l.passo === "h" && l.bloqueante));
 
     // Edição auditada dos dados do aluno

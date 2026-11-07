@@ -92,17 +92,20 @@ export interface UsoOpcionalRow {
   caseId: string;
   action: string; // pulado | retomado
   createdAt: Date;
+  /** Passo opcional: g (SNAP-IV) ou h (ATA). Ausente = g (registros e testes anteriores à ATA opcional). */
+  step?: string;
 }
 
 export interface UsoOpcionalResumo {
   casosComJornada: number;
-  /** Casos cujo último registro de G é "pulado". */
+  /** Casos cujo último registro do passo é "pulado" (o nome do campo vem do SNAP-IV; vale também para a ATA). */
   casosComGPulado: Cell<number>;
   percentual: Cell<number>;
   retomadas: Cell<number>;
 }
 
-export function resumirUsoOpcional(rows: UsoOpcionalRow[], casosComJornada: number): UsoOpcionalResumo {
+export function resumirUsoOpcional(rows: UsoOpcionalRow[], casosComJornada: number, step: "g" | "h" = "g"): UsoOpcionalResumo {
+  rows = rows.filter((r) => (r.step ?? "g") === step);
   const ultimo = new Map<string, UsoOpcionalRow>();
   for (const r of [...rows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) ultimo.set(r.caseId, r);
   const pulados = [...ultimo.values()].filter((r) => r.action === "pulado").length;

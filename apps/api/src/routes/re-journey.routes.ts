@@ -12,12 +12,14 @@ import {
   RE_FORMS,
   RE_PASSOS,
   SNAP4_ITENS,
+  ataTemRespostas,
   isReFormId,
   normalizarPayloadReForm,
   reAssessments,
   reOptionalStepUsage,
   reStepTimings,
   schools,
+  teaScreenings,
   users,
   validarPayloadFogap,
   validarPayloadReForm,
@@ -422,6 +424,64 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     return { success: true, meta: depois.meta, situacao: depois.situacao };
   });
 
+  /**
+   * H (ATA) também é opcional, com o mesmo "Não vou aplicar" do SNAP-IV (R5/R7). Diferente de "aguardando o responsável"
+   * (rota `h/await`), que continua bloqueando o envio. Cada uso fica em `re_optional_step_usage` (somente inserção) e na
+   * trilha de auditoria, sem conteúdo clínico.
+   */
+  app.post("/api/cases/:caseId/re-journey/steps/h/skip", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "fogap.fill");
+    if (!actor) return;
+    const { caseId } = request.params as { caseId: string };
+    const body = z.object({ valor: z.boolean() }).safeParse(request.body ?? {});
+    if (!body.success) return reply.status(400).send({ error: "Informe valor: true ou false" });
+
+    const visible = await caseVisibleTo(actor, caseId);
+    if (!visible) return reply.status(404).send({ error: "Caso não encontrado" });
+    if (visible.caseItem.journeyState !== "rascunho") return reply.status(409).send({ error: SOMENTE_LEITURA });
+
+    const tenantId = visible.caseItem.tenantId;
+    const j = await carregarJornada(tenantId, caseId);
+    if (body.data.valor) {
+      const [ata] = await db
+        .select({ answers: teaScreenings.answers })
+        .from(teaScreenings)
+        .where(and(eq(teaScreenings.caseId, caseId), eq(teaScreenings.tenantId, tenantId), eq(teaScreenings.instrument, "ata")))
+        .limit(1);
+      if (j.ata.enviada || ataTemRespostas(ata?.answers)) {
+        return reply.status(409).send({ error: "A ATA já tem respostas. Conclua o preenchimento antes de decidir não aplicar." });
+      }
+    }
+    if (j.meta.h_pulado !== body.data.valor) {
+      // Ao pular, deixa de esperar o responsável (as duas situações não convivem).
+      const meta = { ...j.meta, h_pulado: body.data.valor, h_aguardando: body.data.valor ? false : j.meta.h_aguardando };
+      await salvarMeta({ tenantId, caseId, userId: actor.id, atual: j.metaRow, meta });
+      await db.insert(reOptionalStepUsage).values({
+        tenantId,
+        schoolId: visible.student.schoolId,
+        caseId,
+        step: "h",
+        action: body.data.valor ? "pulado" : "retomado",
+        userId: actor.id,
+        userRole: actor.role,
+      });
+      await recordAudit(
+        {
+          tenantId,
+          userId: actor.id,
+          userEmail: actor.email,
+          action: body.data.valor ? "re_journey.ata_skip" : "re_journey.ata_resume",
+          entityType: "case",
+          entityId: caseId,
+          payload: { studentCode: visible.student.studentCode },
+        },
+        request
+      );
+    }
+    const depois = await carregarJornada(tenantId, caseId);
+    return { success: true, meta: depois.meta, situacao: depois.situacao };
+  });
+
   /** H (ATA): marcar que o responsável ainda não respondeu; a jornada segue. */
   app.post("/api/cases/:caseId/re-journey/steps/h/await", async (request, reply) => {
     const actor = await requireCapability(request, reply, "fogap.fill");
@@ -437,6 +497,7 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     const tenantId = visible.caseItem.tenantId;
     const j = await carregarJornada(tenantId, caseId);
     if (body.data.valor && j.ata.enviada) return reply.status(409).send({ error: "A ATA já foi enviada." });
+    if (body.data.valor && j.meta.h_pulado) return reply.status(409).send({ error: 'A ATA está marcada como "Não vou aplicar". Retome a ATA antes de aguardar o responsável.' });
     if (j.meta.h_aguardando !== body.data.valor) {
       await salvarMeta({ tenantId, caseId, userId: actor.id, atual: j.metaRow, meta: { ...j.meta, h_aguardando: body.data.valor } });
       await recordAudit(

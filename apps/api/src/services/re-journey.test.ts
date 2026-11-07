@@ -6,6 +6,8 @@ import {
   camposDoForm,
   lacunasDoForm,
   lacunasDoSumario,
+  ataTemRespostas,
+  metaComPadroes,
   metaVazia,
   normalizarPayloadReForm,
   progressoReForm,
@@ -28,9 +30,12 @@ const entrada = (patch: Partial<JornadaEntradas> = {}): JornadaEntradas => ({
 const JUST_OK = "Foi observado em sala que o aluno evita atividades de leitura em voz alta e pede ajuda ao colega com frequência durante a aula.";
 
 describe("jornada do RE — catálogo A–F", () => {
-  test("a ordem dos passos é exatamente A B C D E F G H I", () => {
-    assert.deepEqual(RE_PASSOS.map((p) => p.letra).join(""), "ABCDEFGHI");
+  test("a ordem de apresentação é ATA primeiro: H A B C D E F G I (R7); ids e letras não mudam", () => {
+    assert.deepEqual(RE_PASSOS.map((p) => p.letra).join(""), "HABCDEFGI");
+    assert.deepEqual(RE_PASSOS.map((p) => p.id).join(""), "habcdefgi");
+    assert.equal(RE_PASSOS.length, 9);
     assert.equal(RE_PASSOS.find((p) => p.id === "g")?.opcional, true);
+    assert.equal(RE_PASSOS.find((p) => p.id === "h")?.opcional, true, "a ATA é opcional (R5)");
   });
 
   test("o RE não desenha genograma: nenhum campo do tipo genograma no fluxo do RE (só o médico desenha)", () => {
@@ -245,5 +250,86 @@ describe("idade a partir do nascimento", () => {
     assert.deepEqual(idadeAPartirDoNascimento(2019, 3, "2026-10-19"), { anos: 7, meses: 7 });
     assert.deepEqual(idadeAPartirDoNascimento(2016, 11, "2026-10-19"), { anos: 9, meses: 11 });
     assert.equal(idadeAPartirDoNascimento(2030, 1, "2026-10-19").anos, -1);
+  });
+});
+
+describe("jornada do RE — ATA opcional (R5, R7)", () => {
+  const estadoH = (s: ReturnType<typeof situacaoDaJornada>) => s.passos.find((p) => p.id === "h")?.estado;
+  const lacunasH = (s: ReturnType<typeof situacaoDaJornada>) => s.lacunas.filter((l) => l.passo === "h");
+
+  test("registro antigo sem h_pulado lê como falso e preserva o resto", () => {
+    const antigo = metaComPadroes({ concluidos: { a: "2026-10-01T00:00:00Z" }, g_pulado: true, h_aguardando: true });
+    assert.equal(antigo.h_pulado, false);
+    assert.equal(antigo.g_pulado, true);
+    assert.equal(antigo.h_aguardando, true);
+    assert.equal(metaComPadroes(null).h_pulado, false);
+    assert.equal(metaComPadroes({ h_pulado: "true" }).h_pulado, false, "só booleano verdadeiro vale");
+    assert.equal(metaVazia().h_pulado, false);
+  });
+
+  test("a situação segue a ordem da tela: a ATA vem primeiro, inclusive nas lacunas", () => {
+    const s = situacaoDaJornada(entrada());
+    assert.deepEqual(s.passos.map((p) => p.id).join(""), "habcdefgi");
+    assert.equal(s.lacunas[0]?.passo, "h");
+    assert.ok(s.lacunas.findIndex((l) => l.passo === "h") < s.lacunas.findIndex((l) => l.passo === "a"));
+  });
+
+  test("ATA pulada: estado pulado e nenhuma lacuna do passo H", () => {
+    const s = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_pulado: true } }));
+    assert.equal(estadoH(s), "pulado");
+    assert.equal(lacunasH(s).length, 0);
+  });
+
+  test("ATA pulada não bloqueia o envio por causa do H (as demais lacunas seguem)", () => {
+    const s = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_pulado: true, g_pulado: true } }));
+    assert.ok(!s.lacunas.some((l) => l.passo === "h" || l.passo === "g"));
+    assert.ok(s.lacunas.some((l) => l.passo === "a"), "os outros blocos continuam cobrando o que falta");
+  });
+
+  test("aguardando o responsável continua bloqueando e é diferente de pulado", () => {
+    const aguardando = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_aguardando: true } }));
+    assert.equal(estadoH(aguardando), "aguardando_responsavel");
+    assert.ok(lacunasH(aguardando).some((l) => l.bloqueante));
+  });
+
+  test("pulado vence aguardando se os dois estiverem marcados (a rota limpa o aguardando ao pular)", () => {
+    const s = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_pulado: true, h_aguardando: true } }));
+    assert.equal(estadoH(s), "pulado");
+    assert.equal(lacunasH(s).length, 0);
+  });
+
+  test("retomada: voltando h_pulado para falso, a ATA volta a ser pedida (bloqueante)", () => {
+    const pulado = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_pulado: true } }));
+    assert.equal(estadoH(pulado), "pulado");
+    const retomado = situacaoDaJornada(entrada({ meta: { ...metaVazia(), h_pulado: false } }));
+    assert.equal(estadoH(retomado), "vazio");
+    assert.ok(lacunasH(retomado).some((l) => l.bloqueante && /Não vou aplicar/.test(l.rotulo)));
+    const rascunho = situacaoDaJornada(entrada({ ata: { existe: true, enviada: false } }));
+    assert.equal(estadoH(rascunho), "parcial");
+  });
+
+  test("ATA com respostas enviadas: completa, sem lacuna", () => {
+    const s = situacaoDaJornada(entrada({ ata: { existe: true, enviada: true } }));
+    assert.equal(estadoH(s), "completo");
+    assert.equal(lacunasH(s).length, 0);
+  });
+
+  test("ataTemRespostas: só marca ou resposta de início antes dos 36 meses contam", () => {
+    assert.equal(ataTemRespostas(undefined), false);
+    assert.equal(ataTemRespostas(null), false);
+    assert.equal(ataTemRespostas({ marcados: {}, antes36meses: null }), false);
+    assert.equal(ataTemRespostas({ marcados: { "1": [] }, antes36meses: null }), false);
+    assert.equal(ataTemRespostas({ marcados: { "1": [0] }, antes36meses: null }), true);
+    assert.equal(ataTemRespostas({ marcados: {}, antes36meses: false }), true);
+  });
+
+  test("retrato das escalas: ATA pulada não leva pontuação e marca ata_nao_aplicada", () => {
+    const respostas = { marcados: { "1": [0, 1] }, antes36meses: true };
+    const pulada = montarEscalasSumario({ ataAnswers: respostas, ataEnviada: true, ataPulada: true });
+    assert.equal(pulada.ata, null);
+    assert.equal(pulada.ata_nao_aplicada, true);
+    const normal = montarEscalasSumario({ ataAnswers: respostas, ataEnviada: true });
+    assert.ok(normal.ata);
+    assert.equal(normal.ata_nao_aplicada, undefined);
   });
 });

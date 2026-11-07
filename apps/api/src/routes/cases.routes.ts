@@ -893,7 +893,7 @@ Hipótese do RE (registro do profissional): ${f1.hipotese_espectro?.trim() || "n
 Dificuldades persistentes: ${diffs}
 Encaminhado a: ${destinos.length ? destinos.join("; ") : "sem destino registrado"}
 Histórico de intervenção escolar: ${conduta}
-Jornada do RE: ${lacunas.length === 0 ? "todos os campos respondidos" : `${lacunas.length} campo(s) em branco, enviados com confirmação do RE`}; G (SNAP-IV) ${jornada.situacao.passos.find((p) => p.id === "g")?.estado === "pulado" ? "não aplicado (opcional)" : "aplicado ou em branco"}; H (ATA) ${jornada.situacao.passos.find((p) => p.id === "h")?.estado === "aguardando_responsavel" ? "aguardando o responsável" : "registrada"}.
+Jornada do RE: ${lacunas.length === 0 ? "todos os campos respondidos" : `${lacunas.length} campo(s) em branco, enviados com confirmação do RE`}; G (SNAP-IV) ${jornada.situacao.passos.find((p) => p.id === "g")?.estado === "pulado" ? "não aplicado (opcional)" : "aplicado ou em branco"}; H (ATA) ${(() => { const h = jornada.situacao.passos.find((p) => p.id === "h")?.estado; return h === "aguardando_responsavel" ? "aguardando o responsável" : h === "pulado" ? "não aplicada (opcional)" : "registrada"; })()}.
 Encaminhamento: Triagem escolar finalizada. Aluno encaminhado para avaliação diagnóstica pelo Médico (MD) e acompanhamento sociofamiliar pelo Assistente Social (AS).`;
 
 

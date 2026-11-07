@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos de teste automáticos** em 103 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **735 casos de teste automáticos** em 105 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -35,7 +35,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 414
+## API — unitários — 443
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -547,6 +547,34 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/services/justificativa-motor.test.ts</code> — 8 · justificativa obrigatória no motor (REG-024)</summary>
+
+- só Sim, Não e Às vezes exigem justificativa
+- campo de escolha: Sim e Não abrem a pendência; vazio não; texto válido fecha
+- linha de tabela: a pendência aponta a linha e fecha com texto válido
+- a pendência vira lacuna bloqueante do formulário, com o rótulo da pergunta e sem eco do texto
+- rascunho: texto incompleto é aceito no campo de escolha
+- rascunho: lorem ipsum e texto acima de 150 são recusados no campo de escolha
+- rascunho: o mesmo vale para a linha de tabela
+- justificativa em campo que não aceita é recusada
+
+</details>
+
+<details><summary><code>apps/api/src/services/justificativa-rascunho.test.ts</code> — 10 · justificativa em modo rascunho (REG-023)</summary>
+
+- vazio é aceito no rascunho e recusado no envio
+- null, undefined e número contam como vazio no rascunho
+- texto curto e incompleto é aceito no rascunho, mas recusado no envio
+- palavra cortada no meio (autosave) não é recusada
+- texto completo e coerente passa nos dois modos
+- o limite de 150 caracteres vale também no rascunho
+- recusa também no rascunho: ${nome}
+- a mesma palavra repetida é aceita no rascunho (ainda está sendo escrito) e recusada no envio
+- espaços extras são normalizados no rascunho
+- zod do rascunho: aceita incompleto, recusa lorem e devolve o texto normalizado
+
+</details>
+
 <details><summary><code>apps/api/src/services/justificativa.test.ts</code> — 7 · justificativa (REG-016)</summary>
 
 - texto de exemplo está dentro da faixa e é aceito
@@ -654,9 +682,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/re-journey.test.ts</code> — 23 · jornada do RE — catálogo A–F</summary>
+<details><summary><code>apps/api/src/services/re-journey.test.ts</code> — 33 · jornada do RE — catálogo A–F</summary>
 
-- a ordem dos passos é exatamente A B C D E F G H I
+- a ordem de apresentação é ATA primeiro: H A B C D E F G I (R7); ids e letras não mudam
 - o RE não desenha genograma: nenhum campo do tipo genograma no fluxo do RE (só o médico desenha)
 - chaves dos campos são únicas dentro de cada formulário
 - nenhum formulário pede nome do aluno nem telefone; o professor vem do cadastro da escola
@@ -679,16 +707,27 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 - a série digitada pelo cliente é ignorada: vale o cadastro
 - encaminhamento com data futura é aceito (agendamento)
 - calcula anos e meses pelo ano/mês
+- registro antigo sem h_pulado lê como falso e preserva o resto
+- a situação segue a ordem da tela: a ATA vem primeiro, inclusive nas lacunas
+- ATA pulada: estado pulado e nenhuma lacuna do passo H
+- ATA pulada não bloqueia o envio por causa do H (as demais lacunas seguem)
+- aguardando o responsável continua bloqueando e é diferente de pulado
+- pulado vence aguardando se os dois estiverem marcados (a rota limpa o aguardando ao pular)
+- retomada: voltando h_pulado para falso, a ATA volta a ser pedida (bloqueante)
+- ATA com respostas enviadas: completa, sem lacuna
+- ataTemRespostas: só marca ou resposta de início antes dos 36 meses contam
+- retrato das escalas: ATA pulada não leva pontuação e marca ata_nao_aplicada
 
 </details>
 
-<details><summary><code>apps/api/src/services/re-observability.test.ts</code> — 11 · observabilidade do RE</summary>
+<details><summary><code>apps/api/src/services/re-observability.test.ts</code> — 12 · observabilidade do RE</summary>
 
 - mediana
 - oculta células com menos de 5 casos
 - com 5 ou mais casos, calcula mediana e tempo ganho
 - soma sessões do mesmo passo e ignora passo desconhecido
 - uso do G: considera o último registro do caso e oculta &lt;5
+- uso opcional: SNAP-IV (g) e ATA (h) são contados separadamente
 - TEA: sem pontuação, só andamento
 - soma as partes de cada caso e calcula mediana, média e quartis
 - a mediana não é puxada por um caso muito longo (a média é)
