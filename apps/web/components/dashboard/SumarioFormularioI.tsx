@@ -96,7 +96,7 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
           )}
         </Linha>
         <Linha rotulo="Escalas">
-          {!escalas?.ata && !escalas?.snap4 ? (
+          {!escalas?.ata && !escalas?.snap4 && !escalas?.ata_nao_aplicada ? (
             vazio
           ) : (
             <ul className="space-y-1">
@@ -104,6 +104,11 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
                 <li>
                   <strong>ATA</strong>: {escalas.ata.total} de {escalas.ata.max} pontos · {escalas.ata.grupos_com_marca} de {escalas.ata.grupos_total} grupos com comportamento marcado
                   {escalas.ata.antes_36_meses ? " · sinais referidos antes dos 36 meses" : ""}
+                </li>
+              ) : null}
+              {escalas?.ata_nao_aplicada && !escalas?.ata ? (
+                <li>
+                  <strong>ATA não aplicada</strong> (opcional): decisão registrada pelo RE.
                 </li>
               ) : null}
               {escalas?.snap4 ? (

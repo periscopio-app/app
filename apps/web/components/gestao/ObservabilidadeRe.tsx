@@ -14,6 +14,8 @@ interface Obs {
   tempo: { passos: PassoTempo[]; casosComTempo: number; medianaTotalSegundos: Cell; horasGanhasEstimadas: Cell };
   podeEditarBaselines: boolean;
   usoOpcional: { casosComJornada: number; casosComGPulado: Cell; percentual: Cell; retomadas: Cell };
+  /** Mesmo resumo para a ATA (H); ausente em respostas de servidores anteriores. */
+  usoOpcionalAta?: { casosComJornada: number; casosComGPulado: Cell; percentual: Cell; retomadas: Cell };
   tea: { casosComTriagem: number; instrumentos: TeaInstr[]; ataAguardandoResponsavel: Cell; porRespondente: { respondent: string; enviados: Cell }[] };
   notas: string[];
 }
@@ -97,6 +99,12 @@ export function ObservabilidadeRe({ schoolId }: { schoolId: string }) {
           <Valor c={d.usoOpcional.casosComGPulado} />
           {d.usoOpcional.percentual.value != null && <span className="ml-2 text-sm font-semibold">({d.usoOpcional.percentual.value}%)</span>}
         </Cartao>
+        {d.usoOpcionalAta && (
+          <Cartao icone={<SkipForward className="h-4 w-4" />} titulo="Casos que não aplicaram a ATA (H)">
+            <Valor c={d.usoOpcionalAta.casosComGPulado} />
+            {d.usoOpcionalAta.percentual.value != null && <span className="ml-2 text-sm font-semibold">({d.usoOpcionalAta.percentual.value}%)</span>}
+          </Cartao>
+        )}
         <Cartao icone={<Users className="h-4 w-4" />} titulo="ATA aguardando o responsável">
           <Valor c={d.tea.ataAguardandoResponsavel} />
         </Cartao>
