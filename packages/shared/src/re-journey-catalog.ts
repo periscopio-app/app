@@ -3,7 +3,8 @@
  *
  * Fonte: "Avaliação e Intervenção do Pedagogo Responsável Escolar (RE) pela observação e avaliação
  * do aluno com dificuldade persistente" (Cap RE ESCOLAR Plataforma 1809), formulários A a I.
- * A ordem de apresentação é A → B → C → D → E → F → G (opcional) → H → I, em um formulário único e contínuo
+ * A ordem de apresentação é H (ATA, opcional) → A → B → C → D → E → F → G (opcional) → I, em um formulário único e contínuo
+ * (R7: a ATA vem primeiro; ids e letras não mudam, só a ordem)
  * (sem bloqueio entre blocos). Ao enviar, o sistema lista o que ficou em branco e o RE decide se envia assim mesmo.
  *
  * Regras de produto (não mudar sem validação clínica):
@@ -913,13 +914,6 @@ export interface RePasso {
 }
 
 export const RE_PASSOS: RePasso[] = [
-  { id: "a", letra: "A", titulo: RE_FORMS.a.titulo, tituloCurto: RE_FORMS.a.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "b", letra: "B", titulo: RE_FORMS.b.titulo, tituloCurto: RE_FORMS.b.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "c", letra: "C", titulo: RE_FORMS.c.titulo, tituloCurto: RE_FORMS.c.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "d", letra: "D", titulo: RE_FORMS.d.titulo, tituloCurto: RE_FORMS.d.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "e", letra: "E", titulo: RE_FORMS.e.titulo, tituloCurto: RE_FORMS.e.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "f", letra: "F", titulo: RE_FORMS.f.titulo, tituloCurto: RE_FORMS.f.tituloCurto, tipo: "formulario", opcional: false },
-  { id: "g", letra: "G", titulo: "Formulário G — SNAP-IV (opcional)", tituloCurto: "SNAP-IV (opcional)", tipo: "snap4", opcional: true },
   {
     id: "h",
     letra: "H",
@@ -929,6 +923,13 @@ export const RE_PASSOS: RePasso[] = [
     // R5/R7: a ATA pode ser pulada com "Não vou aplicar" (mesmo botão do SNAP-IV). Sem decisão (preencher, aguardar ou pular), segue pendente.
     opcional: true,
   },
+  { id: "a", letra: "A", titulo: RE_FORMS.a.titulo, tituloCurto: RE_FORMS.a.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "b", letra: "B", titulo: RE_FORMS.b.titulo, tituloCurto: RE_FORMS.b.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "c", letra: "C", titulo: RE_FORMS.c.titulo, tituloCurto: RE_FORMS.c.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "d", letra: "D", titulo: RE_FORMS.d.titulo, tituloCurto: RE_FORMS.d.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "e", letra: "E", titulo: RE_FORMS.e.titulo, tituloCurto: RE_FORMS.e.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "f", letra: "F", titulo: RE_FORMS.f.titulo, tituloCurto: RE_FORMS.f.tituloCurto, tipo: "formulario", opcional: false },
+  { id: "g", letra: "G", titulo: "Formulário G — SNAP-IV (opcional)", tituloCurto: "SNAP-IV (opcional)", tipo: "snap4", opcional: true },
   { id: "i", letra: "I", titulo: "Formulário I — Sumário da avaliação do RE", tituloCurto: "Sumário do RE", tipo: "sumario", opcional: false },
 ];
 
