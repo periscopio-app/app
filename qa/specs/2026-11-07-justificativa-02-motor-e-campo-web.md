@@ -137,6 +137,8 @@ Refinamento do PM: o especialista vê dos retornos do médico **apenas os que se
 
 **D-J12 (nova):** o RE também é profissional não médico com formulários próprios (A–I). Hoje o retorno do médico ao RE é por **caso** (M2, `case_returns`). O retorno por **formulário** (bloco 5b) passa a valer também para o RE, ou o RE continua só com M2? Padrão até o PM dizer: o RE continua só com M2.
 
+**Confirmado pelo PM em 07/nov/2026:** o comentário do médico por profissional aparece **só para a própria área** (cada especialista vê apenas os retornos sobre os formulários dele), **nunca de forma geral**. Só o médico vê os dados do aluno por completo.
+
 A escola não lê justificativas de especialistas. O que a escola recebe vem do médico (devolução M2 hoje; o encaminhamento "fora do núcleo" depende de Q8).
 
 ### O que isso muda no spec
