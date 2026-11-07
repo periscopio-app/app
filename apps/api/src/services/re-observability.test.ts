@@ -59,6 +59,20 @@ describe("observabilidade do RE", () => {
     assert.equal(r.retomadas.suppressed, true);
   });
 
+  test("uso opcional: SNAP-IV (g) e ATA (h) são contados separadamente", () => {
+    const t = (n: number) => new Date(2026, 9, 1, 0, n);
+    const rows = [
+      ...[1, 2, 3, 4, 5].map((i) => ({ caseId: `g${i}`, step: "g", action: "pulado", createdAt: t(i) })),
+      ...[1, 2, 3, 4, 5, 6].map((i) => ({ caseId: `h${i}`, step: "h", action: "pulado", createdAt: t(i) })),
+      { caseId: "h6", step: "h", action: "retomado", createdAt: t(9) },
+    ];
+    assert.equal(resumirUsoOpcional(rows, 10).casosComGPulado.value, 5, "sem informar o passo, vale o G");
+    assert.equal(resumirUsoOpcional(rows, 10, "g").casosComGPulado.value, 5);
+    const ata = resumirUsoOpcional(rows, 10, "h");
+    assert.equal(ata.casosComGPulado.value, 5, "h6 foi retomado");
+    assert.equal(ata.retomadas.suppressed, true);
+  });
+
   test("TEA: sem pontuação, só andamento", () => {
     const d = (n: number) => new Date(2026, 9, n);
     const rows = [1, 2, 3, 4, 5].map((i) => ({

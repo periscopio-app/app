@@ -438,6 +438,29 @@ describe("jornada clínica (E2E)", { skip }, () => {
       (error: any) => /somente inserção|inserção/.test(String(error?.cause?.message ?? error?.message)),
     );
 
+    // H opcional (R5/R7): "Não vou aplicar" a ATA, mesmo desenho do G. NÃO RODADO contra banco compartilhado.
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "reB", { valor: true })).status, 404, "outro município não pula a ATA deste caso");
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "re", { valor: "sim" })).status, 400);
+    const pulaAta = await call("POST", `${base}/steps/h/skip`, "re", { valor: true });
+    assert.equal(pulaAta.status, 200, JSON.stringify(pulaAta.body));
+    assert.equal(pulaAta.body.meta.h_pulado, true);
+    assert.equal(pulaAta.body.situacao.passos[7].estado, "pulado");
+    assert.ok(!pulaAta.body.situacao.lacunas.some((l: any) => l.passo === "h"), "ATA pulada não é lacuna de envio");
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: true }); // repetir não duplica
+    assert.equal((await call("POST", `${base}/steps/h/await`, "re", { valor: true })).status, 409, "pulada não fica aguardando");
+    const retomaAta = await call("POST", `${base}/steps/h/skip`, "re", { valor: false });
+    assert.equal(retomaAta.status, 200);
+    assert.equal(retomaAta.body.situacao.passos[7].estado, "vazio");
+    assert.ok(retomaAta.body.situacao.lacunas.some((l: any) => l.passo === "h" && l.bloqueante), "retomada volta a pedir a ATA");
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: true });
+    const usosAta = (await db.select().from(reOptionalStepUsage).where(eq(reOptionalStepUsage.caseId, cid))).filter((u: any) => u.step === "h");
+    assert.deepEqual(usosAta.map((u: any) => u.action).sort(), ["pulado", "pulado", "retomado"]);
+    await call("POST", `${base}/steps/h/skip`, "re", { valor: false });
+    // Com respostas na ATA, não dá para dizer que não vai aplicar
+    const ataRasc = await call("PUT", `/api/cases/${cid}/tea/ata`, "re", { answers: { marcados: { "1": [0] }, antes36meses: null }, respondent: "mae_pai" });
+    assert.equal(ataRasc.status, 200, JSON.stringify(ataRasc.body));
+    assert.equal((await call("POST", `${base}/steps/h/skip`, "re", { valor: true })).status, 409);
+
     // H: "aguardando o responsável" NÃO libera o envio (a ATA é obrigatória)
     const aguardando = await call("POST", `${base}/steps/h/await`, "re", { valor: true });
     assert.equal(aguardando.status, 200);
