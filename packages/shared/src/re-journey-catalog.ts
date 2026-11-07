@@ -21,6 +21,7 @@
 import { SNAP4_ITENS } from "./snap4-catalog";
 import { GENOGRAMA_JSON_MAX, lerGenograma, normalizarGenogramaTexto } from "./genograma";
 import { FOGAP_COMPORTAMENTOS, faixaEmUso, itensDaFaixa } from "./fogap-catalog";
+import { validarJustificativa } from "./justificativa";
 
 export const RE_JORNADA_FORM_CODE = "re_jornada" as const;
 export const RE_JORNADA_VERSION = "1.0.0-rascunho" as const;
@@ -1140,7 +1141,11 @@ export function lacunasDoSumario(sumario: unknown, serieDoAluno?: string | null)
     push("dificuldades_persistentes", "Dificuldades persistentes");
   }
   if (s.conduta !== "sim" && s.conduta !== "nao") push("conduta", "Houve conduta do RE?");
-  else if (s.conduta === "sim") {
+  else {
+    const j = validarJustificativa(s.conduta_just);
+    if (!j.ok) push("conduta_just", `Houve conduta do RE? — justificativa: ${j.motivo}`);
+  }
+  if (s.conduta === "sim") {
     texto("qual", "Qual conduta");
     texto("tempo", "Por quanto tempo");
     texto("resultado", "Resultado da conduta");
@@ -1176,6 +1181,12 @@ export function lacunasFogapItens(fogapPayload: unknown): Lacuna[] {
     for (const c of FOGAP_COMPORTAMENTOS) {
       if (comp[c.id] !== "sim" && comp[c.id] !== "nao") {
         out.push({ passo: "i", campo: `respostas_comportamentos.${c.id}`, rotulo: `Formulário I › Comportamento ${c.n}: ${c.texto}`, bloqueante: true });
+      } else {
+        const justs = (p.justificativas_comportamentos && typeof p.justificativas_comportamentos === "object" ? p.justificativas_comportamentos : {}) as Record<string, unknown>;
+        const j = validarJustificativa(justs[c.id]);
+        if (!j.ok) {
+          out.push({ passo: "i", campo: `justificativas_comportamentos.${c.id}`, rotulo: `Formulário I › Comportamento ${c.n}: justificativa — ${j.motivo}`, bloqueante: true });
+        }
       }
     }
   }
@@ -1199,7 +1210,7 @@ export function situacaoDaJornada(entrada: JornadaEntradas): JornadaSituacao {
       const id = passo.id as ReFormId;
       const payload = entrada.payloads[id];
       const prog = progressoReForm(id, payload);
-      const falt = lacunasDoForm(id, payload);
+      const falt = [...lacunasDoForm(id, payload), ...lacunasDeJustificativa(RE_FORMS[id], id, payload)];
       lacunas.push(...falt);
       const estado: RePassoEstado = falt.length === 0 ? "completo" : prog.respondidos === 0 ? "vazio" : "parcial";
       passos.push({ ...base, estado, ...prog });
@@ -1288,7 +1299,7 @@ export function normalizarPayloadDef(form: FormDef, payload: Record<string, unkn
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(payload)) {
     if (chavesLegadas.includes(key)) continue;
-    if (removidos.has(key.replace(/__(texto|outros|obs)$/, ""))) continue;
+    if (removidos.has(key.replace(/__(texto|outros|obs|just)$/, ""))) continue;
     const campo = campos.get(key);
     if (campo?.tipo === "genograma") {
       out[key] = normalizarGenogramaTexto(val);
@@ -1333,11 +1344,18 @@ export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas
   for (const c of camposDoForm(form)) campos.set(c.key, c);
 
   for (const [key, val] of Object.entries(p)) {
-    // Textos complementares: "<campo>__texto", "<campo>__outros" e "<campo>__obs"
-    const base = key.replace(/__(texto|outros|obs)$/, "");
+    // Textos complementares: "<campo>__texto", "<campo>__outros", "<campo>__obs" e "<campo>__just" (justificativa de Sim/Não/Às vezes)
+    const base = key.replace(/__(texto|outros|obs|just)$/, "");
     const campo = campos.get(base);
     if (!campo) return `Campo desconhecido: ${key}`;
     if (key !== base) {
+      if (key.endsWith("__just")) {
+        if (campo.tipo !== "unica" && campo.tipo !== "multipla") return `Campo "${campo.label}" não tem justificativa.`;
+        if (val !== null && val !== undefined && typeof val !== "string") return `Justificativa de "${campo.label}" inválida.`;
+        const j = validarJustificativa(val ?? "", { rascunho: true });
+        if (!j.ok) return `${campo.label}: ${j.motivo}`;
+        continue;
+      }
       if (!textoValido(val)) return `Campo "${key}" inválido ou longo demais.`;
       continue;
     }
@@ -1378,7 +1396,12 @@ export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas
           if (!lv || typeof lv !== "object" || Array.isArray(lv)) return `Campo "${campo.label}": linha inválida.`;
           const cel = lv as Record<string, unknown>;
           for (const ck of Object.keys(cel)) {
-            if (!["r", "obs", "n", "nums"].includes(ck)) return `Campo "${campo.label}": chave desconhecida (${ck}).`;
+            if (!["r", "obs", "n", "nums", "just"].includes(ck)) return `Campo "${campo.label}": chave desconhecida (${ck}).`;
+          }
+          if (cel.just !== undefined && cel.just !== null) {
+            if (typeof cel.just !== "string") return `Campo "${campo.label}": justificativa inválida.`;
+            const j = validarJustificativa(cel.just, { rascunho: true });
+            if (!j.ok) return `${campo.label} › ${campo.linhas.find((l) => l.key === lk)?.label ?? lk}: ${j.motivo}`;
           }
           if (cel.r !== undefined && cel.r !== null) {
             const rs = Array.isArray(cel.r) ? cel.r : [cel.r];
@@ -1410,6 +1433,58 @@ export function validarPayloadDef(form: FormDef, payload: unknown, chavesLegadas
   }
 
     return null;
+}
+
+// ── Justificativa obrigatória em Sim / Não / Às vezes (PM, 06/nov/2026) ─────────────────────────────
+// Qualquer resposta "sim", "nao" ou "as_vezes" em campo de escolha ou em linha de tabela abre uma justificativa obrigatória
+// (100 a 150 caracteres, ver `justificativa.ts`). Guardada em `<campo>__just` (escolha) ou `cel.just` (linha de tabela).
+
+export const RESPOSTAS_QUE_EXIGEM_JUSTIFICATIVA: readonly string[] = ["sim", "nao", "as_vezes"];
+
+export function respostaExigeJustificativa(r: unknown): boolean {
+  if (typeof r === "string") return RESPOSTAS_QUE_EXIGEM_JUSTIFICATIVA.includes(r);
+  if (Array.isArray(r)) return r.some((x) => typeof x === "string" && RESPOSTAS_QUE_EXIGEM_JUSTIFICATIVA.includes(x));
+  return false;
+}
+
+export interface JustificativaPendente {
+  campo: string;
+  linha?: string;
+  rotulo: string;
+  motivo: string;
+}
+
+/** Respostas Sim/Não/Às vezes cuja justificativa falta ou não é válida. Vazio = pode concluir/enviar. */
+export function justificativasPendentes(form: FormDef, payload: unknown): JustificativaPendente[] {
+  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
+  const out: JustificativaPendente[] = [];
+  for (const c of camposDoForm(form)) {
+    if (c.tipo === "unica" || c.tipo === "multipla") {
+      if (!respostaExigeJustificativa(p[c.key])) continue;
+      const j = validarJustificativa(p[`${c.key}__just`]);
+      if (!j.ok) out.push({ campo: c.key, rotulo: c.label.replace(/\?$/, ""), motivo: j.motivo });
+    } else if (c.tipo === "matriz") {
+      const m = (p[c.key] && typeof p[c.key] === "object" ? p[c.key] : {}) as Record<string, any>;
+      for (const l of c.linhas) {
+        const cel = m[l.key];
+        if (!cel || !respostaExigeJustificativa(cel.r)) continue;
+        const j = validarJustificativa(cel.just);
+        if (!j.ok) out.push({ campo: c.key, linha: l.key, rotulo: `${c.label.replace(/\?$/, "")} › ${l.label}`, motivo: j.motivo });
+      }
+    }
+  }
+  return out;
+}
+
+/** Justificativas de Sim/Não/Às vezes que faltam em um formulário A–F: bloqueiam o envio (não dá para confirmar e seguir). */
+export function lacunasDeJustificativa(form: FormDef, passo: RePassoId, payload: unknown): Lacuna[] {
+  return justificativasPendentes(form, payload).map((j) => ({
+    passo,
+    campo: j.campo,
+    linha: j.linha,
+    rotulo: `Formulário ${form.letra} › ${j.rotulo} — justificativa: ${j.motivo}`,
+    bloqueante: true,
+  }));
 }
 
 export function normalizarPayloadReForm(formId: ReFormId, payload: Record<string, unknown>): Record<string, unknown> {

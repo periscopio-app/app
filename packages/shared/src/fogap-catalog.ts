@@ -10,6 +10,7 @@
  */
 
 import type { EscalasSumario } from "./escalas-sumario";
+import { validarJustificativa } from "./justificativa";
 
 export const FOGAP_FORM_CODE = "fogap" as const;
 export const FOGAP_VERSION = "0.1.0-rascunho" as const;
@@ -77,6 +78,8 @@ export const FOGAP_DESTINOS: { key: Exclude<keyof FogapEncaminhados, "outro_nome
 export interface FogapSecaoSumario {
   dificuldades_persistentes: string[];
   conduta: "sim" | "nao" | null;
+  /** Justificativa de "Houve conduta?" (Sim ou Não): 100 a 150 caracteres. */
+  conduta_just?: string;
   qual: string;
   tempo: string;
   resultado: string;
@@ -101,6 +104,7 @@ export function sumarioComPadroes(raw: Partial<FogapSecaoSumario> | null | undef
   return {
     dificuldades_persistentes: Array.isArray(r.dificuldades_persistentes) ? r.dificuldades_persistentes : [],
     conduta: r.conduta === "sim" || r.conduta === "nao" ? r.conduta : null,
+    conduta_just: r.conduta_just ?? "",
     qual: r.qual ?? "",
     tempo: r.tempo ?? "",
     resultado: r.resultado ?? "",
@@ -127,6 +131,8 @@ export interface FogapPayload {
   total_meses: number | null;
   respostas_desenvolvimento: Record<string, OpcaoDesenvolvimento | null>;
   respostas_comportamentos: Record<string, OpcaoComportamento | null>;
+  /** Justificativa de cada comportamento respondido Sim ou Não (100 a 150 caracteres), por id do comportamento. */
+  justificativas_comportamentos?: Record<string, string>;
   historico_insuficiente: FogapHistoricoInsuficiente;
   secao_sumario: FogapSecaoSumario;
   secao_encaminhamento: FogapSecaoEncaminhamento;
@@ -465,6 +471,24 @@ export function validarPayloadFogap(payload: unknown, now = new Date()): string 
       if (val !== null && val !== "adequada" && val !== "inadequada") {
         return `Item ${key}: valor inválido — use adequada, inadequada ou null`;
       }
+    }
+  }
+
+  const justComp = p["justificativas_comportamentos"];
+  if (justComp !== undefined && justComp !== null) {
+    if (typeof justComp !== "object" || Array.isArray(justComp)) return "Justificativas dos comportamentos inválidas.";
+    for (const [key, val] of Object.entries(justComp as Record<string, unknown>)) {
+      if (typeof val !== "string") return `Comportamento ${key}: justificativa inválida.`;
+      const j = validarJustificativa(val, { rascunho: true });
+      if (!j.ok) return `Comportamento ${key}: ${j.motivo}`;
+    }
+  }
+  if (sum && typeof sum === "object") {
+    const cj = (sum as Record<string, unknown>)["conduta_just"];
+    if (cj !== undefined && cj !== null) {
+      if (typeof cj !== "string") return "Justificativa de \"Houve conduta\" inválida.";
+      const j = validarJustificativa(cj, { rascunho: true });
+      if (!j.ok) return `Houve conduta: ${j.motivo}`;
     }
   }
 

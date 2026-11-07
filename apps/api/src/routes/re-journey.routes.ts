@@ -23,6 +23,7 @@ import {
   validarPayloadReForm,
   hojeBrasilia,
   type ReFormId,
+  JUSTIFICATIVA_MAX,
 } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
 import { can, leituraIntegral } from "../services/privilege.service";
@@ -53,6 +54,8 @@ const desenvolvimentoBody = z.object({
 });
 const comportamentosBody = z.object({
   respostas: z.record(z.string(), z.union([z.literal("sim"), z.literal("nao"), z.null()])),
+  // Justificativa de cada Sim/Não (100 a 150 caracteres); a regra completa é conferida em validarPayloadFogap e no envio.
+  justificativas: z.record(z.string(), z.string().max(JUSTIFICATIVA_MAX)).optional(),
 });
 const timingBody = z.object({
   step: z.enum(["a", "b", "c", "d", "e", "f", "g", "h", "i"]),
@@ -343,7 +346,11 @@ export async function reJourneyRoutes(app: FastifyInstance) {
     }
 
     const base = montarPayloadFogap({ student: visible.student, atual: atual?.payload });
-    const payload = { ...base, respostas_comportamentos: { ...(base.respostas_comportamentos ?? {}), ...parse.data.respostas } };
+    const payload = {
+      ...base,
+      respostas_comportamentos: { ...(base.respostas_comportamentos ?? {}), ...parse.data.respostas },
+      justificativas_comportamentos: { ...(base.justificativas_comportamentos ?? {}), ...(parse.data.justificativas ?? {}) },
+    };
     const erro = validarPayloadFogap(payload);
     if (erro) return reply.status(400).send({ error: erro });
 
