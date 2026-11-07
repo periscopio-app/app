@@ -25,6 +25,8 @@ const entrada = (patch: Partial<JornadaEntradas> = {}): JornadaEntradas => ({
   ...patch,
 });
 
+const JUST_OK = "Foi observado em sala que o aluno evita atividades de leitura em voz alta e pede ajuda ao colega com frequência durante a aula.";
+
 describe("jornada do RE — catálogo A–F", () => {
   test("a ordem dos passos é exatamente A B C D E F G H I", () => {
     assert.deepEqual(RE_PASSOS.map((p) => p.letra).join(""), "ABCDEFGHI");
@@ -170,9 +172,11 @@ describe("jornada do RE — formulário único (sem bloqueio entre blocos)", () 
     assert.ok(curto.some((l) => l.campo === "queixa_professor" && /20 caracteres/.test(l.rotulo)));
     assert.ok(curto.some((l) => l.campo === "hipotese_espectro" && /15 caracteres/.test(l.rotulo)));
     const ok = lacunasDoSumario({ queixa_professor: "Dificuldade para copiar da lousa.", hipotese_espectro: "Dimensão da comunicação.", dificuldades_persistentes: ["Fala"], conduta: "nao" }, "3º ano");
-    assert.equal(ok.length, 0);
+    assert.deepEqual(ok.map((l) => l.campo), ["conduta_just"], "conduta Não também exige justificativa (REG-024)");
+    const okJust = lacunasDoSumario({ queixa_professor: "Dificuldade para copiar da lousa.", hipotese_espectro: "Dimensão da comunicação.", dificuldades_persistentes: ["Fala"], conduta: "nao", conduta_just: JUST_OK }, "3º ano");
+    assert.equal(okJust.length, 0);
     const conduta = lacunasDoSumario({ queixa_professor: "Dificuldade para copiar da lousa.", hipotese_espectro: "Dimensão da comunicação.", dificuldades_persistentes: ["Fala"], conduta: "sim", qual: "x", tempo: "", resultado: "" }, "3º ano");
-    assert.deepEqual(conduta.map((l) => l.campo).sort(), ["qual", "resultado", "tempo"]);
+    assert.deepEqual(conduta.map((l) => l.campo).sort(), ["conduta_just", "qual", "resultado", "tempo"]);
   });
 
   test("retrato das escalas: ATA pontua pela regra da fonte; SNAP-IV só aparece se houver resposta e nunca conta os itens 10 a 18", () => {
