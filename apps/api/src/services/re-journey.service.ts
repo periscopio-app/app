@@ -168,7 +168,7 @@ export async function salvarMeta(params: {
 export async function escalasDaJornada(
   tenantId: string,
   caseId: string,
-  j: { meta: { g_pulado?: boolean }; linhas: { g?: { payload: unknown } } }
+  j: { meta: { g_pulado?: boolean; h_pulado?: boolean }; linhas: { g?: { payload: unknown } } }
 ) {
   const [ataRow] = await db
     .select({ answers: teaScreenings.answers, status: teaScreenings.status })
@@ -178,6 +178,7 @@ export async function escalasDaJornada(
   return montarEscalasSumario({
     ataAnswers: ataRow?.answers,
     ataEnviada: ataRow?.status === "enviado",
+    ataPulada: j.meta.h_pulado === true,
     snap4: j.meta.g_pulado ? undefined : j.linhas.g?.payload,
   });
 }
