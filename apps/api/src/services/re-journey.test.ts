@@ -30,8 +30,10 @@ const entrada = (patch: Partial<JornadaEntradas> = {}): JornadaEntradas => ({
 const JUST_OK = "Foi observado em sala que o aluno evita atividades de leitura em voz alta e pede ajuda ao colega com frequência durante a aula.";
 
 describe("jornada do RE — catálogo A–F", () => {
-  test("a ordem dos passos é exatamente A B C D E F G H I", () => {
-    assert.deepEqual(RE_PASSOS.map((p) => p.letra).join(""), "ABCDEFGHI");
+  test("a ordem de apresentação é ATA primeiro: H A B C D E F G I (R7); ids e letras não mudam", () => {
+    assert.deepEqual(RE_PASSOS.map((p) => p.letra).join(""), "HABCDEFGI");
+    assert.deepEqual(RE_PASSOS.map((p) => p.id).join(""), "habcdefgi");
+    assert.equal(RE_PASSOS.length, 9);
     assert.equal(RE_PASSOS.find((p) => p.id === "g")?.opcional, true);
     assert.equal(RE_PASSOS.find((p) => p.id === "h")?.opcional, true, "a ATA é opcional (R5)");
   });
@@ -263,6 +265,13 @@ describe("jornada do RE — ATA opcional (R5, R7)", () => {
     assert.equal(metaComPadroes(null).h_pulado, false);
     assert.equal(metaComPadroes({ h_pulado: "true" }).h_pulado, false, "só booleano verdadeiro vale");
     assert.equal(metaVazia().h_pulado, false);
+  });
+
+  test("a situação segue a ordem da tela: a ATA vem primeiro, inclusive nas lacunas", () => {
+    const s = situacaoDaJornada(entrada());
+    assert.deepEqual(s.passos.map((p) => p.id).join(""), "habcdefgi");
+    assert.equal(s.lacunas[0]?.passo, "h");
+    assert.ok(s.lacunas.findIndex((l) => l.passo === "h") < s.lacunas.findIndex((l) => l.passo === "a"));
   });
 
   test("ATA pulada: estado pulado e nenhuma lacuna do passo H", () => {
