@@ -136,3 +136,9 @@ export const justificativaSchema = z.string().superRefine((valor, ctx) => {
   const r = validarJustificativa(valor);
   if (!r.ok) ctx.addIssue({ code: "custom", message: r.motivo });
 }).transform((valor) => normalizarJustificativa(valor));
+
+/** Esquema zod do modo rascunho: aceita texto incompleto, recusa o que já está errado. Usado ao salvar rascunho. */
+export const justificativaRascunhoSchema = z.string().superRefine((valor, ctx) => {
+  const r = validarJustificativa(valor, { rascunho: true });
+  if (!r.ok) ctx.addIssue({ code: "custom", message: r.motivo });
+}).transform((valor) => normalizarJustificativa(valor));
