@@ -253,6 +253,13 @@
       "when": 1793493600000,
       "tag": "0035_ata_pode_ser_pulada",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793580000000,
+      "tag": "0036_gestao_so_admin_master",
+      "breakpoints": true
     }
   ]
 }

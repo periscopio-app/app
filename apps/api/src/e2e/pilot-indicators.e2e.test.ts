@@ -78,6 +78,8 @@ describe("Indicadores do piloto (E2E)", { skip }, () => {
 
     shared = await import("@periscopio/shared");
     ({ db } = await import("../db/client"));
+    const { liberarGestaoParaTeste } = await import("../testing/grants");
+    await liberarGestaoParaTeste(db, ["municipal_manager", "school_manager", "board", "md1"]);
     const { upsertCredential } = await import("../auth/credentials");
     const { buildApp } = await import("../app");
 
