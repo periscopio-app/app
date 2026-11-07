@@ -56,13 +56,20 @@ function pareceDadoPessoal(texto: string): boolean {
   return false;
 }
 
-/** Valida e mede. Devolve sempre uma frase curta, observável, que diz o que falta. */
-export function validarJustificativa(bruto: unknown): JustificativaResultado {
+/**
+ * Valida e mede. Devolve sempre uma frase curta, observável, que diz o que falta.
+ * `rascunho`: texto ainda incompleto é aceito (sem mínimo de caracteres, palavras e variedade), mas o que já foi digitado não pode ser
+ * lorem ipsum, dado pessoal, repetição nem palavra sem sentido, e nunca passa de 150 caracteres. Usado ao salvar rascunho.
+ */
+export function validarJustificativa(bruto: unknown, opcoes: { rascunho?: boolean } = {}): JustificativaResultado {
   const texto = normalizarJustificativa(typeof bruto === "string" ? bruto : "");
   const caracteres = [...texto].length;
+  const rascunho = opcoes.rascunho === true;
   const falha = (motivo: string): JustificativaResultado => ({ ok: false, motivo, caracteres });
 
-  if (caracteres < JUSTIFICATIVA_MIN) {
+  if (rascunho && caracteres === 0) return { ok: true, texto, caracteres: 0, palavras: 0, tokensEstimados: 0 };
+
+  if (!rascunho && caracteres < JUSTIFICATIVA_MIN) {
     return falha(`Escreva entre ${JUSTIFICATIVA_MIN} e ${JUSTIFICATIVA_MAX} caracteres. Faltam ${JUSTIFICATIVA_MIN - caracteres}.`);
   }
   if (caracteres > JUSTIFICATIVA_MAX) {
@@ -70,13 +77,13 @@ export function validarJustificativa(bruto: unknown): JustificativaResultado {
   }
 
   const palavras = palavrasDe(texto);
-  if (palavras.length < JUSTIFICATIVA_MIN_PALAVRAS) {
+  if (!rascunho && palavras.length < JUSTIFICATIVA_MIN_PALAVRAS) {
     return falha(`Use pelo menos ${JUSTIFICATIVA_MIN_PALAVRAS} palavras.`);
   }
 
   const semEspaco = texto.replace(/\s/g, "");
   const letras = (semEspaco.match(/\p{L}/gu) ?? []).length;
-  if (letras / semEspaco.length < 0.6) {
+  if (!rascunho && letras / semEspaco.length < 0.6) {
     return falha("Escreva a justificativa com palavras, sem depender de números e símbolos.");
   }
 
@@ -93,11 +100,11 @@ export function validarJustificativa(bruto: unknown): JustificativaResultado {
 
   const simplesPalavras = palavras.map((p) => simples(p).replace(/[^a-z]/g, "")).filter((p) => p.length >= 2);
   const distintas = new Set(simplesPalavras);
-  if (distintas.size < 4) {
+  if (!rascunho && distintas.size < 4) {
     return falha("Use pelo menos 4 palavras diferentes.");
   }
-  const maisRepetida = Math.max(...[...distintas].map((p) => simplesPalavras.filter((x) => x === p).length));
-  if (maisRepetida / simplesPalavras.length > 0.4) {
+  const maisRepetida = Math.max(0, ...[...distintas].map((p) => simplesPalavras.filter((x) => x === p).length));
+  if (!rascunho && maisRepetida / simplesPalavras.length > 0.4) {
     return falha("A mesma palavra se repete demais. Reescreva a justificativa.");
   }
 
