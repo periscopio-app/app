@@ -6,6 +6,9 @@ import { requireCapability, requireAnyCapability } from "../security/actor";
 import { can } from "../services/privilege.service";
 import { BOARD_MANAGER_ROLES as MANAGER_ROLES, BOARD_REQUESTER_ROLES as REQUESTER_ROLES } from "../security/permissions";
 import { sendTemplatedEmail } from "../email/templated";
+import { generateJitsiRoomUrl } from "../services/jitsi";
+import { createBoardMeetingEvent, discardBoardMeetingEvent } from "../services/google-calendar.service";
+import { BOARD_ICS_FILENAME, boardMeetingIcs, boardMeetingIcsAttachment } from "../services/board-ics";
 import {
   MEETING_NOTICE,
   validateMeetingRequest,
@@ -15,6 +18,16 @@ import {
 
 const DEFAULT_NOTIFY = "equipe@projetoperiscopio.com.br";
 const TZ = "America/Sao_Paulo";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type MeetProvider = "google" | "fixed" | "jitsi";
+
+/** Avisos mostrados à Dra. quando o Google falhou e a reunião foi confirmada pelo plano B. */
+const CALENDAR_NOTICE = {
+  reauth_required: "A conexão com o Google expirou. A reunião foi confirmada com uma sala Jitsi e o convite .ics. Reconecte o Google para voltar a usar o Meet.",
+  google_error: "Não foi possível criar o evento no Google Agenda agora. A reunião foi confirmada com uma sala Jitsi e o convite .ics.",
+  no_meet_link: "O Google não devolveu o link do Meet. A reunião foi confirmada com uma sala Jitsi e o convite .ics.",
+} as const;
 
 const fmtDate = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, dateStyle: "full" }).format(d);
 const fmtTime = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(d);
@@ -178,6 +191,7 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
         topic: expertMeetingRequests.topic,
         studentCode: expertMeetingRequests.studentCode,
         meetUrl: expertMeetingRequests.meetUrl,
+        meetProvider: expertMeetingRequests.meetProvider,
         decisionNote: expertMeetingRequests.decisionNote,
         createdAt: expertMeetingRequests.createdAt,
         startsAt: expertSlots.startsAt,
@@ -198,6 +212,56 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
     return { meetings: rows };
   });
 
+  // Convite .ics de uma reunião confirmada (quem pediu baixa o seu; a coordenação baixa qualquer uma do tenant)
+  app.get("/api/expert-meetings/:id/calendar.ics", async (request, reply) => {
+    const actor = await requireAnyCapability(request, reply, ["board.request", "board.manage"]);
+    if (!actor) return;
+    const { id } = request.params as { id: string };
+    const notFound = () => reply.status(404).send({ error: "Reunião não encontrada." });
+    if (!UUID_RE.test(id)) return notFound();
+    const isManager = await can(actor, "board.manage");
+    const [row] = await db
+      .select({
+        status: expertMeetingRequests.status,
+        meetUrl: expertMeetingRequests.meetUrl,
+        startsAt: expertSlots.startsAt,
+        endsAt: expertSlots.endsAt,
+        requesterEmail: users.email,
+      })
+      .from(expertMeetingRequests)
+      .innerJoin(expertSlots, eq(expertSlots.id, expertMeetingRequests.slotId))
+      .innerJoin(users, eq(users.id, expertMeetingRequests.requesterId))
+      .where(
+        and(
+          eq(expertMeetingRequests.id, id),
+          eq(expertMeetingRequests.tenantId, actor.tenantId),
+          isManager ? undefined : eq(expertMeetingRequests.requesterId, actor.id),
+        ),
+      )
+      .limit(1);
+    // Mesma resposta para "não existe", "é de outro tenant", "não é seu" e "ainda não confirmada": não vaza existência.
+    if (!row || row.status !== "confirmed" || !row.meetUrl) return notFound();
+    const settings = await getSettings(actor.tenantId);
+    let ics: string;
+    try {
+      ics = boardMeetingIcs({
+        meetingId: id,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        meetUrl: row.meetUrl,
+        requesterEmail: row.requesterEmail,
+        organizerEmail: settings.notifyEmail,
+      });
+    } catch {
+      return notFound();
+    }
+    return reply
+      .header("Content-Type", "text/calendar; charset=utf-8; method=REQUEST")
+      .header("Content-Disposition", `attachment; filename="${BOARD_ICS_FILENAME}"`)
+      .header("Cache-Control", "private, no-store")
+      .send(ics);
+  });
+
   // Dra. confirma ou recusa
   for (const action of ["confirm", "decline"] as const) {
     app.patch(`/api/expert-meetings/:id/${action}`, async (request, reply) => {
@@ -205,18 +269,53 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
       if (!actor) return;
       const { id } = request.params as { id: string };
       const note = typeof (request.body as any)?.note === "string" ? String((request.body as any).note).trim().slice(0, 300) : null;
+      const notDecided = () => reply.status(409).send({ error: "Pedido não encontrado ou já decidido." });
+      if (!UUID_RE.test(id)) return notDecided();
       const settings = await getSettings(actor.tenantId);
-      let callUrl = settings.meetUrl;
-      if (action === "confirm" && !callUrl) {
-        // Fallback para serviço gratuito de videochamada integrada via Jitsi Meet
-        callUrl = `https://meet.jit.si/periscopio-board-${actor.tenantId.slice(0, 8)}-${id.slice(0, 8)}`;
+
+      // Sala da reunião, só na confirmação: Google (Meet + evento na agenda) → sala fixa da Dra. → sala Jitsi aleatória.
+      let room: { url: string; provider: MeetProvider; googleEventId: string | null; invited: boolean } | null = null;
+      let calendarNotice: string | null = null;
+      if (action === "confirm") {
+        const [pending] = await db
+          .select({ startsAt: expertSlots.startsAt, endsAt: expertSlots.endsAt, requesterEmail: users.email })
+          .from(expertMeetingRequests)
+          .innerJoin(expertSlots, eq(expertSlots.id, expertMeetingRequests.slotId))
+          .innerJoin(users, eq(users.id, expertMeetingRequests.requesterId))
+          .where(
+            and(
+              eq(expertMeetingRequests.id, id),
+              eq(expertMeetingRequests.tenantId, actor.tenantId),
+              eq(expertMeetingRequests.status, "pending"),
+            ),
+          )
+          .limit(1);
+        if (!pending) return notDecided();
+
+        const outcome = await createBoardMeetingEvent(actor.tenantId, {
+          meetingId: id,
+          startsAt: pending.startsAt,
+          endsAt: pending.endsAt,
+          attendees: [pending.requesterEmail, settings.notifyEmail],
+          fixedMeetUrl: settings.meetUrl,
+        });
+        if (outcome.kind === "google" && outcome.meetUrl) {
+          room = { url: outcome.meetUrl, provider: settings.meetUrl ? "fixed" : "google", googleEventId: outcome.eventId, invited: true };
+        } else {
+          room = settings.meetUrl
+            ? { url: settings.meetUrl, provider: "fixed", googleEventId: null, invited: false }
+            : { url: generateJitsiRoomUrl(), provider: "jitsi", googleEventId: null, invited: false };
+          if (outcome.kind === "failed") calendarNotice = CALENDAR_NOTICE[outcome.reason];
+        }
       }
 
       const [meeting] = await db
         .update(expertMeetingRequests)
         .set({
           status: action === "confirm" ? "confirmed" : "declined",
-          meetUrl: action === "confirm" ? callUrl : null,
+          meetUrl: room?.url ?? null,
+          meetProvider: room?.provider ?? null,
+          googleEventId: room?.googleEventId ?? null,
           decisionNote: note,
           decidedBy: actor.id,
           decidedAt: new Date(),
@@ -229,7 +328,19 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
           ),
         )
         .returning();
-      if (!meeting) return reply.status(409).send({ error: "Pedido não encontrado ou já decidido." });
+      if (!meeting) {
+        // Perdeu a corrida (alguém decidiu no meio). O id do evento é determinístico, então se o vencedor também
+        // confirmou, o evento é o mesmo e fica; se o pedido foi recusado, o evento criado aqui sai da agenda.
+        if (room?.googleEventId) {
+          const [current] = await db
+            .select({ status: expertMeetingRequests.status })
+            .from(expertMeetingRequests)
+            .where(and(eq(expertMeetingRequests.id, id), eq(expertMeetingRequests.tenantId, actor.tenantId)))
+            .limit(1);
+          if (current?.status !== "confirmed") await discardBoardMeetingEvent(actor.tenantId, room.googleEventId);
+        }
+        return notDecided();
+      }
 
       if (action === "decline") {
         await db.update(expertSlots).set({ status: "available" }).where(eq(expertSlots.id, meeting.slotId));
@@ -246,6 +357,28 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
         SLOT_DATE: fmtDate(slot.startsAt),
         SLOT_TIME: `${fmtTime(slot.startsAt)}–${fmtTime(slot.endsAt)}`,
       };
+
+      // Com convite do Google já enviado, o .ics seria um segundo convite repetido: só anexamos no plano B.
+      let attachments: ReturnType<typeof boardMeetingIcsAttachment>[] | undefined;
+      if (action === "confirm" && room && !room.invited && requester) {
+        try {
+          attachments = [
+            boardMeetingIcsAttachment(
+              boardMeetingIcs({
+                meetingId: meeting.id,
+                startsAt: slot.startsAt,
+                endsAt: slot.endsAt,
+                meetUrl: room.url,
+                requesterEmail: requester.email,
+                organizerEmail: settings.notifyEmail,
+              }),
+            ),
+          ];
+        } catch (err) {
+          request.log.warn({ err }, "convite .ics não gerado; o e-mail segue só com o link");
+        }
+      }
+
       const results = [];
       if (requester) {
         results.push(
@@ -254,7 +387,8 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
               ? {
                   to: requester.email,
                   alias: "expert-meeting-confirmed",
-                  variables: { ...common, SCHOOL_NAME: school?.name ?? "sua escola", TOPIC: meeting.topic, MEET_URL: callUrl || "https://meet.jit.si" },
+                  variables: { ...common, SCHOOL_NAME: school?.name ?? "sua escola", TOPIC: meeting.topic, MEET_URL: room!.url },
+                  attachments,
                 }
               : {
                   to: requester.email,
@@ -265,18 +399,23 @@ export async function expertMeetingsRoutes(app: FastifyInstance) {
         );
       }
       if (action === "confirm") {
-        // cópia para a equipe
+        // cópia para a equipe (mesma sala que quem pediu recebeu)
         results.push(
           await sendTemplatedEmail({
             to: settings.notifyEmail,
             alias: "expert-meeting-confirmed",
-            variables: { ...common, SCHOOL_NAME: school?.name ?? "escola", TOPIC: meeting.topic, MEET_URL: settings.meetUrl! },
+            variables: { ...common, SCHOOL_NAME: school?.name ?? "escola", TOPIC: meeting.topic, MEET_URL: room!.url },
+            attachments,
           }),
         );
       }
       for (const r of results) if (!r.ok) request.log.warn({ err: r.error }, "e-mail de decisão não enviado");
 
-      return { meeting, emailSent: results.length > 0 && results.every((r) => r.ok) };
+      return {
+        meeting,
+        emailSent: results.length > 0 && results.every((r) => r.ok),
+        ...(room ? { calendar: { provider: room.provider, googleInvite: room.invited, notice: calendarNotice } } : {}),
+      };
     });
   }
 }

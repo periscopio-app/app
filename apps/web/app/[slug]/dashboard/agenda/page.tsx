@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, type Me } from "@/lib/api";
 import { Alert, Badge, Button, Card, Field } from "@/components/ui";
-import { CalendarClock, Video } from "lucide-react";
+import { CalendarClock, CalendarPlus, Video } from "lucide-react";
 
 type Slot = { id: string; startsAt: string; endsAt: string; status?: string };
 type Meeting = {
@@ -13,10 +13,20 @@ type Meeting = {
   topic: string;
   studentCode: string | null;
   meetUrl: string | null;
+  meetProvider: "google" | "fixed" | "jitsi" | null;
   decisionNote: string | null;
   startsAt: string;
   endsAt: string;
   schoolName: string | null;
+};
+
+type GoogleStatus = { configured: boolean; connected: boolean; connectedAt: string | null; redirectUri: string | null };
+
+const GOOGLE_RESULT_MSG: Record<string, { tom: "ok" | "erro"; text: string }> = {
+  connected: { tom: "ok", text: "Google conectado. As próximas confirmações criam o evento e o Meet na sua agenda." },
+  denied: { tom: "erro", text: "Você não autorizou o acesso ao Google. Nada foi conectado." },
+  error: { tom: "erro", text: "Não foi possível concluir a conexão com o Google. Tente de novo." },
+  invalid: { tom: "erro", text: "O pedido de conexão expirou ou é inválido. Clique em Conectar Google novamente." },
 };
 
 const STATUS_LABEL: Record<Meeting["status"], string> = {
@@ -44,6 +54,7 @@ export default function AgendaPage() {
   const [notice, setNotice] = useState("");
   const [msg, setMsg] = useState<{ tom: "ok" | "erro"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [google, setGoogle] = useState<GoogleStatus | null>(null);
 
   // formulário da escola
   const [slotId, setSlotId] = useState("");
@@ -69,6 +80,7 @@ export default function AgendaPage() {
     if (manager) {
       const cfg = await api.get<{ meetUrl: string | null }>("/api/expert-meetings/settings");
       setMeetUrl(cfg.meetUrl ?? "");
+      setGoogle(await api.get<GoogleStatus>("/api/integrations/google/status").catch(() => null));
     }
   }, []);
 
@@ -79,6 +91,12 @@ export default function AgendaPage() {
         setMe(user);
         setProfessionalName(user.name ?? "");
         await reload(user.role === "board" || user.role === "admin_platform");
+        // Retorno do Google (?google=connected|denied|error|invalid): mostra o resultado e limpa a URL.
+        const result = new URLSearchParams(window.location.search).get("google");
+        if (result && GOOGLE_RESULT_MSG[result]) {
+          setMsg(GOOGLE_RESULT_MSG[result]);
+          window.history.replaceState(null, "", window.location.pathname);
+        }
       })
       .catch((e) => setMsg({ tom: "erro", text: e instanceof ApiError ? e.message : "Não foi possível carregar a agenda." }));
   }, [reload]);
@@ -117,9 +135,47 @@ export default function AgendaPage() {
     run(() => api.put("/api/expert-meetings/settings", { meetUrl }), "Sala fixa salva.");
   };
 
-  const decide = (id: string, action: "confirm" | "decline") => {
+  const decide = async (id: string, action: "confirm" | "decline") => {
     const note = action === "decline" ? window.prompt("Observação para quem pediu (opcional):") ?? "" : "";
-    run(() => api.patch(`/api/expert-meetings/${id}/${action}`, { note }), action === "confirm" ? "Reunião confirmada e e-mails enviados." : "Pedido recusado e horário liberado.");
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await api.patch<{ calendar?: { googleInvite: boolean; notice: string | null } }>(`/api/expert-meetings/${id}/${action}`, { note });
+      if (action === "decline") setMsg({ tom: "ok", text: "Pedido recusado e horário liberado." });
+      else if (res.calendar?.notice) setMsg({ tom: "erro", text: res.calendar.notice });
+      else setMsg({ tom: "ok", text: res.calendar?.googleInvite ? "Reunião confirmada. O convite do Google Agenda e os e-mails foram enviados." : "Reunião confirmada e e-mails enviados." });
+      await reload(!!isManager);
+    } catch (e) {
+      setMsg({ tom: "erro", text: e instanceof ApiError ? e.message : "Erro inesperado." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connectGoogle = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { url } = await api.get<{ url: string }>(`/api/integrations/google/connect?returnTo=${encodeURIComponent(window.location.pathname)}`);
+      window.location.href = url;
+    } catch (e) {
+      setMsg({ tom: "erro", text: e instanceof ApiError ? e.message : "Erro inesperado." });
+      setBusy(false);
+    }
+  };
+
+  const downloadIcs = async (id: string) => {
+    try {
+      const blob = await api.blob(`/api/expert-meetings/${id}/calendar.ics`);
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = "reuniao-board-periscopio.ics";
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch (e) {
+      setMsg({ tom: "erro", text: e instanceof ApiError ? e.message : "Erro inesperado." });
+    }
   };
 
   if (!me) return <p className="py-16 text-center text-sm text-neutral-800">Carregando agenda...</p>;
@@ -140,15 +196,36 @@ export default function AgendaPage() {
 
       {isManager ? (
         <>
+          <Card className="flex flex-col gap-3 p-6">
+            <h2 className="text-lg font-semibold">Google Agenda e Meet</h2>
+            {google && !google.configured ? (
+              <p className="text-sm text-neutral-800">A integração com o Google ainda não foi configurada neste ambiente. Enquanto isso, as reuniões usam sala Jitsi e o convite em arquivo .ics.</p>
+            ) : google?.connected ? (
+              <>
+                <p className="text-sm text-neutral-800">Conectado. Cada confirmação cria o evento com Meet na sua agenda e o Google envia o convite a quem pediu.</p>
+                <div>
+                  <Button variant="outline" disabled={busy} onClick={() => run(() => api.delete("/api/integrations/google"), "Google desconectado.")}>Desconectar Google</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-neutral-800">Conecte sua conta do Google para que cada reunião confirmada vire um evento com Meet na sua agenda. Se a conexão expirar, basta conectar de novo.</p>
+                <div>
+                  <Button disabled={busy || !google} onClick={connectGoogle}>Conectar Google</Button>
+                </div>
+              </>
+            )}
+          </Card>
+
           <Card className="flex flex-col gap-4 p-6">
-            <h2 className="text-lg font-semibold">Sala fixa (Google Meet)</h2>
+            <h2 className="text-lg font-semibold">Sala fixa (Google Meet, opcional)</h2>
             <form onSubmit={saveMeet} className="flex flex-col gap-3 md:flex-row md:items-end">
               <div className="flex-1">
                 <Field id="meet" label="Link permanente da sala" placeholder="https://meet.google.com/abc-defg-hij" value={meetUrl} onChange={(e) => setMeetUrl(e.target.value)} required />
               </div>
               <Button type="submit" disabled={busy}>Salvar sala</Button>
             </form>
-            <p className="text-sm text-neutral-800">Crie a sala no Google Meet com sua conta e cole o link aqui. Ele é enviado em todas as confirmações.</p>
+            <p className="text-sm text-neutral-800">Se preencher, todas as reuniões usam esta sala (e o evento no Google Agenda aponta para ela). Se deixar em branco, cada reunião ganha uma sala própria.</p>
           </Card>
 
           <Card className="flex flex-col gap-4 p-6">
@@ -225,9 +302,14 @@ export default function AgendaPage() {
               </p>
               <p className="mt-2">{m.topic}</p>
               {m.status === "confirmed" && m.meetUrl && (
-                <a href={m.meetUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 font-semibold text-black underline">
-                  <Video aria-hidden className="h-4 w-4" /> Entrar na sala (Google Meet)
-                </a>
+                <div className="mt-3 flex flex-wrap items-center gap-4">
+                  <a href={m.meetUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 font-semibold text-black underline">
+                    <Video aria-hidden className="h-4 w-4" /> Entrar na sala{m.meetProvider === "jitsi" ? " (Jitsi Meet)" : m.meetProvider ? " (Google Meet)" : ""}
+                  </a>
+                  <button type="button" onClick={() => downloadIcs(m.id)} className="inline-flex items-center gap-2 font-semibold text-black underline">
+                    <CalendarPlus aria-hidden className="h-4 w-4" /> Adicionar à agenda (.ics)
+                  </button>
+                </div>
               )}
               {m.decisionNote && <p className="mt-2 text-neutral-800">Observação: {m.decisionNote}</p>}
               {isManager && m.status === "pending" && (

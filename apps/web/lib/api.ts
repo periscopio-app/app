@@ -76,6 +76,16 @@ export const api = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   /**
+   * Baixa um arquivo (ex.: convite .ics) como Blob, com o cookie de sessão. Não passa por `request()`, que sempre lê JSON.
+   */
+  blob: async (path: string): Promise<Blob> => {
+    const res = await fetch(`${BASE}${path}`, { credentials: "include" });
+    if (!res.ok) {
+      throw new ApiError(res.status, res.status === 404 ? "Arquivo não encontrado." : "Não foi possível baixar o arquivo agora. Tente de novo em instantes.");
+    }
+    return res.blob();
+  },
+  /**
    * Envia um arquivo como corpo binário (sem base64 nem JSON): bem mais leve para o servidor.
    * O nome vai em X-File-Name, codificado, para não aparecer na URL (e nos logs).
    */
