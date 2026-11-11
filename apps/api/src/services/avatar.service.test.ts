@@ -100,7 +100,7 @@ describe("Foto de perfil: validação", () => {
     assert.equal(w.ok, false);
   });
 
-  test("validarFoto recusa arquivo acima de 2 MB com 413", () => {
+  test("validarFoto recusa arquivo acima de 3 MB com 413", () => {
     const grande = Buffer.concat([jpeg(false), Buffer.alloc(AVATAR_MAX_BYTES + 10)]);
     const r = validarFoto(b64(grande));
     assert.equal(r.ok, false);

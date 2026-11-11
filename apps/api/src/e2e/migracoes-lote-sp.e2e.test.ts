@@ -52,7 +52,7 @@ describe("Migrações do lote SP (REG-015)", { skip }, () => {
     await pool.end();
   });
 
-  test("0030: foto fica no Postgres, só JPEG/PNG/WEBP até 2 MB, e some junto com o usuário", async () => {
+  test("0030: foto fica no Postgres, só JPEG/PNG/WEBP até 3 MB, e some junto com o usuário", async () => {
     await pool.query(
       "INSERT INTO user_avatars (user_id, tenant_id, content, content_type, size_bytes) VALUES ($1,$2,$3,'image/png',3)",
       [userId, tenantId, Buffer.from([1, 2, 3])]
@@ -62,7 +62,7 @@ describe("Migrações do lote SP (REG-015)", { skip }, () => {
     assert.match(lida.rows[0].key, /^[0-9a-f-]{36}$/, "chave opaca (uuid), sem nome nem e-mail");
 
     await rejeita("UPDATE user_avatars SET content_type = 'application/pdf' WHERE user_id = $1", [userId], /user_avatars_type_chk/);
-    await rejeita("UPDATE user_avatars SET size_bytes = 2097153 WHERE user_id = $1", [userId], /user_avatars_size_chk/);
+    await rejeita("UPDATE user_avatars SET size_bytes = 3145729 WHERE user_id = $1", [userId], /user_avatars_size_chk/);
     await rejeita("UPDATE user_avatars SET size_bytes = 0 WHERE user_id = $1", [userId], /user_avatars_size_chk/);
 
     const [outro] = await db.insert(shared.users).values({ tenantId, schoolId, email: "apaga@teste.local", name: "apaga", role: "ppi", accessEnabled: true }).returning();

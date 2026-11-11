@@ -203,7 +203,7 @@ describe("Meu painel (E2E)", { skip }, () => {
     const svg = await call("PUT", "/api/me/photo", "md@teste.local", { dataBase64: Buffer.from("<svg onload=alert(1)/>").toString("base64") });
     assert.equal(svg.status, 422);
     assert.equal((await call("PUT", "/api/me/photo", "md@teste.local", {})).status, 400);
-    const grande = await call("PUT", "/api/me/photo", "md@teste.local", { dataBase64: Buffer.concat([JPEG, Buffer.alloc(2 * 1024 * 1024 + 10)]).toString("base64") });
+    const grande = await call("PUT", "/api/me/photo", "md@teste.local", { dataBase64: Buffer.concat([JPEG, Buffer.alloc(3 * 1024 * 1024 + 10)]).toString("base64") });
     assert.equal(grande.status, 413);
     assert.equal(objetos.size, tamanho);
   });

@@ -156,8 +156,8 @@ export async function profileRoutes(app: FastifyInstance) {
     return montarResposta(novo!);
   });
 
-  /** Enviar ou trocar a foto (base64, até 2 MB). A foto antiga é substituída no Postgres. */
-  app.put("/api/me/photo", { bodyLimit: 4 * 1024 * 1024 }, async (request, reply) => {
+  /** Enviar ou trocar a foto (base64, até 3 MB). A foto antiga é substituída no Postgres. */
+  app.put("/api/me/photo", { bodyLimit: 5 * 1024 * 1024 }, async (request, reply) => {
     const actor = await requireActor(request, reply);
     if (!actor) return;
 
