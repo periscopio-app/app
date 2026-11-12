@@ -10,21 +10,31 @@ import { db } from "../db/client";
  */
 let ensured: Promise<void> | null = null;
 
+/**
+ * Migrações que o servidor aplica sozinho ao iniciar (todas idempotentes). As de 0028 a 0035 já foram aplicadas
+ * em produção por `pnpm db:migrate` e não precisam voltar para cá. Daqui em diante, toda migração nova (journal idx >= 36)
+ * entra nesta lista: o teste migration-journal.test.ts barra o PR que esquecer.
+ */
+export const SCHEMA_GUARD_FILES = [
+  "0015_audit_trail_vault.sql",
+  "0016_row_level_security.sql",
+  "0017_privileges_and_tea.sql",
+  "0019_pilot_symptom_measurements.sql",
+  "0021_re_fluxo_continuo_observabilidade.sql",
+  "0022_meu_painel_perfil_foto.sql",
+  "0023_formularios_do_medico.sql",
+  "0024_formularios_das_especialidades.sql",
+  "0025_tenant_demo_flag.sql",
+  "0026_reabrir_formularios_medicos_obsoletos.sql",
+  "0027_two_factor.sql",
+  "0036_foto_ate_3mb.sql",
+  "0036_gestao_so_admin_master.sql",
+  "0037_board_google_calendar.sql",
+] as const;
+
 function migrationSql(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
-  const files = [
-    "0015_audit_trail_vault.sql",
-    "0016_row_level_security.sql",
-    "0017_privileges_and_tea.sql",
-    "0019_pilot_symptom_measurements.sql",
-    "0021_re_fluxo_continuo_observabilidade.sql",
-    "0022_meu_painel_perfil_foto.sql",
-    "0023_formularios_do_medico.sql",
-    "0024_formularios_das_especialidades.sql",
-    "0025_tenant_demo_flag.sql",
-    "0026_reabrir_formularios_medicos_obsoletos.sql",
-    "0027_two_factor.sql",
-  ];
+  const files = SCHEMA_GUARD_FILES;
   const allSql: string[] = [];
 
   for (const fileName of files) {

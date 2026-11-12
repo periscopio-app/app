@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **734 casos de teste automáticos** em 106 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **739 casos de teste automáticos** em 108 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -35,7 +35,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **734 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 430
+## API — unitários — 434
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -627,6 +627,15 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **734 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/services/migration-journal.test.ts</code> — 4 · migrações do Drizzle</summary>
+
+- todo arquivo .sql está registrado no journal
+- toda entrada do journal tem o arquivo .sql
+- idx é sequencial a partir de 0 e `when` cresce (o Drizzle só aplica o que tem `when` maior que a última aplicada)
+- migração nova (idx >= 36) está no schema-guard e o arquivo existe
+
+</details>
+
 <details><summary><code>apps/api/src/services/network-error.test.ts</code> — 3 · networkErrorCode</summary>
 
 - acha o código em cause e em originalError
@@ -825,7 +834,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **734 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 262
+## API — E2E (banco de teste, fluxo pela API real) — 263
 
 <details><summary><code>apps/api/src/e2e/admin-kpis.e2e.test.ts</code> — 5 · KPIs do admin (REG-020)</summary>
 
@@ -1157,6 +1166,12 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **734 casos 
 - [REG-010] gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação
 - [REG-012] o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200
 - [REG-014] cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/schema-guard.e2e.test.ts</code> — 1 · schema-guard até a 0037</summary>
+
+- aplica 0036/0037 sem etapa ignorada e é repetível
 
 </details>
 
