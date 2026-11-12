@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **740 casos de teste automáticos** em 108 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos de teste automáticos** em 109 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
