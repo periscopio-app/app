@@ -108,7 +108,7 @@ export function SumarioFormularioI({ studentCode, birthYear, birthMonth, schoolN
               ) : null}
               {escalas?.snap4 ? (
                 <li>
-                  <strong>SNAP-IV</strong> (opcional): itens 1 a 9: {escalas.snap4.itens_1_a_9.marcados} de {escalas.snap4.itens_1_a_9.de} marcados “Bastante” ou “Demais” · itens 10 a 18: {escalas.snap4.itens_10_a_18.marcados} de {escalas.snap4.itens_10_a_18.de}
+                  <strong>SNAP-IV</strong>: itens 1 a 9: {escalas.snap4.itens_1_a_9.marcados} de {escalas.snap4.itens_1_a_9.de} marcados “Bastante” ou “Demais” · itens 10 a 18: {escalas.snap4.itens_10_a_18.marcados} de {escalas.snap4.itens_10_a_18.de}
                 </li>
               ) : null}
             </ul>

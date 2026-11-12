@@ -29,3 +29,6 @@ export { Modal, type ModalProps } from "./Modal";
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { RoleBanner } from "./RoleBanner";
 
+export { Recolhivel } from "./Recolhivel";
+export { ComentarioPopup } from "./ComentarioPopup";
+export { TamanhoTexto } from "./TamanhoTexto";

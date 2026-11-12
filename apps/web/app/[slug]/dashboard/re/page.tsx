@@ -16,15 +16,8 @@ import { CaseAttachmentsCard } from "@/components/dashboard/CaseAttachmentsCard"
 import { useCapabilities } from "@/lib/capabilities";
 import { ReJourneyPanel } from "@/components/re/ReJourneyPanel";
 
-import {
-  FileText,
-  Plus,
-  ChevronRight,
-  AlertCircle,
-  Upload,
-  ChevronDown,
-} from "lucide-react";
-import { Button } from "@/components/ui";
+import { FileText, Plus, ChevronRight, AlertCircle, Upload, ChevronDown, ShieldCheck } from "lucide-react";
+import { Button, Recolhivel, TamanhoTexto } from "@/components/ui";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -87,9 +80,7 @@ export default function REDashboardPage({
   const [grade, setGrade] = useState("");
   const [nomeCrianca, setNomeCrianca] = useState("");
   // "Cadastrar Aluno" abre ao passar o mouse e recolhe ao tirar (toque: o título abre e fecha)
-  const [cadHover, setCadHover] = useState(false);
-  const [cadFixo, setCadFixo] = useState(false);
-  const [cadFoco, setCadFoco] = useState(false);
+  const [protecaoAberta, setProtecaoAberta] = useState(true);
   const [vaultSinal, setVaultSinal] = useState(0);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
@@ -293,8 +284,11 @@ export default function REDashboardPage({
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-black">Avaliação do RE — formulários A a I</h1>
-        <p className="text-sm text-neutral-800 mt-0.5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-black">Avaliação do RE — formulários A a I</h1>
+          <TamanhoTexto />
+        </div>
+        <p className="text-base text-neutral-800 mt-0.5">
           Um formulário único, de A a I, na mesma página: preencha na ordem que preferir e o sistema avisa o que ficou em branco antes de enviar ao médico. Piloto: alunos de 4 anos a 9 anos e 11 meses.
         </p>
       </div>
@@ -305,32 +299,13 @@ export default function REDashboardPage({
         <div className="space-y-4">
 
           {/* Register student */}
-          <div
-            className="rounded-2xl bg-white border border-linha p-4 shadow-suave"
-            onMouseEnter={() => setCadHover(true)}
-            onMouseLeave={() => { setCadHover(false); setCadFixo(false); }}
-            onFocusCapture={() => setCadFoco(true)}
-            onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCadFoco(false); }}
-            data-testid="cadastro-aluno"
+          <Recolhivel
+            titulo="Cadastrar aluno (LGPD)"
+            icone={<Plus className="h-5 w-5" />}
+            abertoInicial={false}
+            memoriaKey="re:cadastro-aluno"
+            sectionProps={{ "data-testid": "cadastro-aluno" }}
           >
-            <button
-              type="button"
-              onClick={() => setCadFixo((v) => !v)}
-              aria-expanded={cadHover || cadFixo || cadFoco}
-              aria-controls="cadastro-aluno-corpo"
-              className="flex w-full items-center justify-between gap-2 text-left"
-            >
-              <h2 className="text-sm font-bold text-black flex items-center gap-2">
-                <Plus className="h-4 w-4 text-black" />
-                Cadastrar Aluno (LGPD)
-              </h2>
-              <ChevronDown className={`h-4 w-4 text-neutral-700 transition-transform ${cadHover || cadFixo || cadFoco ? "rotate-180" : ""}`} aria-hidden />
-            </button>
-            <div
-              id="cadastro-aluno-corpo"
-              className={`grid transition-all duration-200 ease-out ${cadHover || cadFixo || cadFoco ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
-            >
-              <div className="overflow-hidden">
             {studentMsg && (
               <p role="status" className={`text-xs rounded-lg px-3 py-2 mb-3 text-black border ${studentMsgOk ? "bg-[#EAF6F0] border-[#CFE8DB]" : "bg-[#FDECEA] border-erro"}`}>
                 {studentMsg}
@@ -346,7 +321,6 @@ export default function REDashboardPage({
                   onChange={(e) => setNomeCrianca(e.target.value)}
                   maxLength={160}
                   autoComplete="off"
-                  placeholder="Opcional"
                   className="w-full rounded-xl border border-linha px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40"
                   data-testid="cadastro-nome-crianca"
                 />
@@ -451,15 +425,10 @@ export default function REDashboardPage({
                 {bulkBusy ? "Importando..." : "Importar lista"}
               </Button>
             </details>
-                        </div>
-            </div>
-          </div>
+          </Recolhivel>
 
           {/* Student list */}
-          <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-            <h2 className="text-sm font-bold text-black mb-3">
-              Alunos cadastrados ({students.length})
-            </h2>
+          <Recolhivel titulo={`Alunos cadastrados (${students.length})`} memoriaKey="re:alunos">
             <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
               {students.length === 0 && (
                 <p className="text-xs text-neutral-800 text-center py-4">Nenhum aluno cadastrado.</p>
@@ -485,14 +454,10 @@ export default function REDashboardPage({
                 </div>
               ))}
             </div>
-          </div>
+          </Recolhivel>
 
           {/* Cases list */}
-          <div className="rounded-2xl bg-white border border-linha p-4 shadow-suave">
-            <h2 className="text-sm font-bold text-black mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-black" />
-              Casos ({cases.length})
-            </h2>
+          <Recolhivel titulo={`Casos (${cases.length})`} icone={<FileText className="h-5 w-5" />} memoriaKey="re:casos">
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {cases.length === 0 && (
                 <p className="text-xs text-neutral-800 text-center py-4">Nenhum caso ativo.</p>
@@ -531,7 +496,7 @@ export default function REDashboardPage({
                 );
               })}
             </div>
-          </div>
+          </Recolhivel>
         </div>
 
         {/* ── Right column: FOGAP form ─────────────────────────────────── */}
@@ -547,27 +512,14 @@ export default function REDashboardPage({
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl bg-white border border-linha shadow-suave overflow-hidden">
-
-              {/* Proteção de dados e consentimento (LGPD): caixas do mesmo tamanho, lado a lado em telas largas */}
-              <div className="p-4 sm:p-5 border-b border-linha bg-slate-50/50">
-                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-                  <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
-                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} abrirSinal={vaultSinal} />
-                </div>
-                {/* Laudos da família: RE e médico enviam e abrem (PDF); especialista nunca. A API também recusa. */}
-                {(caps.has("attachments.read") || caps.has("attachments.write")) && (
-                  <div className="mt-4"><CaseAttachmentsCard caseId={activeCase.id} /></div>
-                )}
-              </div>
-
-              {/* Avaliação do RE: formulário único A → I */}
-              <div className="p-4 sm:p-5">
+            <div className="space-y-4">
+              {/* FOGAP / avaliação do RE no topo: é o que a RE preenche, então fica primeiro e já aberto */}
+              <div>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-neutral-800">
+                  <p className="text-sm text-neutral-800">
                     Aberto em {new Date(activeCase.createdAt).toLocaleDateString("pt-BR")}
                   </p>
-                  <span className={`text-xs font-bold rounded-full px-2.5 py-1 ${JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"}`}>
+                  <span className={`text-sm font-bold rounded-full px-3 py-1 ${JOURNEY_COLORS[activeCase.journeyState] ?? "bg-linha text-neutral-800"}`}>
                     {JOURNEY_LABELS[activeCase.journeyState] ?? activeCase.journeyState}
                   </span>
                 </div>
@@ -580,8 +532,9 @@ export default function REDashboardPage({
                   professionalName={me?.name}
                   professionalRole={me?.role}
                   onVerNome={() => {
+                    setProtecaoAberta(true);
                     setVaultSinal((n) => n + 1);
-                    document.getElementById("cofre-identidade")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setTimeout(() => document.getElementById("cofre-identidade")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
                   }}
                   onStudentChanged={(a) => {
                     setStudents((prev) => prev.map((st) => (st.id === a.studentId ? { ...st, birthYear: a.birthYear, birthMonth: a.birthMonth, grade: a.grade } : st)));
@@ -594,6 +547,25 @@ export default function REDashboardPage({
                   }}
                 />
               </div>
+
+              {/* Proteção de dados e consentimento (LGPD) e laudos: apoio, abaixo do FOGAP, retrátil */}
+              <Recolhivel
+                titulo="Consentimento, cofre de identidade e laudos"
+                resumo="Proteção de dados (LGPD) deste aluno"
+                icone={<ShieldCheck className="h-5 w-5" />}
+                aberto={protecaoAberta}
+                onAbertoChange={setProtecaoAberta}
+                classNameCorpo="bg-slate-50/50"
+              >
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+                  <ConsentCard caseId={activeCase.id} studentId={activeCase.studentId} studentCode={activeCase.studentCode} />
+                  <StudentIdentityVaultCard studentId={activeCase.studentId} studentCode={activeCase.studentCode} abrirSinal={vaultSinal} />
+                </div>
+                {/* Laudos da família: RE e médico enviam e abrem (PDF); especialista nunca. A API também recusa. */}
+                {(caps.has("attachments.read") || caps.has("attachments.write")) && (
+                  <div className="mt-4"><CaseAttachmentsCard caseId={activeCase.id} /></div>
+                )}
+              </Recolhivel>
             </div>
           )}
         </div>

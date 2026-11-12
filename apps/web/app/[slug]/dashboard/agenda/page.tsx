@@ -136,7 +136,7 @@ export default function AgendaPage() {
   };
 
   const decide = async (id: string, action: "confirm" | "decline") => {
-    const note = action === "decline" ? window.prompt("Observação para quem pediu (opcional):") ?? "" : "";
+    const note = action === "decline" ? window.prompt("Observação para quem pediu:") ?? "" : "";
     setBusy(true);
     setMsg(null);
     try {
@@ -218,7 +218,7 @@ export default function AgendaPage() {
           </Card>
 
           <Card className="flex flex-col gap-4 p-6">
-            <h2 className="text-lg font-semibold">Sala fixa (Google Meet, opcional)</h2>
+            <h2 className="text-lg font-semibold">Sala fixa (Google Meet)</h2>
             <form onSubmit={saveMeet} className="flex flex-col gap-3 md:flex-row md:items-end">
               <div className="flex-1">
                 <Field id="meet" label="Link permanente da sala" placeholder="https://meet.google.com/abc-defg-hij" value={meetUrl} onChange={(e) => setMeetUrl(e.target.value)} required />
@@ -280,7 +280,7 @@ export default function AgendaPage() {
                   className="rounded-xl border-[1.5px] border-input bg-white px-4 py-3 text-base focus:border-roxo focus:outline-none focus:ring-2 focus:ring-roxo/30" />
                 <span className="text-xs text-neutral-800">{topic.length}/600</span>
               </div>
-              <Field id="code" label="Código do aluno (opcional)" placeholder="ESCO-2026-XXXX" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} maxLength={64} />
+              <Field id="code" label="Código do aluno" placeholder="ESCO-2026-XXXX" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} maxLength={64} />
               <Button type="submit" disabled={busy || !slotId}>Solicitar reunião</Button>
             </form>
           )}

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { RE_TEXTO_MAX, lerGenograma, numerosDoCampo, textoDosNumeros, valorNumeroDaCelula, type FormDef, type ReCampo, type ReOpcao } from "@periscopio/shared";
 import { GenogramaEditor } from "@/components/genograma/GenogramaEditor";
 import { GenogramaDesenho } from "@/components/genograma/GenogramaDesenho";
-import { Button } from "@/components/ui";
+import { Button, ComentarioPopup } from "@/components/ui";
 
 type Payload = Record<string, any>;
 
@@ -17,6 +17,8 @@ export interface ProfessorOpcao {
 /** Contexto do formulário que vem da escola (professores cadastrados) e de quais campos destacar como "em branco". */
 export interface ReContexto {
   professores?: ProfessorOpcao[];
+  /** Nome de quem está preenchendo (RE). No campo do professor entrevistado ele já vem escrito, em campo de texto. */
+  nomeResponsavel?: string | null;
   /** Chaves de campo (ou "campo|linha") a destacar depois que o RE tentou concluir. */
   destacar?: Set<string>;
   /** Pede uma sugestão de redação (IA com trava) para as observações, a partir do formulário atual. */
@@ -29,7 +31,7 @@ const pill = (ativo: boolean, desabilitado: boolean) =>
   } ${desabilitado ? "cursor-default opacity-80" : ""}`;
 
 const inputCls =
-  "w-full rounded-xl border border-linha bg-white px-3 py-2.5 text-sm text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800";
+  "w-full rounded-xl border border-linha bg-white px-3 py-3 text-base text-black outline-none focus:ring-2 focus:ring-roxo/40 disabled:bg-fundo disabled:text-neutral-800";
 
 const faltaCls = "rounded-xl border-l-4 border-l-erro bg-erro/5 pl-3";
 
@@ -104,24 +106,6 @@ export function OpcoesMultipla({
   );
 }
 
-function ObsCampo({ id, valor, onChange, readOnly, rotulo = "Observação (opcional)" }: { id: string; valor: string; onChange: (v: string) => void; readOnly: boolean; rotulo?: string }) {
-  return (
-    <div className="mt-2">
-      <label htmlFor={id} className="mb-1 block text-xs font-semibold text-neutral-800">{rotulo}</label>
-      <textarea
-        id={id}
-        rows={2}
-        maxLength={RE_TEXTO_MAX}
-        disabled={readOnly}
-        value={valor}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${inputCls} resize-y`}
-        placeholder="Se quiser, explique o que observou nesta pergunta."
-      />
-    </div>
-  );
-}
-
 function celulaComoLista(r: unknown): string[] {
   return Array.isArray(r) ? (r as string[]) : typeof r === "string" && r ? [r] : [];
 }
@@ -169,6 +153,63 @@ function SugestaoObservacao({ formId, value, onUsar, sugerir }: { formId: string
   );
 }
 
+/**
+ * Professor(a) entrevistado(a). Para o RE (quando o nome dele chega no contexto) é um campo de texto já escrito com o nome
+ * dele, editável. Sem isso, mantém a lista da escola quando há professores cadastrados.
+ */
+function CampoProfessor({ campo, id, rotulo, value, onChange, readOnly, ctx }: { campo: Extract<ReCampo, { tipo: "professor" }>; id: string; rotulo: React.ReactNode; value: Payload; onChange: (patch: Payload) => void; readOnly: boolean; ctx: ReContexto }) {
+  const atual = (value[campo.key] ?? {}) as { id?: string | null; nome?: string };
+  const lista = ctx.professores ?? [];
+  const nomeRe = (ctx.nomeResponsavel ?? "").trim();
+  const preencheu = useRef(false);
+
+  useEffect(() => {
+    if (preencheu.current || readOnly || !nomeRe) return;
+    preencheu.current = true;
+    if (!(atual.nome ?? "").trim()) onChange({ [campo.key]: { id: null, nome: nomeRe.slice(0, 200) } });
+  }, [readOnly, nomeRe, atual.nome, campo.key, onChange]);
+
+  if (nomeRe || lista.length === 0) {
+    return (
+      <>
+        {rotulo}
+        <input
+          id={id}
+          type="text"
+          maxLength={200}
+          disabled={readOnly}
+          autoComplete="off"
+          aria-labelledby={`${id}-l`}
+          value={atual.nome ?? ""}
+          onChange={(e) => onChange({ [campo.key]: { id: null, nome: e.target.value } })}
+          className={`${inputCls} max-w-md`}
+          placeholder="Nome do(a) professor(a)"
+        />
+      </>
+    );
+  }
+  return (
+    <>
+      {rotulo}
+      <select
+        aria-labelledby={`${id}-l`}
+        disabled={readOnly}
+        value={atual.id ?? ""}
+        onChange={(e) => {
+          const p = lista.find((x) => x.id === e.target.value);
+          onChange({ [campo.key]: p ? { id: p.id, nome: p.name } : { id: null, nome: "" } });
+        }}
+        className={`${inputCls} max-w-md`}
+      >
+        <option value="">Escolha o(a) professor(a)</option>
+        {lista.map((p) => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+    </>
+  );
+}
+
 function CampoView({
   campo,
   formId,
@@ -192,10 +233,19 @@ function CampoView({
       {falta && <p className="mt-1 text-xs font-semibold text-erro">Em branco</p>}
     </div>
   );
+  const chaveObs = `${campo.key}__obs`;
+  const comentario =
+    (campo.tipo === "unica" || campo.tipo === "multipla") && campo.comObs ? (
+      <ComentarioPopup sobre={campo.label} valor={String(value[chaveObs] ?? "")} onChange={(v) => onChange({ [chaveObs]: v })} readOnly={readOnly} maxLength={RE_TEXTO_MAX} />
+    ) : null;
+  const ajuda = campo.tipo === "professor" && (ctx.nomeResponsavel ?? "").trim() ? "Já vem escrito com o seu nome. Se foi outra pessoa, corrija." : campo.ajuda;
   const rotulo = (
-    <div className="mb-1.5">
-      <p id={`${id}-l`} className="text-sm font-semibold text-black">{campo.label}</p>
-      {campo.ajuda && <p className="text-xs text-neutral-700">{campo.ajuda}</p>}
+    <div className="mb-2 flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+      <div className="min-w-0 flex-1">
+        <p id={`${id}-l`} className="text-base font-semibold text-black">{campo.label}</p>
+        {ajuda && <p className="text-sm text-neutral-800">{ajuda}</p>}
+      </div>
+      {comentario}
     </div>
   );
 
@@ -203,8 +253,8 @@ function CampoView({
     const ehData = /(^|_)data_/.test(campo.key);
     return wrap(
       <>
-        <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-black">{campo.label}</label>
-        {campo.ajuda && <p className="-mt-1 mb-1.5 text-xs text-neutral-700">{campo.ajuda}</p>}
+        <label htmlFor={id} className="mb-1.5 block text-base font-semibold text-black">{campo.label}</label>
+        {campo.ajuda && <p className="-mt-1 mb-1.5 text-sm text-neutral-800">{campo.ajuda}</p>}
         <input
           id={id}
           type={ehData ? "date" : "text"}
@@ -221,8 +271,8 @@ function CampoView({
   if (campo.tipo === "texto_longo") {
     return wrap(
       <>
-        <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-black">{campo.label}</label>
-        {campo.ajuda && <p className="-mt-1 mb-1.5 text-xs text-neutral-700">{campo.ajuda}</p>}
+        <label htmlFor={id} className="mb-1.5 block text-base font-semibold text-black">{campo.label}</label>
+        {campo.ajuda && <p className="-mt-1 mb-1.5 text-sm text-neutral-800">{campo.ajuda}</p>}
         <textarea id={id} rows={3} maxLength={RE_TEXTO_MAX} disabled={readOnly} value={value[campo.key] ?? ""} onChange={(e) => onChange({ [campo.key]: e.target.value })} className={`${inputCls} resize-y`} />
         {campo.key === "observacoes" && !readOnly && ctx.sugerirObservacoes && (
           <SugestaoObservacao formId={formId} value={value} sugerir={ctx.sugerirObservacoes} onUsar={(texto) => onChange({ [campo.key]: texto.slice(0, RE_TEXTO_MAX) })} />
@@ -236,54 +286,14 @@ function CampoView({
     return wrap(
       <>
         <p className="mb-1.5 text-sm font-semibold text-black">{campo.label}</p>
-        {campo.ajuda && <p className="-mt-1 mb-1.5 text-xs text-neutral-700">{campo.ajuda}</p>}
+        {campo.ajuda && <p className="-mt-1 mb-1.5 text-sm text-neutral-800">{campo.ajuda}</p>}
         <GenogramaEditor idBase={id} value={typeof bruto === "string" ? bruto : ""} onChange={(texto) => onChange({ [campo.key]: texto })} disabled={readOnly} />
       </>
     );
   }
 
   if (campo.tipo === "professor") {
-    const atual = (value[campo.key] ?? {}) as { id?: string | null; nome?: string };
-    const lista = ctx.professores ?? [];
-    return wrap(
-      <>
-        {rotulo}
-        {lista.length > 0 ? (
-          <>
-            <select
-              aria-labelledby={`${id}-l`}
-              disabled={readOnly}
-              value={atual.id ?? ""}
-              onChange={(e) => {
-                const p = lista.find((x) => x.id === e.target.value);
-                onChange({ [campo.key]: p ? { id: p.id, nome: p.name } : { id: null, nome: "" } });
-              }}
-              className={`${inputCls} max-w-md`}
-            >
-              <option value="">Escolha o(a) professor(a)</option>
-              {lista.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-neutral-700">Lista de professores cadastrados nesta escola. Quando há um só, ele já vem escolhido.</p>
-          </>
-        ) : (
-          <>
-            <input
-              id={id}
-              type="text"
-              maxLength={200}
-              disabled={readOnly}
-              value={atual.nome ?? ""}
-              onChange={(e) => onChange({ [campo.key]: { nome: e.target.value } })}
-              className={`${inputCls} max-w-md`}
-              placeholder="Nome do(a) professor(a)"
-            />
-            <p className="mt-1 text-xs text-neutral-700">Nenhum professor cadastrado nesta escola ainda. Digite só o nome do(a) professor(a) entrevistado(a).</p>
-          </>
-        )}
-      </>
-    );
+    return wrap(<CampoProfessor campo={campo} id={id} rotulo={rotulo} value={value} onChange={onChange} readOnly={readOnly} ctx={ctx} />);
   }
 
   if (campo.tipo === "unica") {
@@ -299,7 +309,6 @@ function CampoView({
             <input id={`${id}-t`} type="text" maxLength={RE_TEXTO_MAX} disabled={readOnly} value={value[`${campo.key}__texto`] ?? ""} onChange={(e) => onChange({ [`${campo.key}__texto`]: e.target.value })} className={inputCls} />
           </div>
         )}
-        {campo.comObs && <ObsCampo id={`${id}-obs`} valor={value[`${campo.key}__obs`] ?? ""} onChange={(v) => onChange({ [`${campo.key}__obs`]: v })} readOnly={readOnly} />}
       </>
     );
   }
@@ -316,7 +325,6 @@ function CampoView({
             <input id={`${id}-o`} type="text" maxLength={RE_TEXTO_MAX} disabled={readOnly} value={value[`${campo.key}__outros`] ?? ""} onChange={(e) => onChange({ [`${campo.key}__outros`]: e.target.value })} className={inputCls} />
           </div>
         )}
-        {campo.comObs && <ObsCampo id={`${id}-obs`} valor={value[`${campo.key}__obs`] ?? ""} onChange={(v) => onChange({ [`${campo.key}__obs`]: v })} readOnly={readOnly} />}
       </>
     );
   }
@@ -368,7 +376,12 @@ function CampoView({
           const faltaLinha = ctx.destacar?.has(`${campo.key}|${l.key}`) ?? false;
           return (
             <li key={l.key} data-campo={`${formId}:${campo.key}|${l.key}`} className={`scroll-mt-28 space-y-2 px-3 py-3 ${faltaLinha ? "border-l-4 border-l-erro bg-erro/5" : ""}`}>
-              <p className="text-sm text-black">{l.label}</p>
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+                <p className="min-w-0 flex-1 text-base text-black">{l.label}</p>
+                {campo.comObs && (
+                  <ComentarioPopup sobre={l.label} valor={cel.obs ?? ""} onChange={(v) => setLinha(l.key, { obs: v })} readOnly={readOnly} maxLength={RE_TEXTO_MAX} />
+                )}
+              </div>
               {l.info && l.info.length > 0 && (
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-neutral-700 sm:grid-cols-[auto_1fr]">
                   {l.info.map((i) => (
@@ -388,18 +401,6 @@ function CampoView({
                 )}
               </div>
               {!campo.numerosAntes && camposNumericos(l, cel)}
-              {campo.comObs && (
-                <input
-                  type="text"
-                  aria-label={`Observação: ${l.label}`}
-                  placeholder="Observação (opcional)"
-                  maxLength={RE_TEXTO_MAX}
-                  disabled={readOnly}
-                  value={cel.obs ?? ""}
-                  onChange={(e) => setLinha(l.key, { obs: e.target.value })}
-                  className={inputCls}
-                />
-              )}
               {faltaLinha && <p className="text-xs font-semibold text-erro">Em branco</p>}
             </li>
           );

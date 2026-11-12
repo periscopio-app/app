@@ -602,7 +602,7 @@ export default function AdminPrivilegesPage() {
                 </li>
               ))}
             </ul>
-            <label htmlFor="why" className="mt-4 block text-xs font-semibold">Motivo (opcional, vai para a auditoria)</label>
+            <label htmlFor="why" className="mt-4 block text-xs font-semibold">Motivo (vai para a auditoria)</label>
             <input
               id="why"
               value={reason}
