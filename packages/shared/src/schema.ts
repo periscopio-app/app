@@ -280,6 +280,9 @@ export const onboardingInvites = pgTable("onboarding_invites", {
   label: varchar("label", { length: 120 }), // para quem o admin gerou o link (só controle interno)
   role: varchar("role", { length: 40 }),
   specialty: varchar("specialty", { length: 50 }),
+  // Link coletivo (professional_self): quantos cadastros o link aceita e quantos já fez. used_at marca o esgotamento.
+  maxUses: integer("max_uses").notNull().default(1),
+  usesCount: integer("uses_count").notNull().default(0),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

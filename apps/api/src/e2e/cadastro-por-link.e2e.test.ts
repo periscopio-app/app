@@ -323,4 +323,87 @@ describe("[REG-029/030] cadastro por link e envio de acesso (E2E)", { skip }, ()
     assert.equal((await call("POST", `/api/admin/users/${u.id}/send-access`, "medico@teste.local")).status, 403);
     assert.equal((await call("POST", "/api/admin/users/00000000-0000-0000-0000-0000000000aa/send-access", MASTER)).status, 404);
   });
+
+  // ───────────── link coletivo (grupo de WhatsApp) — [REG-031] ─────────────
+
+  test("[REG-031a] link coletivo: validações de criação (limite, sem e-mail fixo, especialidade em aberto só para especialista)", async () => {
+    const ruins: Record<string, unknown>[] = [
+      { maxUses: 0 },
+      { maxUses: 201 },
+      { maxUses: 10, email: "fixo@gmail.test" }, // e-mail fixo só no unitário
+      { maxUses: 10, specialty: "psicologia", chooseSpecialty: true }, // fixa OU em aberto
+      { maxUses: 10, role: "md1", specialty: undefined, chooseSpecialty: true }, // só especialista escolhe
+    ];
+    for (const extra of ruins) {
+      const r = await call("POST", "/api/admin/registration-links", MASTER, { tenantId: tA.id, role: "specialist", specialty: "fonoaudiologia", ...extra });
+      assert.equal(r.status, 400, JSON.stringify(extra));
+    }
+    const ok = await call("POST", "/api/admin/registration-links", MASTER, { tenantId: tA.id, role: "specialist", chooseSpecialty: true, maxUses: 40, label: "Grupo do piloto" });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.maxUses, 40);
+  });
+
+  test("[REG-031b] um link, várias pessoas: cada uma cria o próprio cadastro e escolhe a própria especialidade; o teto de usos vale", async () => {
+    (await import("../security/rate-limit")).resetRateLimits(); // os testes anteriores já gastaram o limite por IP
+    const r = await call("POST", "/api/admin/registration-links", MASTER, { tenantId: tA.id, role: "specialist", chooseSpecialty: true, maxUses: 3, label: "Grupo do zap" });
+    const token = tokenDoLink(r.body.url);
+
+    const publico = await call("GET", `/api/onboarding/registration-link?token=${token}`);
+    assert.equal(publico.status, 200);
+    assert.equal(publico.body.chooseSpecialty, true);
+    assert.ok(publico.body.specialtyOptions.includes("psicologia"));
+    assert.ok(!publico.body.specialtyOptions.includes("medicina"), "médico não se cadastra por escolha de especialidade");
+
+    // sem especialidade escolhida, ou com uma que não pode, não passa — e a vaga não é gasta
+    assert.equal((await cadastro(token, { email: "g1@gmail.test" })).status, 400);
+    assert.equal((await cadastro(token, { email: "g1@gmail.test", specialty: "medicina" })).status, 400);
+
+    assert.equal((await cadastro(token, { email: "g1@gmail.test", specialty: "psicologia" })).status, 200);
+    assert.equal((await cadastro(token, { email: "g2@gmail.test", specialty: "servico_social" })).status, 200);
+    assert.equal((await usuario("g1@gmail.test")).specialty, "psicologia");
+    assert.equal((await usuario("g2@gmail.test")).specialty, "servico_social");
+    assert.equal((await usuario("g2@gmail.test")).tenantId, tA.id);
+
+    let item = (await call("GET", "/api/admin/registration-links", MASTER)).body.links.find((l: any) => l.id === r.body.id);
+    assert.deepEqual([item.status, item.usesCount, item.maxUses], ["pending", 2, 3], "ainda tem vaga: segue aberto");
+    assert.ok(item.url);
+
+    assert.equal((await cadastro(token, { email: "g3@gmail.test", specialty: "fonoaudiologia" })).status, 200);
+    const cheio = await cadastro(token, { email: "g4@gmail.test", specialty: "fonoaudiologia" });
+    assert.equal(cheio.status, 400);
+    assert.match(cheio.body.error, /limite de cadastros/);
+    assert.equal(await usuario("g4@gmail.test"), undefined);
+
+    item = (await call("GET", "/api/admin/registration-links", MASTER)).body.links.find((l: any) => l.id === r.body.id);
+    assert.deepEqual([item.status, item.usesCount, item.url], ["used", 3, null], "esgotado");
+  });
+
+  test("[REG-031c] muita gente de uma vez no mesmo link: nunca passa do teto", async () => {
+    (await import("../security/rate-limit")).resetRateLimits(); // os testes anteriores já gastaram o limite por IP
+    const r = await call("POST", "/api/admin/registration-links", MASTER, { tenantId: tA.id, role: "specialist", specialty: "psicologia", maxUses: 2 });
+    const token = tokenDoLink(r.body.url);
+    const resp = await Promise.all([1, 2, 3, 4, 5].map((n) => cadastro(token, { email: `corrida${n}@grupo.test` })));
+    assert.equal(resp.filter((x) => x.status === 200).length, 2, JSON.stringify(resp.map((x) => x.status)));
+    const item = (await call("GET", "/api/admin/registration-links", MASTER)).body.links.find((l: any) => l.id === r.body.id);
+    assert.equal(item.usesCount, 2);
+  });
+
+  test("[REG-031d] falha ao criar a conta devolve a vaga; e-mail que já existe não gasta vaga; revogar fecha o link para os próximos", async () => {
+    (await import("../security/rate-limit")).resetRateLimits(); // os testes anteriores já gastaram o limite por IP
+    const r = await call("POST", "/api/admin/registration-links", MASTER, { tenantId: tA.id, role: "specialist", specialty: "psicologia", maxUses: 5 });
+    const token = tokenDoLink(r.body.url);
+    const usos = async () => (await call("GET", "/api/admin/registration-links", MASTER)).body.links.find((l: any) => l.id === r.body.id).usesCount;
+
+    assert.equal((await cadastro(token, { email: "fono@gmail.test" })).status, 409, "e-mail já cadastrado");
+    assert.equal(await usos(), 0, "recusa não gasta vaga");
+
+    assert.equal((await cadastro(token, { email: "h1@gmail.test" })).status, 200);
+    assert.equal(await usos(), 1);
+
+    assert.equal((await call("POST", `/api/admin/registration-links/${r.body.id}/revoke`, MASTER)).status, 200, "revoga mesmo com uso parcial");
+    const depois = await cadastro(token, { email: "h2@gmail.test" });
+    assert.equal(depois.status, 400);
+    assert.equal(await usuario("h2@gmail.test"), undefined);
+    assert.ok(await usuario("h1@gmail.test"), "quem já se cadastrou continua com a conta");
+  });
 });

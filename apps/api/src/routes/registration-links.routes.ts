@@ -11,18 +11,26 @@ import { upsertCredential } from "../auth/credentials";
 import { incr } from "../observability/metrics";
 
 /**
- * Link de cadastro unitário: o administrador gera um link por profissional, envia por onde quiser (WhatsApp, e-mail
- * pessoal) e a pessoa abre, informa o próprio e-mail (qualquer domínio) e cria a senha. Cada link vale para UM cadastro
- * e já define instância (tenant), perfil e especialidade, então a pessoa não escolhe nada disso.
+ * Link de cadastro: o administrador gera o link, envia por onde quiser (WhatsApp, e-mail pessoal) e a pessoa abre,
+ * informa o próprio e-mail (qualquer domínio) e cria a senha. O link já define instância (tenant) e perfil.
+ *
+ * Dois usos: unitário (maxUses = 1, um link por pessoa) e coletivo (maxUses > 1, um link para o grupo de WhatsApp;
+ * cada pessoa faz o próprio cadastro e, se o administrador deixou em aberto, escolhe a própria especialidade).
  *
  * Segurança: quem tem o link pode cadastrar um e-mail de sua escolha, então o link é segredo (32 bytes aleatórios),
- * vale para um uso e expira. Um e-mail que já tem conta é recusado: o link nunca redefine a senha de outra pessoa.
+ * tem teto de usos e expira; o administrador revoga a qualquer momento. O link coletivo não aceita e-mail fixo.
+ * Um e-mail que já tem conta é recusado: o link nunca redefine a senha de outra pessoa.
  */
 const TYPE = "professional_self";
 const ROLES_BY_LINK = ["specialist", "md1", "ppi"] as const;
 type LinkRole = (typeof ROLES_BY_LINK)[number];
 const EXPIRY_DAYS_DEFAULT = 7;
 const EXPIRY_DAYS_MAX = 30;
+const MAX_USES_LIMIT = 200;
+/** Por IP. Folgado de propósito: o grupo de um mesmo local (escola, consultório) costuma sair pelo mesmo IP; o teto de usos do link já limita o abuso. */
+const REGISTER_LIMIT_PER_HOUR = 60;
+/** Especialidades que a pessoa pode escolher sozinha no link coletivo (médico tem perfil próprio). */
+const CHOOSABLE_SPECIALTIES: string[] = ALLOWED_SPECIALTIES.filter((s) => s !== "medicina");
 
 const createSchema = z.object({
   tenantId: z.string().uuid("Escolha a instância (município)."),
@@ -32,6 +40,10 @@ const createSchema = z.object({
   label: z.string().trim().max(120).optional(),
   email: z.string().trim().toLowerCase().email().max(255).optional(),
   expiresInDays: z.number().int().min(1).max(EXPIRY_DAYS_MAX).optional(),
+  /** Quantas pessoas o link cadastra. 1 = unitário (padrão); acima disso é um link coletivo. */
+  maxUses: z.number().int().min(1).max(MAX_USES_LIMIT, `O limite é de ${MAX_USES_LIMIT} cadastros por link.`).optional(),
+  /** Especialista sem especialidade fixa: cada pessoa escolhe a sua ao se cadastrar. */
+  chooseSpecialty: z.boolean().optional(),
 });
 
 const registerSchema = z.object({
@@ -41,6 +53,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "A senha deve ter entre 8 e 128 caracteres.").max(128, "A senha deve ter entre 8 e 128 caracteres."),
   phone: z.string().trim().max(30).optional(),
   classCode: z.string().trim().max(50).optional(),
+  specialty: z.enum(ALLOWED_SPECIALTIES).optional(),
   acceptedTerms: z.literal(true, { error: "Aceite os termos de uso e a política de privacidade para continuar." }),
 });
 
@@ -53,9 +66,13 @@ function linkUrl(token: string): string {
 }
 
 /** O médico é sempre a especialidade "medicina"; o RE (ppi) não tem especialidade clínica. */
-function resolveSpecialty(role: LinkRole, specialty: string | undefined): { ok: true; specialty: string | null } | { ok: false; error: string } {
+function resolveSpecialty(role: LinkRole, specialty: string | undefined, chooseSpecialty = false): { ok: true; specialty: string | null } | { ok: false; error: string } {
   if (role === "md1") return { ok: true, specialty: "medicina" };
   if (role === "ppi") return { ok: true, specialty: null };
+  if (chooseSpecialty) {
+    if (specialty) return { ok: false, error: "Escolha uma especialidade fixa ou deixe cada pessoa escolher a sua, não os dois." };
+    return { ok: true, specialty: null };
+  }
   if (!specialty) return { ok: false, error: "Escolha a especialidade do profissional." };
   if (specialty === "medicina") return { ok: false, error: "Médico usa o perfil Médico (md1), não o de especialista." };
   return { ok: true, specialty };
@@ -72,6 +89,9 @@ async function emailAlreadyHasAccount(email: string): Promise<boolean> {
 
 type InviteState = "valid" | "used" | "expired" | "missing";
 
+/** Link que cada pessoa preenche a própria especialidade (especialista sem especialidade fixa). */
+const asksSpecialty = (invite: { role: string | null; specialty: string | null }) => invite.role === "specialist" && !invite.specialty;
+
 async function findLink(token: string) {
   const [invite] = await db
     .select()
@@ -86,7 +106,7 @@ async function findLink(token: string) {
 
 const STATE_MESSAGE: Record<Exclude<InviteState, "valid">, string> = {
   missing: "Link de cadastro não encontrado. Confira se copiou o endereço inteiro.",
-  used: "Este link já foi utilizado. Se você já se cadastrou, entre com o seu e-mail e senha.",
+  used: "Este link já foi utilizado ou atingiu o limite de cadastros. Se você já se cadastrou, entre com o seu e-mail e senha; senão, peça um novo link.",
   expired: "Este link expirou. Peça um novo a quem o enviou.",
 };
 
@@ -103,7 +123,17 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
     }
     const body = parsed.data;
 
-    const spec = resolveSpecialty(body.role, body.specialty);
+    const maxUses = body.maxUses ?? 1;
+    if (maxUses > 1 && body.email) {
+      reply.status(400);
+      return { error: "Link coletivo não aceita e-mail fixo: cada pessoa informa o próprio." };
+    }
+    if (body.chooseSpecialty && body.role !== "specialist") {
+      reply.status(400);
+      return { error: "Só o especialista pode escolher a própria especialidade." };
+    }
+
+    const spec = resolveSpecialty(body.role, body.specialty, body.chooseSpecialty);
     if (!spec.ok) {
       reply.status(400);
       return { error: spec.error };
@@ -145,20 +175,21 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
         role: body.role,
         specialty: spec.specialty,
         label: body.label || null,
+        maxUses,
         expiresAt,
       })
       .returning();
 
     await recordAudit(
-      { tenantId: tenant.id, userId: actor.id, userEmail: actor.email, action: "registration_link:created", entityType: "onboarding_invites", entityId: invite.id, payload: { role: body.role, specialty: spec.specialty, schoolId: body.schoolId ?? null, expiresAt: expiresAt.toISOString() } },
+      { tenantId: tenant.id, userId: actor.id, userEmail: actor.email, action: "registration_link:created", entityType: "onboarding_invites", entityId: invite.id, payload: { role: body.role, specialty: spec.specialty, chooseSpecialty: body.chooseSpecialty ?? false, maxUses, schoolId: body.schoolId ?? null, expiresAt: expiresAt.toISOString() } },
       request,
     );
     incr("registration_links_created");
 
-    return { id: invite.id, url: linkUrl(token), expiresAt, tenantName: tenant.name };
+    return { id: invite.id, url: linkUrl(token), expiresAt, maxUses, tenantName: tenant.name };
   });
 
-  /** Lista os links (os pendentes trazem o endereço para copiar de novo). */
+  /** Lista os links (os com vagas trazem o endereço para copiar de novo). */
   app.get("/api/admin/registration-links", async (request, reply) => {
     const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
@@ -173,6 +204,8 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
         email: onboardingInvites.email,
         expiresAt: onboardingInvites.expiresAt,
         usedAt: onboardingInvites.usedAt,
+        maxUses: onboardingInvites.maxUses,
+        usesCount: onboardingInvites.usesCount,
         createdAt: onboardingInvites.createdAt,
         tenantName: tenants.name,
         schoolName: schools.name,
@@ -193,7 +226,7 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
     };
   });
 
-  /** Revoga um link ainda não usado (expira na hora; o registro fica para o histórico). */
+  /** Revoga um link que ainda tem vagas (expira na hora; quem já se cadastrou continua com a conta; o registro fica no histórico). */
   app.post("/api/admin/registration-links/:id/revoke", async (request, reply) => {
     const actor = await requireCapability(request, reply, "users.manage");
     if (!actor) return;
@@ -240,6 +273,8 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
       valid: true,
       role: invite.role,
       specialty: invite.specialty,
+      chooseSpecialty: asksSpecialty(invite),
+      specialtyOptions: asksSpecialty(invite) ? CHOOSABLE_SPECIALTIES : undefined,
       tenantName: tenant?.name ?? null,
       schoolName: school?.name ?? null,
       email: invite.email, // se o administrador fixou o e-mail, a tela o mostra travado
@@ -249,7 +284,7 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
 
   /** Público: a pessoa se cadastra com o link. */
   app.post("/api/onboarding/register", async (request, reply) => {
-    if (rejectIfLimited(request, reply, "registration_link_register", 20, 60 * 60 * 1000)) return;
+    if (rejectIfLimited(request, reply, "registration_link_register", REGISTER_LIMIT_PER_HOUR, 60 * 60 * 1000)) return;
 
     const parsed = registerSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
@@ -268,6 +303,14 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
       reply.status(400);
       return { error: "Este link foi gerado para outro e-mail. Use o e-mail indicado ou peça um novo link." };
     }
+    let specialty = invite.specialty;
+    if (asksSpecialty(invite)) {
+      if (!body.specialty || !CHOOSABLE_SPECIALTIES.includes(body.specialty)) {
+        reply.status(400);
+        return { error: "Escolha a sua especialidade." };
+      }
+      specialty = body.specialty;
+    }
     if ((invite.role === "specialist" || invite.role === "md1") && !body.classCode) {
       reply.status(400);
       return { error: "Informe o registro no conselho de classe (CRM, CRP, CREFONO...)." };
@@ -278,11 +321,22 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
       return { error: "Este e-mail já tem cadastro. Entre pela tela de login ou use “Primeiro acesso / esqueci a senha”." };
     }
 
-    // Reserva o link antes de criar a conta: duas pessoas abrindo o mesmo link ao mesmo tempo, só uma passa.
+    // Reserva uma vaga antes de criar a conta: com o link no grupo, várias pessoas chegam juntas e o teto de usos vale
+    // mesmo assim (a vaga é tomada por um UPDATE atômico). A última vaga marca o link como esgotado (used_at).
     const [claimed] = await db
       .update(onboardingInvites)
-      .set({ usedAt: new Date() })
-      .where(and(eq(onboardingInvites.id, invite.id), isNull(onboardingInvites.usedAt), gt(onboardingInvites.expiresAt, new Date())))
+      .set({
+        usesCount: sql`${onboardingInvites.usesCount} + 1`,
+        usedAt: sql`CASE WHEN ${onboardingInvites.usesCount} + 1 >= ${onboardingInvites.maxUses} THEN now() ELSE ${onboardingInvites.usedAt} END`,
+      })
+      .where(
+        and(
+          eq(onboardingInvites.id, invite.id),
+          isNull(onboardingInvites.usedAt),
+          sql`${onboardingInvites.usesCount} < ${onboardingInvites.maxUses}`,
+          gt(onboardingInvites.expiresAt, new Date()),
+        ),
+      )
       .returning();
     if (!claimed) {
       reply.status(400);
@@ -300,7 +354,7 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
           email: body.email,
           phone: body.phone || null,
           classCode: body.classCode || null,
-          specialty: invite.specialty,
+          specialty,
           role: invite.role ?? "specialist",
           accessEnabled: true, // o administrador entregou o link a esta pessoa
         })
@@ -310,7 +364,7 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
       await upsertCredential({ email: body.email, name: body.name, password: body.password });
 
       await recordAudit(
-        { tenantId: invite.tenantId, userId: created.id, userEmail: body.email, action: "registration_link:used", entityType: "users", entityId: created.id, payload: { inviteId: invite.id, role: created.role, specialty: created.specialty, acceptedTerms: true } },
+        { tenantId: invite.tenantId, userId: created.id, userEmail: body.email, action: "registration_link:used", entityType: "users", entityId: created.id, payload: { inviteId: invite.id, collective: invite.maxUses > 1, role: created.role, specialty: created.specialty, acceptedTerms: true } },
         request,
       );
       incr("registration_links_used");
@@ -319,7 +373,11 @@ export async function registrationLinkRoutes(app: FastifyInstance) {
       // Desfaz o que ficou pela metade e devolve o link, para a pessoa poder tentar de novo.
       request.log.error({ err }, "falha ao concluir o cadastro por link");
       if (createdUserId) await db.delete(users).where(eq(users.id, createdUserId)).catch(() => undefined);
-      await db.update(onboardingInvites).set({ usedAt: null }).where(eq(onboardingInvites.id, invite.id)).catch(() => undefined);
+      await db
+        .update(onboardingInvites)
+        .set({ usesCount: sql`GREATEST(${onboardingInvites.usesCount} - 1, 0)`, usedAt: null })
+        .where(eq(onboardingInvites.id, invite.id))
+        .catch(() => undefined);
       reply.status(500);
       return { error: "Não foi possível concluir o cadastro agora. Nada foi salvo; tente de novo em instantes." };
     }
