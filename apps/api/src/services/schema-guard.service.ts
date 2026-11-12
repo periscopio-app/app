@@ -13,7 +13,10 @@ let ensured: Promise<void> | null = null;
 /**
  * Migrações que o servidor aplica sozinho ao iniciar (todas idempotentes). As de 0028 a 0035 já foram aplicadas
  * em produção por `pnpm db:migrate` e não precisam voltar para cá. Daqui em diante, toda migração nova (journal idx >= 36)
- * entra nesta lista: o teste migration-journal.test.ts barra o PR que esquecer.
+ * que só mexe em ESTRUTURA entra nesta lista: o teste migration-journal.test.ts barra o PR que esquecer.
+ *
+ * Migração que mexe em DADOS (DELETE/UPDATE/INSERT) NÃO entra aqui: esta lista roda a CADA boot e desfaria, a cada
+ * reinício, o que o Administrador Master decidiu depois (ver MIGRACOES_DE_DADOS_FORA_DO_GUARD e REG-023).
  */
 export const SCHEMA_GUARD_FILES = [
   "0015_audit_trail_vault.sql",
@@ -28,9 +31,14 @@ export const SCHEMA_GUARD_FILES = [
   "0026_reabrir_formularios_medicos_obsoletos.sql",
   "0027_two_factor.sql",
   "0036_foto_ate_3mb.sql",
-  "0036_gestao_so_admin_master.sql",
   "0037_board_google_calendar.sql",
 ] as const;
+
+/**
+ * Migrações de dados do journal (idx >= 36) que NÃO rodam no boot. Rodam uma vez, por `pnpm db:migrate`.
+ * 0036_gestao_so_admin_master: apaga permissões antigas de BI/indicadores/mapa; já aplicada em produção (nada a apagar em 12/11/2026).
+ */
+export const MIGRACOES_DE_DADOS_FORA_DO_GUARD = ["0036_gestao_so_admin_master"] as const;
 
 function migrationSql(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
