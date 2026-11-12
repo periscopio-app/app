@@ -455,6 +455,8 @@ export const expertMeetingRequests = pgTable("expert_meeting_requests", {
   studentCode: varchar("student_code", { length: 64 }),
   status: varchar("status", { length: 20 }).default("pending").notNull(), // pending | confirmed | declined | cancelled
   meetUrl: text("meet_url"), // preenchido na confirmação
+  meetProvider: varchar("meet_provider", { length: 20 }), // google | fixed | jitsi (null = reuniões antigas)
+  googleEventId: text("google_event_id"), // evento criado na agenda da Dra., quando houve
   decisionNote: text("decision_note"),
   decidedBy: uuid("decided_by").references(() => users.id),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
@@ -464,6 +466,20 @@ export const expertMeetingRequests = pgTable("expert_meeting_requests", {
     .on(t.slotId)
     .where(sql`${t.status} in ('pending','confirmed')`),
 ]);
+
+
+/**
+ * Conexão do Google Agenda/Meet da coordenação do Board (uma por tenant). O refresh token fica cifrado
+ * (AES-256-GCM, chave GOOGLE_TOKEN_ENC_KEY); nunca é devolvido por nenhuma rota.
+ */
+export const googleCalendarConnections = pgTable("google_calendar_connections", {
+  tenantId: uuid("tenant_id").primaryKey().references(() => tenants.id),
+  connectedBy: uuid("connected_by").references(() => users.id), // null quando quem conectou é o Admin Master virtual
+  refreshTokenEnc: text("refresh_token_enc").notNull(),
+  scope: text("scope"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 
 /** Agregados populacionais por escola (ex.: base do Tarumã). Nunca contém dado individual. */

@@ -1,5 +1,5 @@
 /**
- * REG-015 — migrações 0030 a 0035 (lote "mudancas_demo_sp_presencial").
+ * REG-015 — migrações 0030 a 0036 (lote "mudancas_demo_sp_presencial").
  * Confere o que o BANCO garante, sem depender de rota: foto no Postgres, etiquetas únicas, devolução somente inserção
  * com justificativa de 100 a 150 caracteres, volumetria agregada, a ATA aceita como etapa opcional e o RE sem itens de gestão.
  * Dados sintéticos. Requer TEST_DATABASE_URL (Postgres local de teste).
@@ -121,6 +121,22 @@ describe("Migrações do lote SP (REG-015)", { skip }, () => {
     await pool.query(sql34); // idempotente
     const resta = (await pool.query("SELECT role, capability, allowed FROM privilege_role_grants WHERE scope_tenant_id = $1 ORDER BY role, capability", [zero])).rows.map((r) => `${r.role}:${r.capability}:${r.allowed}`);
     assert.deepEqual(resta, ["md1:bi.view:true", "ppi:board.request:true", "ppi:fogap.fill:true", "re:bi.view:false"]);
+  });
+
+  test("0036: gestão (indicadores, BI, mapa) só com o Administrador Master por padrão; exceções de outros perfis saem, as do admin e as de bloqueio ficam", async () => {
+    const sql36 = (await import("node:fs")).readFileSync(new URL("../../drizzle/0036_gestao_so_admin_master.sql", import.meta.url), "utf8");
+    const zero = "00000000-0000-0000-0000-000000000000";
+    await pool.query("DELETE FROM privilege_role_grants WHERE scope_tenant_id = $1", [zero]);
+    await pool.query(
+      `INSERT INTO privilege_role_grants (scope_tenant_id, role, capability, allowed) VALUES
+        ($1,'md1','bi.view',true), ($1,'school_manager','population.view',true), ($1,'board','pilot.indicators.view',true),
+        ($1,'admin_platform','bi.view',true), ($1,'md1','board.request',true), ($1,'md1','population.view',false)`,
+      [zero]
+    );
+    await pool.query(sql36);
+    await pool.query(sql36); // idempotente
+    const resta = (await pool.query("SELECT role, capability, allowed FROM privilege_role_grants WHERE scope_tenant_id = $1 ORDER BY role, capability", [zero])).rows.map((r) => `${r.role}:${r.capability}:${r.allowed}`);
+    assert.deepEqual(resta, ["admin_platform:bi.view:true", "md1:board.request:true", "md1:population.view:false"]);
   });
 
   test("0035: a ATA (passo h) pode ser pulada e retomada; passo desconhecido continua recusado; trilha é somente inserção", async () => {

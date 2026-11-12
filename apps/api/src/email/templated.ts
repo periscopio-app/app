@@ -29,11 +29,18 @@ export function templateId(alias: TemplateAlias): string {
 
 export type TemplatedEmailResult = { ok: true; id?: string } | { ok: false; error: string };
 
-/** Nunca lança: falha de e-mail não pode derrubar o agendamento. */
+export type EmailAttachment = { filename: string; content: string; contentType: string };
+
+/**
+ * Nunca lança: falha de e-mail não pode derrubar o agendamento.
+ * `attachments` leva o conteúdo já em base64. Se o Resend recusar o envio COM anexo, repetimos uma vez SEM ele:
+ * o e-mail com o link da sala chega do mesmo jeito (a tela da agenda também baixa o .ics).
+ */
 export async function sendTemplatedEmail(params: {
   to: string | string[];
   alias: TemplateAlias;
   variables: Record<string, string>;
+  attachments?: EmailAttachment[];
 }): Promise<TemplatedEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY não configurada" };
@@ -42,7 +49,7 @@ export async function sendTemplatedEmail(params: {
     Object.entries(params.variables).map(([k, v]) => [k, escapeVar(String(v ?? ""))]),
   );
 
-  try {
+  const post = async (withAttachments: boolean): Promise<TemplatedEmailResult> => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -50,11 +57,20 @@ export async function sendTemplatedEmail(params: {
         from: process.env.RESEND_FROM_EMAIL ?? "Periscópio <no-reply@projetoperiscopio.com.br>",
         to: params.to,
         template: { id: templateId(params.alias), variables },
+        ...(withAttachments && params.attachments?.length
+          ? { attachments: params.attachments.map((a) => ({ filename: a.filename, content: a.content, content_type: a.contentType })) }
+          : {}),
       }),
     });
     const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
     if (!res.ok) return { ok: false, error: data.message ?? `Resend HTTP ${res.status}` };
     return { ok: true, id: data.id };
+  };
+
+  try {
+    const first = await post(true);
+    if (first.ok || !params.attachments?.length) return first;
+    return await post(false);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "falha de rede" };
   }

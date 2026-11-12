@@ -54,6 +54,14 @@ services:
         sync: false
       - key: EXPERT_MEET_URL
         sync: false
+      - key: GOOGLE_CALENDAR_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CALENDAR_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALENDAR_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_TOKEN_ENC_KEY
+        sync: false
       - key: MAPBOX_TOKEN
         sync: false
       - key: BI_RAG_URL

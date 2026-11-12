@@ -55,6 +55,16 @@ describe("catálogo de capacidades", () => {
     }
   });
 
+  test("REG-028: Indicadores do piloto, BI do gestor e Mapa de prevalência são só do Administrador Master por padrão", () => {
+    for (const k of ["pilot.indicators.view", "bi.view", "population.view"]) {
+      assert.deepEqual([...cap(k).defaultRoles].sort(), ["adm_master", "admin_platform"], k);
+      for (const r of ["municipal_manager", "school_manager", "md1", "board", "specialist", "ppi", "teacher"] as const) {
+        assert.equal(defaultAllowed(cap(k), r), false, `${k} não deve valer para ${r}`);
+      }
+      assert.equal(defaultAllowed(cap(k), "admin_platform"), true, k);
+    }
+  });
+
   test("padrões continuam iguais às listas fixas que existiam antes", () => {
     const legacy: [string, readonly string[]][] = [
       ["student.register", REGISTRY_ROLES],

@@ -50,7 +50,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentSlug, setCurrentSlug] = useState("demo-escola");
   const { me, has, hasAny, ready } = useCapabilities();
   const userRole = me?.role ?? null;
-  const isRE = userRole === "ppi" || userRole === "re" || userRole === "responsavel_escolar";
+  const isSuperPapel = userRole === "admin_platform" || userRole === "adm_master";
   // Nome e foto editados em "Meu painel" aparecem aqui na hora, sem recarregar a página.
   const [perfilEditado, setPerfilEditado] = useState<{ name?: string; avatarUrl?: string | null } | null>(null);
   useEffect(() => {
@@ -142,11 +142,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { show: has("management.view"), label: "Sumário e encaminhados", href: `/${currentSlug}/dashboard/gestao`, icon: ClipboardList },
     { show: has("case.delegate"), label: "Painel Médico", href: `/${currentSlug}/dashboard/medico`, icon: Stethoscope, badge: "MD1" },
     { show: has("section.read"), label: "Portal do Especialista", href: `/${currentSlug}/dashboard/especialista`, icon: Stethoscope, badge: "Parecer" },
-    // A Agenda do Board não aparece no menu do RE (decisão do PM, 06/nov/2026); o RE ainda pede ajuda ao Board dentro do caso.
-    { show: hasAny(["board.request", "board.manage"]) && !isRE, label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
-    { show: hasAny(["pilot.indicators.view", "pilot.indicators.case.view"]), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity },
-    { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3 },
-    { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned },
+    // A Agenda do Board só aparece para quem é do Board e para o Administrador Master (decisão do PM, 07/nov/2026).
+    // Médico, RE e especialista ainda pedem ajuda ao Board dentro do caso.
+    { show: hasAny(["board.request", "board.manage"]) && (userRole === "board" || isSuperPapel), label: "Agenda do Board", href: `/${currentSlug}/dashboard/agenda`, icon: CalendarClock, badge: "Board" },
   ]
     .filter((i) => i.show)
     .map(({ show: _s, ...rest }) => ({ badge: undefined as string | undefined, ...rest, exact: false }));
@@ -155,6 +153,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     userRole === "adm_master";
 
   const visibleAdmin = [
+    // Indicadores, BI e Mapa ficam só no menu do Administrador Master (decisão do PM, 07/nov/2026).
+    { show: has("pilot.indicators.view"), label: "Indicadores do piloto", href: `/${currentSlug}/dashboard/indicadores`, icon: Activity },
+    { show: has("bi.view"), label: "BI do gestor", href: `/${currentSlug}/dashboard/bi`, icon: BarChart3 },
+    { show: has("population.view"), label: "Mapa de prevalência", href: `/${currentSlug}/dashboard/mapa`, icon: MapPinned },
     { show: has("privileges.manage"), label: "Privilégios (caixinhas)", href: "/admin/privileges", icon: SlidersHorizontal },
     { show: has("system.observability.view"), label: "Saúde do sistema", href: "/admin/saude", icon: Activity },
     { show: has("system.observability.view"), label: "Mapa do sistema", href: "/admin/mapa-do-sistema", icon: Network },
@@ -175,7 +177,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (path.includes("/dashboard/especialista")) return ["section.read"];
     if (path.includes("/dashboard/gestao")) return ["management.view"];
     if (path.includes("/dashboard/agenda")) return ["board.request", "board.manage"];
-    if (path.includes("/dashboard/indicadores")) return ["pilot.indicators.view", "pilot.indicators.case.view"];
+    if (path.includes("/dashboard/indicadores")) return ["pilot.indicators.view"];
     if (path.includes("/dashboard/bi")) return ["bi.view"];
     if (path.includes("/dashboard/mapa")) return ["population.view"];
     if (path.startsWith("/admin/privileges")) return ["privileges.manage"];
@@ -187,7 +189,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const needed = requiredForRoute(pathname);
-  const isBlocked = ready && !!me && !isSuper && !!needed && !hasAny(needed);
+  // A Agenda do Board é só do Board e do Administrador Master, mesmo para quem tem a capacidade de pedir ajuda no caso.
+  const agendaSoDoBoard = pathname.includes("/dashboard/agenda") && userRole !== "board" && !isSuperPapel;
+  const isBlocked = ready && !!me && !isSuper && ((!!needed && !hasAny(needed)) || agendaSoDoBoard);
 
   // "Meu painel" existe para todo perfil, inclusive o professor, que não tem outra tela nesta versão.
   const minhaConta = ready && me

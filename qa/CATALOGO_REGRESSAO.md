@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos de teste automáticos** em 103 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **747 casos de teste automáticos** em 107 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -35,7 +35,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 414
+## API — unitários — 443
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -244,11 +244,12 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/security/capabilities.test.ts</code> — 9 · catálogo de capacidades</summary>
+<details><summary><code>apps/api/src/security/capabilities.test.ts</code> — 10 · catálogo de capacidades</summary>
 
 - chaves únicas, rótulo e descrição preenchidos
 - apelidos de perfil viram o perfil canônico
 - padrões espelham a matriz do PM (09/out/2026)
+- REG-028: Indicadores do piloto, BI do gestor e Mapa de prevalência são só do Administrador Master por padrão
 - padrões continuam iguais às listas fixas que existiam antes
 - TEA: cada instrumento tem seu preenchedor padrão e a faixa de referência nasce desligada
 - padrão quando ninguém configurou
@@ -507,6 +508,23 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/services/google-calendar.service.test.ts</code> — 12 · token cifrado e state assinado</summary>
+
+- cifra e decifra; o texto cifrado não contém o token
+- registro adulterado ou chave trocada exige reconectar
+- state: ida e volta, adulteração, expiração e returnTo seguro
+- URL de autorização: escopo mínimo, offline, sem o segredo do cliente
+- sem configuração completa a integração fica desligada
+- troca de código exige refresh token e o escopo do Calendar
+- refresh com invalid_grant é reconhecido
+- pede Meet novo, convida todos, id determinístico e texto genérico
+- sala fixa: não pede Meet novo e aponta para a sala
+- 409 (mesma confirmação repetida) lê o evento existente em vez de duplicar
+- link que não é do Meet é descartado
+- 401 vira invalid_grant e 500 vira erro http
+
+</details>
+
 <details><summary><code>apps/api/src/services/grafana.service.test.ts</code> — 19 · fetchGrafanaSeries</summary>
 
 - sem configuração devolve configured=false e não chama o Grafana
@@ -531,6 +549,24 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/services/ics.test.ts</code> — 13 · ics: escape de TEXT</summary>
+
+- escapa vírgula, ponto e vírgula, barra invertida e quebra de linha
+- remove caracteres de controle
+- texto hostil não consegue abrir linha nova no arquivo
+- linha curta não muda
+- linha ASCII longa: nenhuma linha passa de 75 octetos e desdobrar devolve o original
+- multibyte nunca é cortado no meio e o limite vale em octetos
+- exatamente 75 octetos não dobra; 76 dobra
+- converte para UTC (Brasília UTC-3 → +3h)
+- data inválida lança
+- estrutura: CRLF, METHOD:REQUEST, UID estável, horários em UTC
+- UID, URL e intervalo inválidos são recusados
+- participante: e-mail inseguro é descartado; nome é sempre entre aspas e sem aspas internas
+- o convite do Board é genérico: sem tema, código de aluno ou escola
+
+</details>
+
 <details><summary><code>apps/api/src/services/identity-crypto.test.ts</code> — 2</summary>
 
 - chave ausente ou curta falha fechada sem chave padrão
@@ -544,6 +580,14 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 - exige motivo de acesso válido com pelo menos 5 caracteres
 - bloqueia acesso quando tenant ou escola não coincidem
 - permite acesso para perfil clínico autorizado e gera entrada de auditoria com eventId UUID
+
+</details>
+
+<details><summary><code>apps/api/src/services/jitsi.test.ts</code> — 3</summary>
+
+- sala Jitsi: 128 bits aleatórios, sem identificador nenhum
+- sala Jitsi: duas chamadas nunca repetem
+- o padrão recusa a sala antiga previsível (tenant + reunião)
 
 </details>
 
@@ -799,7 +843,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 250
+## API — E2E (banco de teste, fluxo pela API real) — 262
 
 <details><summary><code>apps/api/src/e2e/admin-kpis.e2e.test.ts</code> — 5 · KPIs do admin (REG-020)</summary>
 
@@ -862,6 +906,22 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 - a mesma etiqueta pode existir em outro município; o admin cadastra para o município que escolher
 - desativar tira da lista do RE mas mantém na do admin; renomear para nome existente é 409; id inexistente é 404
 - toda mudança fica na trilha de auditoria, só com o nome da etiqueta
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/expert-meetings-invite.e2e.test.ts</code> — 11 · agenda do Board: Google Agenda/Meet e plano B (E2E)</summary>
+
+- sem Google: sala Jitsi aleatória, .ics anexado e a cópia da equipe leva o mesmo link
+- .ics: quem pediu e a Dra. baixam; outra escola, outro tenant, pendente, uuid ruim e anônimo não
+- conexão com o Google: só a coordenação; state de outro usuário é recusado; token vai cifrado
+- com Google: evento e Meet criados na agenda da Dra., convite do Google, sem .ics duplicado
+- token do Google expirado: confirma pelo Jitsi com .ics, avisa a Dra. e pede para reconectar
+- Resend recusa anexo com template: reenvia sem anexo e o e-mail chega
+- texto hostil é escapado nas variáveis do e-mail e não entra no .ics
+- recusa não cria sala nem evento e libera o horário
+- sala fixa + Google: o evento aponta para a sala fixa e não cria outro Meet; desconectar revoga
+- sem Google e com sala fixa: usa a sala fixa e anexa o .ics
+- id malformado na confirmação não derruba a API
 
 </details>
 
@@ -968,13 +1028,14 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **706 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/migracoes-lote-sp.e2e.test.ts</code> — 6 · Migrações do lote SP (REG-015)</summary>
+<details><summary><code>apps/api/src/e2e/migracoes-lote-sp.e2e.test.ts</code> — 7 · Migrações do lote SP (REG-015)</summary>
 
 - 0030: foto fica no Postgres, só JPEG/PNG/WEBP até 3 MB, e some junto com o usuário
 - 0031: etiqueta repetida (ignorando maiúscula e espaços) é recusada no mesmo grupo, mas vale em outro grupo e outro município
 - 0032: devolução exige justificativa de 100 a 150 caracteres, tem UUID e não pode ser alterada nem apagada
 - 0033: volumetria guarda só contagens por dia, formulário e tipo
 - 0034: exceção que liberava gestão ao RE é removida; exceção de outro perfil ou de bloqueio fica
+- 0036: gestão (indicadores, BI, mapa) só com o Administrador Master por padrão; exceções de outros perfis saem, as do admin e as de bloqueio ficam
 - 0035: a ATA (passo h) pode ser pulada e retomada; passo desconhecido continua recusado; trilha é somente inserção
 
 </details>
