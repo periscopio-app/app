@@ -24,6 +24,7 @@ import { evaluationsRoutes } from "./routes/evaluations.routes";
 import { coursesRoutes } from "./routes/courses.routes";
 import { notificationsRoutes } from "./routes/notifications.routes";
 import { expertMeetingsRoutes } from "./routes/expert-meetings.routes";
+import { googleIntegrationRoutes } from "./routes/google-integration.routes";
 import { populationRoutes } from "./routes/population.routes";
 import { biRoutes } from "./routes/bi.routes";
 import { managementRoutes } from "./routes/management.routes";
@@ -151,6 +152,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(coursesRoutes);
   app.register(notificationsRoutes);
   app.register(expertMeetingsRoutes);
+  app.register(googleIntegrationRoutes);
   app.register(populationRoutes);
   app.register(biRoutes);
   app.register(managementRoutes);
