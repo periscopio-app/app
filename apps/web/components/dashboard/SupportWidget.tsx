@@ -396,7 +396,7 @@ export function SupportWidget() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Seu e-mail para resposta (opcional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Seu e-mail para resposta</label>
                     <input
                       type="email"
                       value={userEmail}

@@ -122,7 +122,7 @@ export function GenogramaEditor({ value, onChange, disabled, idBase }: { value: 
                 </label>
                 <input
                   aria-label={`Anotação sobre ${rotulos.get(m.id)} (sem nomes)`}
-                  placeholder="Anotação curta, sem nomes (opcional)"
+                  placeholder="Anotação curta, sem nomes"
                   maxLength={GENOGRAMA_ANOTACAO_MAX}
                   value={m.anotacao ?? ""}
                   onChange={(e) => aplicar(atualizarMembro(g, m.id, { anotacao: e.target.value }))}

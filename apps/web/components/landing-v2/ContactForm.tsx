@@ -34,7 +34,7 @@ export function ContactForm() {
       </label>
       <label className="block text-sm font-semibold">
         Instituição ou município
-        <input name="instituicao" maxLength={150} placeholder="Opcional" className={`${campo} mt-1 font-normal`} />
+        <input name="instituicao" maxLength={150} className={`${campo} mt-1 font-normal`} />
       </label>
       <label className="block text-sm font-semibold">
         Mensagem *

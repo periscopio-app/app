@@ -35,7 +35,7 @@ import {
   type EscalasSumario,
 } from "@periscopio/shared";
 import { ApiError, api } from "@/lib/api";
-import { ConfirmDialog, Modal, buttonClass } from "@/components/ui";
+import { ConfirmDialog, Modal, Recolhivel, buttonClass } from "@/components/ui";
 import { TeaScreeningPanel } from "@/components/dashboard/TeaScreeningPanel";
 import { SumarioFormularioI } from "@/components/dashboard/SumarioFormularioI";
 import { ProntuarioHeaderCard } from "@/components/dashboard/ProntuarioHeaderCard";
@@ -113,10 +113,14 @@ const btnPrimario = buttonClass("primary", "md", "min-h-[44px]");
 const btnSecundario = buttonClass("outline", "md", "min-h-[44px]");
 
 /** Rola até o campo em branco (A–F) ou até o bloco (G, H, I). */
-function irParaLacuna(l: Lacuna) {
+function irParaLacuna(l: Lacuna, abrir: (passo: string) => void) {
+  abrir(l.passo);
   const seletor = isReFormId(l.passo) && l.campo ? `[data-campo="${l.passo}:${l.campo}${l.linha ? `|${l.linha}` : ""}"]` : `#passo-${l.passo}`;
-  const el = document.querySelector<HTMLElement>(seletor) ?? document.getElementById(`passo-${l.passo}`);
-  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // O bloco pode estar recolhido: abre primeiro e só depois rola até o campo.
+  setTimeout(() => {
+    const el = document.querySelector<HTMLElement>(seletor) ?? document.getElementById(`passo-${l.passo}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 60);
 }
 
 /**
@@ -218,6 +222,10 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
   const [sending, setSending] = useState(false);
   const [sentSummary, setSentSummary] = useState<string | null>(null);
   const [editandoAluno, setEditandoAluno] = useState(false);
+  // Blocos A–I: todos abertos por padrão; o RE pode recolher qualquer um (o conteúdo continua montado, nada se perde).
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
+  const abrirPasso = useCallback((passo: string) => setAbertos((a) => (a[passo] === false ? { ...a, [passo]: true } : a)), []);
+  const setTodosAbertos = useCallback((v: boolean) => setAbertos(Object.fromEntries(RE_PASSOS.map((p) => [p.id, v]))), []);
   const [, forcar] = useState(0);
 
   const dirty = useRef<Set<RePassoId>>(new Set());
@@ -526,8 +534,12 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       {/* Barra fixa: progresso e atalhos para cada parte (nada fica travado) */}
       {!j.somenteSumario && situacao && <nav aria-label="Partes da avaliação" className="sticky top-0 z-20 rounded-2xl border border-linha bg-white/95 p-3 shadow-suave backdrop-blur">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-bold text-black">Formulário único A a I</p>
-          <p className="text-xs text-neutral-800" aria-live="polite">
+          <p className="text-base font-bold text-black">Formulário único A a I</p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setTodosAbertos(true)} className="min-h-[40px] rounded-lg border border-linha bg-white px-3 text-sm font-semibold text-black outline-none hover:bg-roxo-50 focus-visible:ring-2 focus-visible:ring-roxo" data-testid="re-abrir-tudo">Abrir tudo</button>
+            <button type="button" onClick={() => setTodosAbertos(false)} className="min-h-[40px] rounded-lg border border-linha bg-white px-3 text-sm font-semibold text-black outline-none hover:bg-roxo-50 focus-visible:ring-2 focus-visible:ring-roxo" data-testid="re-recolher-tudo">Recolher tudo</button>
+          </div>
+          <p className="w-full text-sm text-neutral-800" aria-live="polite">
             {respondidosForms} de {totalForms} respostas
             {totalLacunas > 0 ? ` · ${totalLacunas} em branco` : " · tudo respondido"}
             {!readOnly && (saving ? " · Salvando…" : savedAt ? ` · Salvo às ${savedAt}` : dirty.current.size > 0 ? " · Alterações ainda não salvas" : "")}
@@ -546,7 +558,10 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                   type="button"
                   title={`${p.titulo} — ${ROTULO_ESTADO[e]}`}
                   data-testid={`re-passo-${p.id}`}
-                  onClick={() => document.getElementById(`passo-${p.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  onClick={() => {
+                    abrirPasso(p.id);
+                    setTimeout(() => document.getElementById(`passo-${p.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+                  }}
                   className="flex items-center gap-1.5 rounded-xl border border-linha bg-white px-2.5 py-1.5 text-xs font-bold text-black transition hover:bg-roxo-50"
                 >
                   <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${COR_ESTADO[e]}`}>
@@ -568,19 +583,24 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
       )}
 
       {/* Formulário único, contínuo: A → I na mesma página, sem trava entre as partes */}
-      <div className="space-y-10 rounded-2xl border border-linha bg-white p-4 shadow-suave sm:p-6">
+      <div className="space-y-4">
         {RE_PASSOS.filter((passo) => !j.somenteSumario || passo.id === "i").map((passo) => {
           const e = estadoDe(passo.id);
           const emEdicao = !readOnly;
           return (
-            <section key={passo.id} id={`passo-${passo.id}`} data-passo={passo.id} aria-labelledby={`titulo-${passo.id}`} className="scroll-mt-32" onFocusCapture={() => tempo.definirAtual(passo.id)}>
-              <header className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b-2 border-roxo/30 pb-2">
-                <div>
-                  <h2 id={`titulo-${passo.id}`} className="text-lg font-bold text-black">{passo.titulo}</h2>
-                  {isReFormId(passo.id) && <p className="mt-0.5 text-sm text-neutral-800">{RE_FORMS[passo.id].dica}</p>}
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${COR_ESTADO[e]}`}>{ROTULO_ESTADO[e]}</span>
-              </header>
+            <Recolhivel
+              key={passo.id}
+              id={`passo-${passo.id}`}
+              idTitulo={`titulo-${passo.id}`}
+              titulo={passo.titulo}
+              resumo={isReFormId(passo.id) ? RE_FORMS[passo.id].dica : undefined}
+              direita={<span className={`rounded-full px-2.5 py-1 text-xs font-bold ${COR_ESTADO[e]}`}>{ROTULO_ESTADO[e]}</span>}
+              aberto={abertos[passo.id] !== false}
+              onAbertoChange={(v) => setAbertos((a) => ({ ...a, [passo.id]: v }))}
+              className="scroll-mt-32"
+              classNameCorpo="sm:px-6 sm:pb-6"
+              sectionProps={{ "data-passo": passo.id, onFocusCapture: () => tempo.definirAtual(passo.id) }}
+            >
 
               {isReFormId(passo.id) &&
                 (readOnly ? (
@@ -593,6 +613,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                     onChange={(n) => editarForm(passo.id as ReFormId, n)}
                     contexto={{
                       professores: j.professores ?? [],
+                      nomeResponsavel: professionalName,
                       destacar: destacarPorForm[passo.id as ReFormId],
                       sugerirObservacoes: (fid, payload) =>
                         api.post(`/api/cases/${caseId}/re-journey/forms/${fid}/observacoes-sugestao`, { payload }),
@@ -694,7 +715,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                   }
                 />
               )}
-            </section>
+            </Recolhivel>
           );
         })}
       </div>
@@ -749,7 +770,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
                   type="button"
                   onClick={() => {
                     setLacunasAberto(false);
-                    setTimeout(() => irParaLacuna(l), 150);
+                    setTimeout(() => irParaLacuna(l, abrirPasso), 150);
                   }}
                   className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-white"
                 >
@@ -760,7 +781,7 @@ export function ReJourneyPanel({ caseId, professionalName, professionalRole, onS
             ))}
           </ul>
           <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" className={btnSecundario} onClick={() => { setLacunasAberto(false); if (lacunasMostradas[0]) setTimeout(() => irParaLacuna(lacunasMostradas[0]), 150); }}>
+            <button type="button" className={btnSecundario} onClick={() => { setLacunasAberto(false); if (lacunasMostradas[0]) setTimeout(() => irParaLacuna(lacunasMostradas[0], abrirPasso), 150); }}>
               Voltar e preencher
             </button>
             {!temBloqueante && (
@@ -832,7 +853,7 @@ function Snap4Passo({
   if (pulado) {
     return (
       <div className="rounded-2xl border border-ouro-300 bg-ouro-50 p-4 text-sm text-black">
-        <p className="flex items-center gap-2"><Lock className="h-4 w-4 shrink-0" aria-hidden /> <span><strong>SNAP-IV não aplicado.</strong> O Formulário G é opcional: o bloco ficou travado e a decisão está registrada.</span></p>
+        <p className="flex items-center gap-2"><Lock className="h-4 w-4 shrink-0" aria-hidden /> <span><strong>SNAP-IV não aplicado.</strong> O bloco do Formulário G ficou travado e a decisão está registrada.</span></p>
         {!readOnly && (
           <button type="button" className={`${btnSecundario} mt-3`} disabled={busy} onClick={() => onPular(false)}>
             Quero aplicar o SNAP-IV
@@ -899,7 +920,7 @@ function Snap4Passo({
       </fieldset>
       {!readOnly && (
         <div className="rounded-2xl border border-dashed border-linha p-4">
-          <p className="text-sm text-black">Não vai aplicar o SNAP-IV agora? Ele é opcional. Ao clicar, o bloco trava, a jornada segue e o uso desta opção fica registrado para auditoria.</p>
+          <p className="text-sm text-black">Não vai aplicar o SNAP-IV agora? Ao clicar, o bloco trava, a jornada segue e o uso desta opção fica registrado para auditoria.</p>
           <button type="button" className={`${btnSecundario} mt-2`} disabled={busy} onClick={() => onPular(true)}>
             <SkipForward className="h-4 w-4" aria-hidden /> Não vou aplicar o SNAP-IV (travar este bloco)
           </button>
