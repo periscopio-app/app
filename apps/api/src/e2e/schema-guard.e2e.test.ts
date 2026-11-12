@@ -53,7 +53,7 @@ describe("schema-guard até a 0037", { skip }, () => {
     assert.equal(rls.rows[0].relrowsecurity, true, "RLS ligado na tabela do token do Google");
 
     // Repetir (próximo boot) não pode falhar nem avisar.
-    const sqls = ["0036_foto_ate_3mb.sql", "0036_gestao_so_admin_master.sql", "0037_board_google_calendar.sql"]
+    const sqls = ["0036_foto_ate_3mb.sql", "0037_board_google_calendar.sql"]
       .flatMap((f) => readFileSync(join(process.cwd(), "drizzle", f), "utf8").split("--> statement-breakpoint").map((s) => s.trim()).filter(Boolean));
     for (const s of sqls) await client.query(s);
   });

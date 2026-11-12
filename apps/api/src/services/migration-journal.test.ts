@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
-import { SCHEMA_GUARD_FILES } from "./schema-guard.service";
+import { MIGRACOES_DE_DADOS_FORA_DO_GUARD, SCHEMA_GUARD_FILES } from "./schema-guard.service";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "../../drizzle");
 const journal = (JSON.parse(readFileSync(join(dir, "meta/_journal.json"), "utf8")) as {
@@ -35,10 +35,24 @@ describe("migrações do Drizzle", () => {
     journal.slice(1).forEach((e, i) => assert.ok(e.when > journal[i].when, `${e.tag}: when não cresce`));
   });
 
-  it("migração nova (idx >= 36) está no schema-guard e o arquivo existe", () => {
+  it("migração nova (idx >= 36) está no schema-guard (estrutura) ou na lista de migrações de dados, e o arquivo existe", () => {
     const guard = new Set<string>(SCHEMA_GUARD_FILES);
-    const faltando = journal.filter((e) => e.idx >= PRIMEIRO_IDX_NO_GUARD && !guard.has(`${e.tag}.sql`)).map((e) => e.tag);
-    assert.deepEqual(faltando, [], "adicione o arquivo em SCHEMA_GUARD_FILES (schema-guard.service.ts)");
+    const dados = new Set<string>(MIGRACOES_DE_DADOS_FORA_DO_GUARD);
+    const faltando = journal.filter((e) => e.idx >= PRIMEIRO_IDX_NO_GUARD && !guard.has(`${e.tag}.sql`) && !dados.has(e.tag)).map((e) => e.tag);
+    assert.deepEqual(faltando, [], "adicione o arquivo em SCHEMA_GUARD_FILES (estrutura) ou em MIGRACOES_DE_DADOS_FORA_DO_GUARD (dados)");
     for (const f of SCHEMA_GUARD_FILES) assert.ok(sqlTags.includes(f.replace(/\.sql$/, "")), `${f} não existe em drizzle/`);
+    for (const t of MIGRACOES_DE_DADOS_FORA_DO_GUARD) assert.ok(sqlTags.includes(t), `${t} não existe em drizzle/`);
+  });
+
+  it("[REG-023] o schema-guard roda a cada boot: migração nova dele não pode apagar nem alterar dados", () => {
+    const comandosDeDados = /^\s*(DELETE\s+FROM|UPDATE\s+\S+\s+SET|TRUNCATE|INSERT\s+INTO)\b/im;
+    const proibidas = SCHEMA_GUARD_FILES.filter((f) => {
+      const idx = journal.find((e) => `${e.tag}.sql` === f)?.idx ?? -1;
+      if (idx < PRIMEIRO_IDX_NO_GUARD) return false; // as antigas já existiam antes desta regra
+      const sql = readFileSync(join(dir, f), "utf8").replace(/--.*$/gm, "");
+      return comandosDeDados.test(sql);
+    });
+    assert.deepEqual(proibidas, [], "migração de dados fora do schema-guard: ponha em MIGRACOES_DE_DADOS_FORA_DO_GUARD");
+    for (const t of MIGRACOES_DE_DADOS_FORA_DO_GUARD) assert.ok(!(SCHEMA_GUARD_FILES as readonly string[]).includes(`${t}.sql`), `${t} não pode estar no schema-guard`);
   });
 });

@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **739 casos de teste automáticos** em 108 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **740 casos de teste automáticos** em 108 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -34,8 +34,9 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **739 casos 
 | REG-010 | gravar auditoria como Admin Master (ator virtual) não derruba nada, nem dentro de transação | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
+| REG-023 | o schema-guard roda a cada boot: migração nova dele não pode apagar nem alterar dados | `apps/api/src/services/migration-journal.test.ts` |
 
-## API — unitários — 434
+## API — unitários — 435
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -627,12 +628,13 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **739 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/migration-journal.test.ts</code> — 4 · migrações do Drizzle</summary>
+<details><summary><code>apps/api/src/services/migration-journal.test.ts</code> — 5 · migrações do Drizzle</summary>
 
 - todo arquivo .sql está registrado no journal
 - toda entrada do journal tem o arquivo .sql
 - idx é sequencial a partir de 0 e `when` cresce (o Drizzle só aplica o que tem `when` maior que a última aplicada)
-- migração nova (idx >= 36) está no schema-guard e o arquivo existe
+- migração nova (idx >= 36) está no schema-guard (estrutura) ou na lista de migrações de dados, e o arquivo existe
+- [REG-023] o schema-guard roda a cada boot: migração nova dele não pode apagar nem alterar dados
 
 </details>
 
