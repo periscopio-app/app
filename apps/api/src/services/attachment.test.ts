@@ -15,7 +15,7 @@ test("anexos clínicos: gera chave de armazenamento opaca sem nome/PII do pacien
   assert.strictEqual(res.allowed, true);
   assert.ok(res.objectKey);
   assert.strictEqual(res.objectKey?.startsWith("tenants/tenant-rio/cases/case-999/"), true);
-  assert.doesNotMatch(res.objectKey || "", /joao|silva/i); // Sem PII na chave do Supabase
+  assert.doesNotMatch(res.objectKey || "", /joao|silva/i); // Sem PII na chave do arquivo
 });
 
 test("anexos clínicos: rejeita arquivos que excedem 10MB ou com formato inválido", () => {

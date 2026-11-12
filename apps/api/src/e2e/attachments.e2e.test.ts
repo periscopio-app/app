@@ -19,7 +19,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
   let dbx: typeof import("../db/client").db;
   let shared: typeof import("@periscopio/shared");
   let svc: typeof import("../services/attachment.service");
-  const objetos = new Map<string, Buffer>();
   let caseId = "";
   let attId = "";
 
@@ -46,11 +45,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     shared = await import("@periscopio/shared");
     ({ db: dbx } = await import("../db/client"));
     svc = await import("../services/attachment.service");
-    svc.setAttachmentStorage({
-      async put(key, body) { objetos.set(key, body); },
-      async get(key) { const o = objetos.get(key); if (!o) throw new Error("não existe"); return o; },
-      async remove(key) { objetos.delete(key); },
-    });
     const { buildApp } = await import("../app");
     app = await buildApp();
     await app.ready();
@@ -80,7 +74,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
   });
 
   after(async () => {
-    svc?.setAttachmentStorage(null);
     await app?.close();
     const { db } = await import("../db/client");
     await (db as any).$client.end();
@@ -105,7 +98,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     const r = await enviar("re", PDF, "Laudo_Joao_Silva.pdf");
     assert.equal(r.status, 200, JSON.stringify(r.body));
     attId = r.body.attachment.id;
-    assert.equal(objetos.size, 0, "o armazenamento externo não é usado para laudos novos");
     const [linha] = await dbx.select().from(shared.clinicalAttachments).where((await import("drizzle-orm")).eq(shared.clinicalAttachments.id, attId));
     assert.ok(linha.content && Buffer.from(linha.content).equals(PDF), "o conteúdo está na coluna content");
     assert.doesNotMatch(linha.storageKey, /joao|silva/i);
@@ -165,7 +157,6 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${b.body.attachment.id}/file`, "md")).headers["content-type"], "image/jpeg");
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${b.body.attachment.id}/file`, "re")).status, 404, "RE não abre laudo do médico");
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${a.body.attachment.id}/file`, "esp")).status, 403);
-    for (const k of [...objetos.keys()].filter((k) => !k.endsWith(".pdf"))) objetos.delete(k);
     await dbx.delete(shared.clinicalAttachments).where(eq(shared.clinicalAttachments.mimeType, "image/png"));
     await dbx.delete(shared.clinicalAttachments).where(eq(shared.clinicalAttachments.mimeType, "image/jpeg"));
   });
@@ -181,40 +172,28 @@ describe("Laudos em PDF/JPG/PNG (E2E)", { skip }, () => {
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "md")).body.attachments.length, 2, "nada novo foi gravado");
   });
 
-  test("[REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)", async () => {
-    svc.setAttachmentStorage({
-      async put() { throw new Error("fora do ar"); },
-      async get() { throw new Error("fora do ar"); },
-      async remove() { throw new Error("fora do ar"); },
-    });
+  test("[REG-002] o laudo salva e abre normalmente, sem depender de nenhum serviço externo (laudo é opcional)", async () => {
     const novo = await enviar("re", PDF, "outro.pdf");
     assert.equal(novo.status, 200, JSON.stringify(novo.body));
     const aberto = await call("GET", `/api/cases/${caseId}/attachments/${novo.body.attachment.id}/file`, "re");
     assert.equal(aberto.status, 200);
     assert.ok(Buffer.from(aberto.raw).equals(PDF));
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "re")).status, 200, "a lista não depende do armazenamento");
+    assert.equal((await call("GET", `/api/cases/${caseId}/attachments`, "re")).status, 200);
   });
 
-  test("[REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele", async () => {
-    svc.setAttachmentStorage({
-      async put(key, body) { objetos.set(key, body); },
-      async get(key) { const o = objetos.get(key); if (!o) throw new Error("não existe"); return o; },
-      async remove(key) { objetos.delete(key); },
-    });
+  test("[REG-002] registro antigo sem conteúdo no banco responde 404 com mensagem clara, sem afetar os laudos novos", async () => {
     const { eq } = await import("drizzle-orm");
     const [re] = await dbx.select().from(shared.users).where(eq(shared.users.email, "re@teste.local"));
     const [st] = await dbx.select().from(shared.cases).where(eq(shared.cases.id, caseId));
-    objetos.set("legado/antigo.pdf", PDF);
     const [antigo] = await dbx.insert(shared.clinicalAttachments).values({
       tenantId: st.tenantId, caseId, studentId: st.studentId, uploaderId: re.id, storageKey: "legado/antigo.pdf",
       originalName: "antigo.pdf", mimeType: "application/pdf", fileSizeBytes: PDF.length, sha256: "0".repeat(64), category: "laudo_externo",
     }).returning();
-    const ok = await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re");
-    assert.equal(ok.status, 200);
-    assert.ok(Buffer.from(ok.raw).equals(PDF));
-    objetos.delete("legado/antigo.pdf");
-    assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re")).status, 503);
+    const r = await call("GET", `/api/cases/${caseId}/attachments/${antigo.id}/file`, "re");
+    assert.equal(r.status, 404);
+    assert.match(String(r.body.error), /não está mais disponível/);
     assert.equal((await call("GET", `/api/cases/${caseId}/attachments/${attId}/file`, "re")).status, 200, "os laudos novos seguem abrindo");
+    await dbx.delete(shared.clinicalAttachments).where(eq(shared.clinicalAttachments.id, antigo.id));
   });
 
   test("[REG-005] RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho", async () => {

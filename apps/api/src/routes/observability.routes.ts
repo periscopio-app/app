@@ -4,7 +4,6 @@ import { db } from "../db/client";
 import { requireCapability } from "../security/actor";
 import { snapshot, toPrometheus } from "../observability/metrics";
 import { metricsEnabled, metricsTokenOk } from "../observability/metrics-auth";
-import { runStorageCheck } from "../services/storage-check.service";
 import { recordAudit } from "../services/audit.service";
 import { z } from "zod";
 import { SYSTEM_MAP } from "../data/system-map.data";
@@ -23,8 +22,6 @@ function configChecks() {
     { key: "APP_URL", ok: has("APP_URL") && !/localhost/.test(process.env.APP_URL ?? ""), optional: false, hint: "Endereço público do site (usado nos links dos e-mails)." },
     { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), optional: false, hint: "Origens permitidas para chamar a API." },
     { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },
-    { key: "SUPABASE_URL", ok: has("SUPABASE_URL"), optional: true, hint: "Armazenamento de anexos clínicos (Supabase Storage para laudos e exames)." },
-    { key: "SUPABASE_SERVICE_ROLE_KEY", ok: has("SUPABASE_SERVICE_ROLE_KEY"), optional: true, hint: "Chave de serviço do Supabase: só para anexos clínicos antigos (as fotos de perfil agora ficam no banco)." },
     { key: "GRAFANA_OTLP_TOKEN", ok: resolveOtlpConfig(process.env) !== null, optional: true, hint: "Opcional: a API envia as métricas ao Grafana Cloud (OTEL_EXPORTER_OTLP_ENDPOINT e OTEL_EXPORTER_OTLP_HEADERS, ou GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_USER e GRAFANA_OTLP_TOKEN)." },
     { key: "GRAFANA_PROM_TOKEN", ok: has("GRAFANA_PROM_URL") && has("GRAFANA_PROM_USER") && has("GRAFANA_PROM_TOKEN"), optional: true, hint: "Opcional: histórico de métricas do Grafana Cloud no painel de saúde (GRAFANA_PROM_URL, GRAFANA_PROM_USER e GRAFANA_PROM_TOKEN)." },
     { key: "METRICS_TOKEN", ok: has("METRICS_TOKEN"), optional: true, hint: "Opcional: libera rota /metrics para coletor externo (Prometheus/Grafana)." },
@@ -69,7 +66,7 @@ export async function observabilityRoutes(app: FastifyInstance) {
     if (m.http.total >= 20 && (m.http.p95Ms ?? 0) > 2500) {
       alerts.push({ level: "medio", text: `Lentidão: 95% das requisições levam até ${m.http.p95Ms} ms ou mais.` });
     }
-    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "GRAFANA_PROM_TOKEN" && c.key !== "GRAFANA_OTLP_TOKEN" && c.key !== "BI_RAG_URL" && c.key !== "SUPABASE_URL" && c.key !== "SUPABASE_SERVICE_ROLE_KEY");
+    const missing = configChecks().filter((c) => !c.ok && c.key !== "METRICS_TOKEN" && c.key !== "GRAFANA_PROM_TOKEN" && c.key !== "GRAFANA_OTLP_TOKEN" && c.key !== "BI_RAG_URL");
     if (missing.length) alerts.push({ level: "alto", text: `Configuração faltando: ${missing.map((c) => c.key).join(", ")}.` });
 
     return {
@@ -86,25 +83,6 @@ export async function observabilityRoutes(app: FastifyInstance) {
       ...m,
       note: "Números desta instância desde o último reinício. Com mais de uma instância, cada uma mostra os seus.",
     };
-  });
-
-  // Autoteste do armazenamento: sobe imagem sintética, abre o link público, confere o 200 e apaga. Só Administrador Master.
-  app.post("/api/admin/storage-check", async (request, reply) => {
-    const actor = await requireCapability(request, reply, "system.observability.view");
-    if (!actor) return;
-    const resultado = await runStorageCheck();
-    await recordAudit(
-      {
-        tenantId: actor.tenantId,
-        userId: actor.id,
-        userEmail: actor.email,
-        action: "storage.check",
-        entityType: "system",
-        payload: { ok: resultado.ok, passos: resultado.steps.map((s) => ({ id: s.id, ok: s.ok, httpStatus: s.httpStatus ?? null })) },
-      },
-      request
-    );
-    return resultado;
   });
 
   // Histórico de métricas do Grafana Cloud. Lista fechada de consultas: o cliente só escolhe métrica e período.

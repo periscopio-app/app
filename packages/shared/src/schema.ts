@@ -704,7 +704,7 @@ export const professionalTermStatus = pgTable("professional_term_status", {
 
 /**
  * Anexos e documentos clínicos vinculados ao prontuário.
- * Armazenamento opaco em bucket S3/Supabase sem PII no path (Task 02B).
+ * Chave opaca do arquivo, sem PII (Task 02B). O arquivo em si fica na coluna `content`.
  */
 export const clinicalAttachments = pgTable("clinical_attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -719,7 +719,7 @@ export const clinicalAttachments = pgTable("clinical_attachments", {
   sha256: varchar("sha256", { length: 64 }).notNull(),
   category: varchar("category", { length: 50 }).default("relatorio_clinico").notNull(),
   description: text("description"),
-  /** O arquivo em si. Nulo só em laudos antigos que ficaram no bucket do Supabase (lidos de lá, se ainda existirem). */
+  /** O arquivo em si. Nulo só em registros antigos cujo arquivo não foi migrado; nesses a rota responde 404. */
   content: bytea("content"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

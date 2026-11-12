@@ -1,5 +1,5 @@
 /**
- * Auditoria SOMENTE LEITURA para PostgreSQL (Neon, RDS ou Supabase Postgres).
+ * Auditoria SOMENTE LEITURA para PostgreSQL (Neon, RDS ou outro Postgres).
  *
  * Não consulta linhas de negócio, não imprime DATABASE_URL e não executa DDL/DML.
  * Ela comprova configuração visível do banco; a prova comportamental de isolamento
@@ -132,7 +132,6 @@ async function main() {
         behavioralProofStillRequired: [
           "Executar E2E sintético com tenant A e tenant B usando o mesmo papel efetivo da aplicação.",
           "Confirmar que SELECT/INSERT/UPDATE cross-tenant são negados e que auditoria append-only rejeita UPDATE/DELETE.",
-          "Para Supabase Storage, executar teste separado contra storage.objects e objeto sintético em bucket privado.",
         ],
       },
     };

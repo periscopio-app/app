@@ -14,16 +14,6 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_PROJECT_REF
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: SUPABASE_BUCKET
-        sync: false
       - key: OTEL_SERVICE_NAME
         sync: false
       - key: OTEL_EXPORTER_OTLP_ENDPOINT

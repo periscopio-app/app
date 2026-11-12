@@ -6,7 +6,6 @@ import { clinicalAttachments, cases, students } from "@periscopio/shared";
 import { requireCapability } from "../security/actor";
 import {
   ATTACHMENT_MAX_BYTES,
-  getAttachmentStorage,
   detectarFormatoLaudo,
   validateAttachmentUpload,
   validateSignedUrlAccess,
@@ -23,7 +22,7 @@ const RE_LIKE = new Set(["ppi", "re", "responsavel_escolar"]);
  * Laudos que os pais levam (Bloco 5): PDF e foto do celular (JPG/PNG). Só o RE e o médico enviam e abrem; especialistas, gestão e Board nunca
  * (a regra mora nas capacidades attachments.write/read). O laudo é OPCIONAL: nada no fluxo o exige. O arquivo fica no
  * próprio banco (coluna content) e é servido pelo servidor, depois de conferir sessão, município e escola. Não existe
- * link público. Laudos antigos que ficaram no bucket do Supabase continuam sendo lidos de lá.
+ * link público.
  */
 export async function attachmentsRoutes(app: FastifyInstance) {
   /** Carrega o caso e confere município (e escola, quando quem pede é do RE). Responde 404 sem vazar nada. */
@@ -187,7 +186,7 @@ export async function attachmentsRoutes(app: FastifyInstance) {
     return { attachments: items };
   });
 
-  /** 3. Abrir o PDF no visualizador interno. O servidor lê do bucket privado; não há link público nem URL externa. */
+  /** 3. Abrir o PDF no visualizador interno. O servidor lê do banco; não há link público nem URL externa. */
   app.get<{ Params: { caseId: string; attachmentId: string } }>(
     "/api/cases/:caseId/attachments/:attachmentId/file",
     async (request, reply) => {
@@ -227,14 +226,11 @@ export async function attachmentsRoutes(app: FastifyInstance) {
         return { error: acesso.error };
       }
 
-      let bytes: Buffer;
-      try {
-        bytes = attachment.content ? Buffer.from(attachment.content.buffer, attachment.content.byteOffset, attachment.content.byteLength) : await (await getAttachmentStorage()).get(attachment.storageKey);
-      } catch (err) {
-        request.log.error({ err }, "falha ao ler laudo do armazenamento");
-        reply.status(503);
-        return { error: "Não foi possível abrir o laudo agora. Tente de novo em instantes." };
+      if (!attachment.content) {
+        reply.status(404);
+        return { error: "Este arquivo não está mais disponível. Peça o reenvio do laudo." };
       }
+      const bytes = Buffer.from(attachment.content.buffer, attachment.content.byteOffset, attachment.content.byteLength);
 
       await recordAudit(
         {

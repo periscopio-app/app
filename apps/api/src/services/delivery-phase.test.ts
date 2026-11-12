@@ -42,7 +42,6 @@ test("deploy do piloto (Task 15): valida configuração de produção sem exposi
   const envConfig = {
     NODE_ENV: "production",
     CORS_ORIGINS: "https://periscopio.app,https://admin.periscopio.app",
-    SUPABASE_URL: "https://rnaivkktezcjttjmtznn.supabase.co",
   };
 
   assert.strictEqual(envConfig.NODE_ENV, "production");

@@ -1,6 +1,6 @@
 /**
  * "Meu painel": perfil próprio, foto e métricas por papel.
- * A foto usa um armazenamento em memória (nenhuma chamada real ao Supabase).
+ * A foto fica no Postgres (tabela user_avatars); nenhuma chamada a serviço externo.
  * Requer TEST_DATABASE_URL (Postgres local de teste).
  */
 import { test, before, after, describe } from "node:test";
