@@ -66,7 +66,7 @@ export function validateAttachmentUpload(params: AttachmentUploadParams): {
     return { allowed: false, error: "Formato não permitido. Envie o laudo em PDF, JPG ou PNG." };
   }
 
-  // 5. Geração de chave opaca sem PII (pasta da escola + uuid do aluno no bucket do Supabase)
+  // 5. Geração de chave opaca sem PII (pasta da escola + uuid do aluno; só identifica o arquivo, que fica no próprio banco)
   const fileExt = filename.split(".").pop()?.toLowerCase() || "bin";
   const uniqueFileId = crypto.randomUUID();
   const objectKey =
@@ -113,28 +113,3 @@ export function detectarFormatoLaudo(bytes: Uint8Array): FormatoLaudo | null {
 }
 
 export const ATTACHMENT_MAX_BYTES = MAX_FILE_SIZE_BYTES;
-
-/** Armazenamento dos laudos. O padrão usa o bucket privado do Supabase; os testes trocam por uma versão em memória. */
-export interface AttachmentStorage {
-  put(key: string, body: Buffer, contentType: string): Promise<void>;
-  get(key: string): Promise<Buffer>;
-  remove(key: string): Promise<void>;
-}
-
-let storageOverride: AttachmentStorage | null = null;
-
-export function setAttachmentStorage(storage: AttachmentStorage | null) {
-  storageOverride = storage;
-}
-
-export async function getAttachmentStorage(): Promise<AttachmentStorage> {
-  if (storageOverride) return storageOverride;
-  const store = await import("../storage");
-  return {
-    put: async (key, body, contentType) => {
-      await store.uploadObject(key, body, contentType);
-    },
-    get: async (key) => Buffer.from(await (await store.getObject(key)).arrayBuffer()),
-    remove: (key) => store.removeObject(key),
-  };
-}

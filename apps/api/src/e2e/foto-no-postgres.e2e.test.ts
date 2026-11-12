@@ -1,5 +1,5 @@
 /**
- * REG-017 — a foto de perfil fica no Postgres (user_avatars), não no Supabase, e continua lá depois de reiniciar a API.
+ * REG-017 — a foto de perfil fica no Postgres (user_avatars), não em armazenamento externo, e continua lá depois de reiniciar a API.
  * Usa o armazenamento PADRÃO (sem o falso em memória do profile.e2e). Fotos sintéticas. Requer TEST_DATABASE_URL.
  */
 import { test, before, after, describe } from "node:test";
@@ -134,7 +134,7 @@ describe("Foto de perfil no Postgres (REG-017)", { skip }, () => {
     assert.equal((await pool.query("SELECT 1 FROM user_avatars WHERE user_id = $1", [ids.re])).rowCount, 0);
   });
 
-  test("chave antiga do Supabase sem foto no Postgres vira 'sem foto', não imagem quebrada", async () => {
+  test("chave antiga (de armazenamento externo) sem foto no Postgres vira 'sem foto', não imagem quebrada", async () => {
     const velhaChave = `avatars/${ids.legado_tenant}/${ids.legado}/00000000-0000-4000-8000-000000000001.jpg`;
     await pool.query("UPDATE users SET avatar_key = $2 WHERE id = $1", [ids.legado, velhaChave]);
     assert.equal((await perfil(app, "legado@teste.local")).avatarUrl, null);

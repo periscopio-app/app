@@ -5,7 +5,7 @@ import type { AvatarStorage } from "./avatar.service";
 
 /**
  * Foto de perfil guardada no próprio Postgres (Neon), na tabela `user_avatars` (migração 0030).
- * Substitui o Supabase Storage: a foto passa a ter o mesmo ciclo de vida do usuário e não depende de bucket externo.
+ * A foto tem o mesmo ciclo de vida do usuário e não depende de bucket externo.
  *
  * A chave que continua em `users.avatar_key` mantém o formato `avatars/<tenant>/<usuário>/<uuid>.<ext>`;
  * o uuid do final é a chave pública opaca da foto (sem nome, e-mail ou documento).
@@ -41,7 +41,7 @@ export const avatarNoPostgres: AvatarStorage = {
     // Só apaga se ainda for esta a foto atual: remover a foto ANTIGA depois de trocar não pode apagar a nova.
     await db.delete(userAvatars).where(and(eq(userAvatars.userId, p.userId), eq(userAvatars.key, p.fotoKey)));
   },
-  /** Só devolve endereço se a foto existe no Postgres: chaves antigas (do bucket do Supabase) viram "sem foto" em vez de imagem quebrada. */
+  /** Só devolve endereço se a foto existe no Postgres: chaves antigas (de armazenamento externo) viram "sem foto" em vez de imagem quebrada. */
   async publicUrl(key) {
     const p = partesDaChave(key);
     if (!p) return null;

@@ -1,4 +1,4 @@
-import { networkErrorCode } from "../storage/config";
+import { networkErrorCode } from "./network-error";
 
 /**
  * Painel de dados (Databricks), só para o Administrador Master.

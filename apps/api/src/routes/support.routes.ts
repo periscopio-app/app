@@ -52,7 +52,7 @@ const FAQ_ITEMS = [
     id: "anexos-exames",
     category: "Exames & Anexos",
     question: "Onde ficam armazenados os exames e documentos anexados?",
-    answer: "Os exames são custodiados no bucket seguro do Supabase Storage sob a pasta estruturada da escola e do aluno, protegidos por URLs assinadas de curta duração (600 segundos), garantindo conformidade com a LGPD e o sigilo em saúde.",
+    answer: "Os exames e laudos ficam guardados no banco de dados do sistema (Neon, na região de São Paulo), ligados ao caso do aluno. Só abrem para quem tem permissão no município e na escola, sem link público, e cada abertura é registrada na trilha de auditoria.",
   },
 ];
 
@@ -177,7 +177,7 @@ export async function supportRoutes(app: FastifyInstance) {
       qLower.includes("upload")
     ) {
       answer =
-        "Os exames complementares e laudos externos são custodiados no **Supabase Storage** sob a estrutura isolada `schools/{escolaId}/{alunoId}/{uuid}.{ext}`. Os links de visualização são assinados com validade estrita de **10 minutos (600s)**, bloqueando acessos públicos ou não autorizados e preservando o sigilo de prontuário.";
+        "Os exames complementares e laudos externos ficam guardados no **banco de dados do sistema** (Neon, região de São Paulo), ligados ao caso do aluno. O arquivo é aberto pelo servidor depois de conferir sessão, município e escola; não existe link público, e cada abertura entra na trilha de auditoria, preservando o sigilo de prontuário.";
       suggestions.push("Quais formatos de arquivo são aceitos para anexos?", "Qual o tamanho máximo de upload?");
     } else if (
       qLower.includes("prazo") ||

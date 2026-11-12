@@ -1,4 +1,4 @@
-import { networkErrorCode } from "../storage/config";
+import { networkErrorCode } from "./network-error";
 
 /**
  * Histórico de métricas vindo do Grafana Cloud (Prometheus), só para o Administrador Master.

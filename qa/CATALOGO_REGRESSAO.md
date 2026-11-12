@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos de teste automáticos** em 109 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **739 casos de teste automáticos** em 108 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -13,8 +13,8 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 | REG-001c | a rota recusa comportamento inexistente, valor inválido, perfil sem permissão e outro município | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-001d | RE completa a jornada SÓ pelas rotas da tela e envia ao médico | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
 | REG-001e | depois do envio os comportamentos ficam em somente leitura (409) | `apps/api/src/e2e/re-envio-pela-tela.e2e.test.ts` |
-| REG-002 | com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele) | `apps/api/src/e2e/attachments.e2e.test.ts` |
-| REG-002 | laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-002 | o laudo salva e abre normalmente, sem depender de nenhum serviço externo (laudo é opcional) | `apps/api/src/e2e/attachments.e2e.test.ts` |
+| REG-002 | registro antigo sem conteúdo no banco responde 404 com mensagem clara, sem afetar os laudos novos | `apps/api/src/e2e/attachments.e2e.test.ts` |
 | REG-003a | sem aceite (false) o perfil clínico é barrado no servidor, mas pode ler e aceitar o termo | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 | REG-003b | aceitar sem marcar a caixa é recusado e não grava nada | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
 | REG-003c | com a caixa marcada grava prova, estado true e auditoria, e libera o uso | `apps/api/src/e2e/termo-profissional.e2e.test.ts` |
@@ -35,7 +35,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 
-## API — unitários — 447
+## API — unitários — 434
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -636,6 +636,14 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 
 </details>
 
+<details><summary><code>apps/api/src/services/network-error.test.ts</code> — 3 · networkErrorCode</summary>
+
+- acha o código em cause e em originalError
+- reconhece AbortError como tempo esgotado
+- devolve null para erro que não é de rede
+
+</details>
+
 <details><summary><code>apps/api/src/services/onboarding-guard.test.ts</code> — 4</summary>
 
 - aceita ausência de lista e lista válida
@@ -776,20 +784,6 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/services/storage-check.service.test.ts</code> — 9</summary>
-
-- sem as variáveis do Supabase o teste para na configuração e diz o que falta
-- sem a chave de serviço o teste acusa a chave
-- tudo certo: link público responde 200 com a mesma imagem e depois some
-- CDN ainda serve o link antigo depois de apagar: o teste confere a origem e passa
-- imagem apagada que ainda responde 200 na origem continua sendo acusada
-- bucket de fotos privado: o link responde 400/404 e o teste acusa
-- falha no upload da foto é relatada sem derrubar o teste
-- host inexistente (fetch failed + ENOTFOUND): para na rede e explica, sem tentar upload
-- projeto responde 401 à chave: acusa chave de outro projeto, sem vazar a chave
-
-</details>
-
 <details><summary><code>apps/api/src/services/student-code.test.ts</code> — 4</summary>
 
 - código tem formato estável e não repete
@@ -832,18 +826,6 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/storage/config.test.ts</code> — 7 · resolveSupabaseUrl</summary>
-
-- devolve null sem configuração
-- monta a URL a partir do project ref
-- remove barra final e sufixos copiados do painel
-- recusa valor que não é endereço http(s)
-- acha o código em cause e em originalError
-- trata 'fetch failed' sem código como falha de rede
-- descreve a causa sem expor endereço nem chave
-
-</details>
-
 ## Contrato tela ↔ API — 1
 
 <details><summary><code>apps/api/src/contract/web-api-contract.test.ts</code> — 1 · contrato tela ↔ API</summary>
@@ -873,8 +855,8 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 - outro município e outra escola recebem 404 (sem vazar que o caso existe)
 - foto do celular (JPG/PNG) é aceita e volta com o tipo certo
 - só PDF/JPG/PNG de verdade: GIF, texto disfarçado, vazio e acima de 10 MB são recusados
-- [REG-002] com o Supabase fora do ar o laudo salva e abre normalmente (laudo é opcional e não depende dele)
-- [REG-002] laudo antigo (sem conteúdo no banco) ainda abre do bucket; se o bucket cair, 503 só nele
+- [REG-002] o laudo salva e abre normalmente, sem depender de nenhum serviço externo (laudo é opcional)
+- [REG-002] registro antigo sem conteúdo no banco responde 404 com mensagem clara, sem afetar os laudos novos
 - [REG-005] RE e médico guardam no mesmo lugar: pasta da escola e uuid do aluno, nome do arquivo fora do caminho
 - [REG-008] gravar laudo grande que FALHA não infla a memória: o erro é curto e sem o arquivo (o Drizzle põe os parâmetros na mensagem)
 
@@ -968,7 +950,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **752 casos 
 - trocar: a chave muda, a foto antiga deixa de existir e continua uma só linha por usuário
 - cada pessoa tem a própria foto: trocar a de uma não mexe na de outra
 - remover: apaga a linha e o endereço antigo passa a dar 404
-- chave antiga do Supabase sem foto no Postgres vira 'sem foto', não imagem quebrada
+- chave antiga (de armazenamento externo) sem foto no Postgres vira 'sem foto', não imagem quebrada
 - chaves inexistentes ou malformadas: 404 curto, sem pista do que existe
 
 </details>

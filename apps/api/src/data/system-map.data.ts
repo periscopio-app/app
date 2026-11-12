@@ -1337,11 +1337,6 @@ export const SYSTEM_MAP: MapaDoSistema = {
      "l": "@fastify/swagger-ui",
      "f": "apps/api/package.json",
      "d": 3
-    },
-    {
-     "l": "@supabase/supabase-js",
-     "f": "apps/api/package.json",
-     "d": 3
     }
    ],
    "files": [
