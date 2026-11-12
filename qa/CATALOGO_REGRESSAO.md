@@ -292,7 +292,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **747 casos 
 - WEBP com EXIF ou XMP é recusado; limpo passa
 - validarFoto aceita com ou sem prefixo data URL e devolve bytes limpos
 - validarFoto recusa vazio, texto, SVG, PDF, arquivo corrompido e WEBP com metadados
-- validarFoto recusa arquivo acima de 2 MB com 413
+- validarFoto recusa arquivo acima de 3 MB com 413
 - chave do objeto é opaca e só o dono pode removê-la
 
 </details>
@@ -1030,7 +1030,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **747 casos 
 
 <details><summary><code>apps/api/src/e2e/migracoes-lote-sp.e2e.test.ts</code> — 7 · Migrações do lote SP (REG-015)</summary>
 
-- 0030: foto fica no Postgres, só JPEG/PNG/WEBP até 2 MB, e some junto com o usuário
+- 0030: foto fica no Postgres, só JPEG/PNG/WEBP até 3 MB, e some junto com o usuário
 - 0031: etiqueta repetida (ignorando maiúscula e espaços) é recusada no mesmo grupo, mas vale em outro grupo e outro município
 - 0032: devolução exige justificativa de 100 a 150 caracteres, tem UUID e não pode ser alterada nem apagada
 - 0033: volumetria guarda só contagens por dia, formulário e tipo

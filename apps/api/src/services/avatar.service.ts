@@ -5,13 +5,13 @@ import crypto from "node:crypto";
  *
  * Regras:
  *  - o formato é detectado pelos primeiros bytes do arquivo (o tipo informado pelo navegador é ignorado);
- *  - só JPEG, PNG e WEBP, até 2 MB;
+ *  - só JPEG, PNG e WEBP, até 3 MB;
  *  - metadados que podem revelar onde a foto foi tirada (EXIF/GPS, XMP, IPTC, comentários) são removidos
  *    de JPEG e PNG; um WEBP que traga esses metadados é recusado (o navegador já reenvia a imagem limpa);
  *  - a chave do objeto é opaca (tenant/usuário/uuid): sem nome, e-mail ou documento no endereço da foto.
  */
 
-export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+export const AVATAR_MAX_BYTES = 3 * 1024 * 1024;
 export const AVATAR_ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export type AvatarExt = "jpg" | "png" | "webp";
@@ -130,12 +130,12 @@ export function validarFoto(dataBase64: unknown): FotoValidada {
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(limpo)) return { ok: false, status: 422, error: INVALIDA };
   // tamanho estimado antes de decodificar, para não alocar um arquivo enorme à toa
   if ((limpo.length * 3) / 4 > AVATAR_MAX_BYTES + 3) {
-    return { ok: false, status: 413, error: "A foto passa de 2 MB. Escolha uma imagem menor." };
+    return { ok: false, status: 413, error: "A foto passa de 3 MB. Escolha uma imagem menor." };
   }
   const bruto = Buffer.from(limpo, "base64");
   if (bruto.length === 0) return { ok: false, status: 422, error: INVALIDA };
   if (bruto.length > AVATAR_MAX_BYTES) {
-    return { ok: false, status: 413, error: "A foto passa de 2 MB. Escolha uma imagem menor." };
+    return { ok: false, status: 413, error: "A foto passa de 3 MB. Escolha uma imagem menor." };
   }
 
   const format = detectarFormato(bruto);
