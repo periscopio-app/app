@@ -828,11 +828,22 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **740 casos 
 
 </details>
 
-## Contrato tela ↔ API — 1
+## Contrato tela ↔ API — 7
 
 <details><summary><code>apps/api/src/contract/web-api-contract.test.ts</code> — 1 · contrato tela ↔ API</summary>
 
 - toda chamada api.* do front tem rota na API (mesmo método e caminho)
+
+</details>
+
+<details><summary><code>apps/api/src/contract/web-fogap-ux.test.ts</code> — 6 · Tela do RE (FOGAP): estrutura e acessibilidade</summary>
+
+- o FOGAP vem antes do consentimento, do cofre e dos laudos na tela do RE
+- os blocos A a I do FOGAP são retráteis e os atalhos abrem o bloco antes de rolar
+- recolher um bloco só esconde: o conteúdo continua montado e nada digitado se perde
+- o comentário por pergunta grava no mesmo campo __obs que a API lê
+- o professor entrevistado, para o RE, é campo de texto com o nome dele (sem select)
+- nenhum rótulo, placeholder ou selo da tela escreve 'opcional'
 
 </details>
 

@@ -69,7 +69,7 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
       }
       await fetchAttachments();
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : (e as Error)?.message || "Não foi possível anexar agora. O laudo é opcional: você pode continuar e tentar depois.");
+      setErro(e instanceof ApiError ? e.message : (e as Error)?.message || "Não foi possível anexar agora. Você pode continuar e tentar depois.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -100,7 +100,6 @@ export function CaseAttachmentsCard({ caseId }: CaseAttachmentsCardProps) {
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-bold leading-snug text-black">Laudos trazidos pela família</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" className="whitespace-nowrap text-[11px]">Opcional</Badge>
             {attachments.length > 0 && <Badge variant="default" className="whitespace-nowrap text-[11px]">{attachments.length} anexado(s)</Badge>}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-neutral-700">

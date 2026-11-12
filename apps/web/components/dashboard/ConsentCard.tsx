@@ -200,7 +200,7 @@ export function ConsentCard({ caseId, studentId, studentCode }: ConsentCardProps
 
               <div>
                 <label htmlFor="consent-cpf" className="block text-xs font-bold text-black mb-1">
-                  CPF do Responsável (opcional)
+                  CPF do Responsável
                 </label>
                 <input
                   id="consent-cpf"
