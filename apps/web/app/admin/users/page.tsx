@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui";
+import { RegistrationLinksModal, type SchoolOption, type TenantOption } from "./RegistrationLinks";
 
 interface UserItem {
   id: string;
@@ -113,7 +114,10 @@ export default function AdminUsersPage() {
   const [novaEspecialidade, setNovaEspecialidade] = useState("");
   const [novaEscola, setNovaEscola] = useState("");
   const [novoLgpdConsent, setNovoLgpdConsent] = useState(true);
-  const [schoolsList, setSchoolsList] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [novoTenant, setNovoTenant] = useState("");
+  const [tenantsList, setTenantsList] = useState<TenantOption[]>([]);
+  const [linksOpen, setLinksOpen] = useState(false);
+  const [schoolsList, setSchoolsList] = useState<(SchoolOption & { slug: string })[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
@@ -123,7 +127,10 @@ export default function AdminUsersPage() {
 
   const apiUrl = "";
 
-  const ROLES_WITH_SCHOOL = ["ppi", "specialist", "school_manager", "teacher"];
+  // Escola é obrigatória para quem atua dentro de uma escola; especialista e médico do núcleo podem não ter escola.
+  const SCHOOL_REQUIRED_ROLES = ["ppi", "school_manager", "teacher"];
+  const SCHOOL_OPTIONAL_ROLES = ["specialist", "md1"];
+  const PLATFORM_ROLES = ["admin_platform", "adm_master"];
 
   const fetchUsers = async () => {
     try {
@@ -154,9 +161,24 @@ export default function AdminUsersPage() {
     }
   };
 
+  const fetchTenants = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/tenants`, { credentials: "include" });
+      const data = await res.json();
+      if (res.ok) {
+        const list: TenantOption[] = data.tenants || [];
+        setTenantsList(list);
+        if (list.length === 1) setNovoTenant(list[0].id);
+      }
+    } catch {
+      // não bloqueia o carregamento da página
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchSchools();
+    fetchTenants();
   }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -179,6 +201,7 @@ export default function AdminUsersPage() {
           classCode: novoConselho || undefined,
           specialty: novaEspecialidade || undefined,
           schoolId: novaEscola || undefined,
+          tenantId: PLATFORM_ROLES.includes(novoRole) ? undefined : novoTenant,
           lgpdConsentAccepted: novoLgpdConsent,
         }),
       });
@@ -188,8 +211,12 @@ export default function AdminUsersPage() {
         throw new Error(data.error || "Erro ao criar usuário.");
       }
 
-      const msg = `Usuário ${novoEmail} criado com sucesso com perfil ${novoRole}. ${data.message ?? ""}`;
-      setFeedbackSuccess(msg);
+      if (data.emailStatus === "failed") {
+        // O usuário existe, mas o e-mail não saiu: mostra o motivo em vermelho, não como sucesso.
+        setError(`${novoEmail}: ${data.message}`);
+      } else {
+        setFeedbackSuccess(`Usuário ${novoEmail} criado com perfil ${novoRole}. ${data.message ?? ""}`);
+      }
       setModalOpen(false);
       setNovoNome("");
       setNovoEmail("");
@@ -220,6 +247,20 @@ export default function AdminUsersPage() {
       setFeedbackSuccess("Perfil de privilégios atualizado com sucesso!");
       setEditingUser(null);
       fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSendAccess = async (user: UserItem) => {
+    if (!confirm(`Enviar o link de acesso para ${user.email}? Ele vale 7 dias e serve para a pessoa criar a própria senha.`)) return;
+    try {
+      setError(null);
+      setFeedbackSuccess(null);
+      const res = await fetch(`${apiUrl}/api/admin/users/${user.id}/send-access`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Não foi possível enviar o acesso.");
+      setFeedbackSuccess(data.message || `Link de acesso enviado para ${user.email}.`);
     } catch (err: any) {
       setError(err.message);
     }
@@ -293,6 +334,12 @@ export default function AdminUsersPage() {
             >
               Provisionar Escola
             </Link>
+            <Button type="button"
+              onClick={() => setLinksOpen(true)}
+              variant="outline" size="md"
+            >
+              Link de cadastro
+            </Button>
             <Button type="submit"
               onClick={() => setModalOpen(true)}
               variant="secondary" size="md"
@@ -389,6 +436,12 @@ export default function AdminUsersPage() {
                           {new Date(u.createdAt).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2">
+                          <Button type="button"
+                            onClick={() => handleSendAccess(u)}
+                            variant="outline" size="sm"
+                          >
+                            Enviar acesso
+                          </Button>
                           <Button type="submit"
                             onClick={() => {
                               setEditingUser(u);
@@ -494,19 +547,45 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
 
-                {ROLES_WITH_SCHOOL.includes(novoRole) && (
+                {!PLATFORM_ROLES.includes(novoRole) && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Escola / Unidade <span className="text-rose-700">*</span>
+                      Instância (município) <span className="text-rose-700">*</span>
+                    </label>
+                    <select
+                      value={novoTenant}
+                      onChange={(e) => { setNovoTenant(e.target.value); setNovaEscola(""); }}
+                      required
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione a instância...</option>
+                      {tenantsList.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      O profissional só vê casos e colegas desta instância.
+                    </p>
+                  </div>
+                )}
+
+                {(SCHOOL_REQUIRED_ROLES.includes(novoRole) || SCHOOL_OPTIONAL_ROLES.includes(novoRole)) && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Escola / Unidade{" "}
+                      {SCHOOL_REQUIRED_ROLES.includes(novoRole) ? <span className="text-rose-700">*</span> : null}
                     </label>
                     <select
                       value={novaEscola}
                       onChange={(e) => setNovaEscola(e.target.value)}
-                      required
+                      required={SCHOOL_REQUIRED_ROLES.includes(novoRole)}
+                      disabled={!novoTenant}
                       className="w-full px-3 py-2 rounded-xl bg-white border border-[#E1E9ED] text-sm text-black focus:outline-none focus:border-blue-500"
                     >
-                      <option value="">Selecione a escola...</option>
-                      {schoolsList.map((s) => (
+                      <option value="">
+                        {SCHOOL_REQUIRED_ROLES.includes(novoRole) ? "Selecione a escola..." : "Sem escola (núcleo)"}
+                      </option>
+                      {schoolsList.filter((s) => s.tenantId === novoTenant).map((s) => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
@@ -517,7 +596,7 @@ export default function AdminUsersPage() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Senha Inicial
-                      <span className="ml-1 text-slate-500 font-normal">(deixe vazio para gerar)</span>
+                      <span className="ml-1 text-slate-500 font-normal">(vazio = enviamos o link para a pessoa criar a dela)</span>
                     </label>
                     <input
                       type="password"
@@ -598,6 +677,10 @@ export default function AdminUsersPage() {
               </form>
             </div>
           </div>
+        )}
+
+        {linksOpen && (
+          <RegistrationLinksModal tenants={tenantsList} schools={schoolsList} onClose={() => setLinksOpen(false)} />
         )}
 
         {/* Modal Alterar Perfil */}

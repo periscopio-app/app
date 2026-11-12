@@ -18,7 +18,7 @@ function configChecks() {
     { key: "BETTER_AUTH_SECRET", ok: secretOk, optional: false, hint: "Segredo de sessão e dos links de acesso (mínimo 32 caracteres)." },
     { key: "DATABASE_URL", ok: has("DATABASE_URL"), optional: false, hint: "Conexão com o banco de dados PostgreSQL." },
     { key: "RESEND_API_KEY", ok: has("RESEND_API_KEY"), optional: false, hint: "Envio de e-mail (convites, recuperação de senha e newsletter)." },
-    { key: "RESEND_FROM_EMAIL", ok: has("RESEND_FROM_EMAIL"), optional: false, hint: "Remetente verificado no Resend." },
+    { key: "RESEND_FROM_EMAIL", ok: has("RESEND_FROM_EMAIL"), optional: true, hint: "Remetente dos e-mails. Sem ele, usa Periscópio <equipe@projetoperiscopio.com.br> (domínio verificado no Resend); só defina se mudar de domínio." },
     { key: "APP_URL", ok: has("APP_URL") && !/localhost/.test(process.env.APP_URL ?? ""), optional: false, hint: "Endereço público do site (usado nos links dos e-mails)." },
     { key: "CORS_ORIGINS", ok: has("CORS_ORIGINS") && !/^\*$/.test(process.env.CORS_ORIGINS ?? ""), optional: false, hint: "Origens permitidas para chamar a API." },
     { key: "BI_RAG_URL", ok: has("BI_RAG_URL"), optional: true, hint: "Assistente de IA RAG (opcional; sem ele, os resumos usam regras determinísticas)." },

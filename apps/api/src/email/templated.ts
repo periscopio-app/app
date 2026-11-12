@@ -2,6 +2,8 @@
  * Envio de e-mails por template publicado no Resend (via REST: o SDK 4.8 não suporta `template`).
  * Os templates usam {{{VAR}}} (sem escape), então escapamos o HTML de toda variável aqui.
  */
+import { fromAddress } from "./sender";
+
 export type TemplateAlias =
   | "expert-meeting-request"
   | "expert-meeting-confirmed"
@@ -54,7 +56,7 @@ export async function sendTemplatedEmail(params: {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL ?? "Periscópio <no-reply@projetoperiscopio.com.br>",
+        from: fromAddress(),
         to: params.to,
         template: { id: templateId(params.alias), variables },
         ...(withAttachments && params.attachments?.length

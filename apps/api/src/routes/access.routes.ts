@@ -2,10 +2,9 @@ import type { FastifyInstance } from "fastify";
 import { sql, eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { users } from "@periscopio/shared";
-import { sendEmail } from "../email";
-import { accessLinkEmail } from "../email/templates";
+import { sendAccessLinkEmail } from "../services/access-email.service";
 import { upsertCredential, credentialFingerprint } from "../auth/credentials";
-import { createAccessToken, verifyAccessToken } from "../auth/access-link";
+import { verifyAccessToken } from "../auth/access-link";
 import { sql as rawSql } from "drizzle-orm";
 import { recordAudit } from "../services/audit.service";
 import { rejectIfLimited } from "../security/rate-limit";
@@ -51,11 +50,13 @@ export async function accessRoutes(app: FastifyInstance) {
       const user = await findUser(email);
       if (!user) return generic;
 
-      const fingerprint = await credentialFingerprint(email);
-      const token = createAccessToken(email, fingerprint);
-      const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
-      const mail = accessLinkEmail(user.name, `${appUrl}/redefinir?token=${encodeURIComponent(token)}`);
-      await sendEmail(email, mail.subject, mail.html);
+      const sent = await sendAccessLinkEmail({ email, name: user.name });
+      if (!sent.ok) {
+        // O usuário recebe a resposta genérica de sempre; a falha fica visível no log e no painel de saúde.
+        incr("email_send_failures");
+        request.log.error({ err: sent.error }, "falha ao enviar link de acesso");
+        return generic;
+      }
       incr("access_links_sent");
       await recordAudit({ tenantId: user.tenantId, userId: user.id, userEmail: email, action: "access:link_sent", entityType: "users", entityId: user.id }, request);
     } catch (err: any) {

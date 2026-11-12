@@ -272,12 +272,10 @@ export async function onboardingRoutes(app: FastifyInstance) {
       return { valid: false, error: "Este convite expirou. Solicite um novo link ao administrador." };
     }
 
-    // Busca dados da escola
-    const [school] = await db
-      .select()
-      .from(schools)
-      .where(eq(schools.id, invite.schoolId))
-      .limit(1);
+    // Busca dados da escola (o link de cadastro unitário não tem escola)
+    const [school] = invite.schoolId
+      ? await db.select().from(schools).where(eq(schools.id, invite.schoolId)).limit(1)
+      : [];
 
     // Se a slug foi passada, valida se o convite pertence a esta escola
     if (slug && school && school.slug !== slug) {
@@ -331,6 +329,11 @@ export async function onboardingRoutes(app: FastifyInstance) {
       reply.status(400);
       return { error: "Convite inválido ou expirado." };
     }
+    // Só o convite do gestor escolar conclui o onboarding de uma escola; os de profissional não têm esse poder.
+    if (invite.type !== "school_manager" || !invite.schoolId) {
+      reply.status(400);
+      return { error: "Este link não é um convite de escola." };
+    }
 
     const [school] = await db
       .select()
@@ -349,7 +352,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
       .values({
         tenantId: school.tenantId,
         schoolId: school.id,
-        email: school.responsavelEmail || invite.email,
+        email: (school.responsavelEmail || invite.email || "").toLowerCase().trim(),
         name: school.responsavelNome || "Gestor Escolar",
         phone: school.responsavelTelefone,
         role: "school_manager",
@@ -363,7 +366,7 @@ export async function onboardingRoutes(app: FastifyInstance) {
         return { error: "A senha deve ter pelo menos 8 caracteres." };
       }
       await upsertCredential({
-        email: school.responsavelEmail || invite.email,
+        email: (school.responsavelEmail || invite.email || "").toLowerCase().trim(),
         name: school.responsavelNome || "Gestor Escolar",
         password: body.responsavelPassword,
       });
@@ -483,8 +486,8 @@ export async function onboardingRoutes(app: FastifyInstance) {
       return { error: "Este convite expirou. Peça um novo à sua escola." };
     }
 
-    const email = invite.email.toLowerCase();
-    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const email = (invite.email ?? "").toLowerCase();
+    const [user] = email ? await db.select().from(users).where(eq(users.email, email)).limit(1) : [];
     if (!user) {
       reply.status(404);
       return { error: "Cadastro do profissional não encontrado." };

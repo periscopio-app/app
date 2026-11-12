@@ -10,6 +10,7 @@ import { triagemRoutes } from "./routes/triagem.routes";
 import { authRoutes } from "./routes/auth.routes";
 import { onboardingRoutes } from "./routes/onboarding.routes";
 import { accessRoutes } from "./routes/access.routes";
+import { registrationLinkRoutes } from "./routes/registration-links.routes";
 import { casesRoutes } from "./routes/cases.routes";
 import { reJourneyRoutes } from "./routes/re-journey.routes";
 import { medicalFormsRoutes } from "./routes/medical-forms.routes";
@@ -140,6 +141,7 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.register(authRoutes);
   app.register(onboardingRoutes);
   app.register(accessRoutes);
+  app.register(registrationLinkRoutes);
   app.register(casesRoutes);
   app.register(reJourneyRoutes);
   app.register(medicalFormsRoutes);
