@@ -148,7 +148,7 @@ export default function LGPDPedidosPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-black mb-1">
-                    CPF (opcional para conferência)
+                    CPF (para conferência)
                   </label>
                   <input
                     type="text"

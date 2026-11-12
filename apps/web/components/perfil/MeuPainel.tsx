@@ -232,7 +232,7 @@ export function MeuPainel() {
               <Field id="perfil-nome" label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} autoComplete="name" required />
               <Field
                 id="perfil-telefone"
-                label="Telefone com DDD (opcional)"
+                label="Telefone com DDD"
                 value={telefone}
                 onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
                 inputMode="tel"
@@ -241,7 +241,7 @@ export function MeuPainel() {
               />
               <div className="flex flex-col gap-2">
                 <label htmlFor="perfil-bio" className="text-sm font-semibold text-black">
-                  Apresentação curta (opcional)
+                  Apresentação curta
                 </label>
                 <textarea
                   id="perfil-bio"
@@ -265,7 +265,7 @@ export function MeuPainel() {
                   Cancelar
                 </Button>
               </div>
-              <p className="text-xs text-neutral-800">Deixe um campo opcional em branco para apagá-lo.</p>
+              <p className="text-xs text-neutral-800">Deixe o telefone ou a apresentação em branco para apagá-los.</p>
             </form>
           ) : (
             <dl className="grid gap-3 sm:grid-cols-2">
