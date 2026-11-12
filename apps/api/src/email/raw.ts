@@ -1,3 +1,5 @@
+import { fromAddress } from "./sender";
+
 /**
  * Envio de e-mails em formato HTML/texto via API direta do Resend.
  */
@@ -15,7 +17,7 @@ export async function sendEmail(params: {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL ?? "Periscópio <no-reply@projetoperiscopio.com.br>",
+        from: fromAddress(),
         to: params.to,
         subject: params.subject,
         html: params.html,

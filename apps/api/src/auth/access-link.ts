@@ -19,8 +19,11 @@ function sign(body: string): string {
   return crypto.createHmac("sha256", secret()).update(body).digest("base64url");
 }
 
-export function createAccessToken(email: string, fingerprint: string, now = Date.now()): string {
-  const payload = { e: email.toLowerCase().trim(), f: fingerprint, x: now + ACCESS_LINK_TTL_MS };
+/** Validade do link que o administrador dispara para um profissional recém-cadastrado: ele pode abrir o e-mail dias depois. */
+export const ADMIN_ACCESS_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function createAccessToken(email: string, fingerprint: string, now = Date.now(), ttlMs = ACCESS_LINK_TTL_MS): string {
+  const payload = { e: email.toLowerCase().trim(), f: fingerprint, x: now + ttlMs };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${body}.${sign(body)}`;
 }

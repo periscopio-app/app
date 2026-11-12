@@ -12,6 +12,12 @@ import { recordAudit } from "../services/audit.service";
 import { MigracaoPendenteError, TermoDesatualizadoError, registrarAceiteProfissional, situacaoDoTermo } from "../services/professional-term.service";
 import { errorCauseChain } from "../observability/error-cause";
 import { urlDoAvatar } from "../services/avatar.service";
+import { sendAccessLinkEmail } from "../services/access-email.service";
+import { rejectIfLimited } from "../security/rate-limit";
+import { incr } from "../observability/metrics";
+
+/** Perfis de plataforma: não pertencem a um município/instância e por isso podem ser criados sem tenantId. */
+const PLATFORM_ROLES: readonly string[] = ["admin_platform", "adm_master"];
 
 export const SYSTEM_ROLES_CATALOG = [
   {
@@ -152,7 +158,7 @@ export async function usersRoutes(app: FastifyInstance) {
     if (!actor) return;
 
     const list = await db
-      .select({ id: schools.id, name: schools.name, slug: schools.slug })
+      .select({ id: schools.id, name: schools.name, slug: schools.slug, tenantId: schools.tenantId })
       .from(schools)
       .orderBy(schools.name);
 
@@ -244,8 +250,32 @@ export async function usersRoutes(app: FastifyInstance) {
       return { error: "Já existe um usuário cadastrado com este e-mail." };
     }
 
-    // Tenant padrão se não informado
+    // Quem não é da plataforma precisa de uma instância (município) escolhida e existente. Antes, o padrão era o tenant
+    // global, e o especialista criado ali não enxergava nem era visto pelo médico da instância real.
+    const platformRole = PLATFORM_ROLES.includes(body.role);
+    if (!platformRole && !body.tenantId) {
+      reply.status(400);
+      return { error: "Informe a instância (município) do usuário: tenantId é obrigatório para este perfil." };
+    }
     const tenantId = body.tenantId || "00000000-0000-0000-0000-000000000001";
+    if (body.tenantId) {
+      const [tenant] = z.string().uuid().safeParse(body.tenantId).success
+        ? await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, body.tenantId)).limit(1)
+        : [];
+      if (!tenant) {
+        reply.status(400);
+        return { error: "Instância (tenantId) não encontrada." };
+      }
+    }
+    if (body.schoolId) {
+      const [school] = z.string().uuid().safeParse(body.schoolId).success
+        ? await db.select({ tenantId: schools.tenantId }).from(schools).where(eq(schools.id, body.schoolId)).limit(1)
+        : [];
+      if (!school || school.tenantId !== tenantId) {
+        reply.status(400);
+        return { error: "A escola informada não pertence a esta instância." };
+      }
+    }
     const userId = crypto.randomUUID();
     const initialPassword = body.password || crypto.randomBytes(16).toString("hex");
     const hashedPassword = await hashPassword(initialPassword);
@@ -349,11 +379,35 @@ export async function usersRoutes(app: FastifyInstance) {
         request
       );
 
+      // Sem senha definida pelo administrador, a pessoa recebe agora o link para criar a própria senha.
+      // O resultado do envio vai na resposta: a tela mostra "enviado" ou o motivo, e o botão "Enviar acesso" reenvia.
+      let emailStatus: "sent" | "failed" | "skipped" = "skipped";
+      let emailError: string | undefined;
+      if (!body.password) {
+        const sent = await sendAccessLinkEmail({ email, name: body.name }, { invited: true });
+        emailStatus = sent.ok ? "sent" : "failed";
+        if (sent.ok) {
+          incr("access_links_sent");
+        } else {
+          emailError = sent.error;
+          incr("email_send_failures");
+          request.log.error({ err: sent.error, userId: newUser.id }, "falha ao enviar o acesso ao usuário criado");
+        }
+        await recordAudit(
+          { tenantId, userId: actor.id, userEmail: actor.email, action: sent.ok ? "access:link_sent" : "access:link_failed", entityType: "users", entityId: newUser.id, payload: { by: "user.created" } },
+          request,
+        );
+      }
+
       return {
         user: newUser,
+        emailStatus,
+        ...(emailError ? { emailError } : {}),
         message: body.password
           ? "Usuário criado. Senha definida pelo administrador — comunique por canal seguro fora do sistema."
-          : "Usuário criado. Peça ao usuário que acesse /primeiro-acesso para definir a própria senha.",
+          : emailStatus === "sent"
+            ? "Usuário criado. Enviamos ao e-mail dele o link para criar a senha (vale 7 dias)."
+            : `Usuário criado, mas o e-mail NÃO saiu (${emailError}). Use o botão "Enviar acesso" depois de corrigir.`,
       };
     } catch (err: any) {
       request.log.error(err, "Erro ao criar usuário");
@@ -398,6 +452,50 @@ export async function usersRoutes(app: FastifyInstance) {
       request.log.error({ err, causes: errorCauseChain(err) }, "falha ao registrar aceite do termo profissional");
       return reply.status(503).send({ error: "Não foi possível registrar o aceite agora. Nada foi gravado; tente de novo em instantes." });
     }
+  });
+
+  /**
+   * 3a. Instâncias (municípios) para escolher onde o usuário atua.
+   */
+  app.get("/api/admin/tenants", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "users.manage");
+    if (!actor) return;
+    const list = await db
+      .select({ id: tenants.id, name: tenants.name, municipalityCode: tenants.municipalityCode, demo: tenants.demo })
+      .from(tenants)
+      .orderBy(tenants.name);
+    return { tenants: list };
+  });
+
+  /**
+   * 3b. Enviar (ou reenviar) o acesso: o link para a pessoa criar a própria senha, válido por 7 dias.
+   * Serve para quem já está cadastrado e não recebeu o e-mail, ou perdeu o link. Mostra o resultado, sem esconder a falha.
+   */
+  app.post("/api/admin/users/:id/send-access", async (request, reply) => {
+    const actor = await requireCapability(request, reply, "users.manage");
+    if (!actor) return;
+    if (rejectIfLimited(request, reply, "admin_send_access", 60, 60 * 60 * 1000)) return;
+
+    const { id } = request.params as { id: string };
+    const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!target) {
+      reply.status(404);
+      return { error: "Usuário não encontrado." };
+    }
+
+    const sent = await sendAccessLinkEmail({ email: target.email, name: target.name }, { invited: true });
+    if (sent.ok) incr("access_links_sent");
+    else incr("email_send_failures");
+    await recordAudit(
+      { tenantId: target.tenantId, userId: actor.id, userEmail: actor.email, action: sent.ok ? "access:link_sent" : "access:link_failed", entityType: "users", entityId: target.id, payload: { by: "admin" } },
+      request,
+    );
+    if (!sent.ok) {
+      request.log.error({ err: sent.error, userId: target.id }, "falha ao reenviar o acesso");
+      reply.status(502);
+      return { success: false, emailStatus: "failed", error: `O e-mail não saiu: ${sent.error}` };
+    }
+    return { success: true, emailStatus: "sent", message: `Link de acesso enviado para ${target.email}.` };
   });
 
   /**

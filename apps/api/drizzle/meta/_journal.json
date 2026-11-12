@@ -274,6 +274,13 @@
       "when": 1793752800000,
       "tag": "0037_board_google_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793839200000,
+      "tag": "0038_convite_sem_escola",
+      "breakpoints": true
     }
   ]
 }

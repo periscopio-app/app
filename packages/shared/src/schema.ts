@@ -272,10 +272,12 @@ export const lgpdRequests = pgTable("lgpd_requests", {
 export const onboardingInvites = pgTable("onboarding_invites", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
-  schoolId: uuid("school_id").notNull().references(() => schools.id),
-  email: varchar("email", { length: 255 }).notNull(),
+  // Nulos no link de cadastro unitário (professional_self): sem escola e sem e-mail pré-definido.
+  schoolId: uuid("school_id").references(() => schools.id),
+  email: varchar("email", { length: 255 }),
   token: varchar("token", { length: 120 }).notNull().unique(),
-  type: varchar("type", { length: 30 }).notNull(), // school_manager | professional
+  type: varchar("type", { length: 30 }).notNull(), // school_manager | professional | professional_self
+  label: varchar("label", { length: 120 }), // para quem o admin gerou o link (só controle interno)
   role: varchar("role", { length: 40 }),
   specialty: varchar("specialty", { length: 50 }),
   expiresAt: timestamp("expires_at").notNull(),

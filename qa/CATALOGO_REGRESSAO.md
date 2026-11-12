@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos de teste automáticos** em 109 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos de teste automáticos** em 110 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -35,8 +35,22 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos 
 | REG-012 | o mapa técnico do sistema é só do Admin Master: sem login 401, demais perfis 403, Master 200 | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-014 | cada vaga só aceita profissional da própria especialidade (delegar e trocar), e a fila do especialista segue a ordem de chegada | `apps/api/src/e2e/rotas-e-termo.e2e.test.ts` |
 | REG-023 | o schema-guard roda a cada boot: migração nova dele não pode apagar nem alterar dados | `apps/api/src/services/migration-journal.test.ts` |
+| REG-029 | o remetente padrão é do domínio verificado no Resend e RESEND_FROM_EMAIL o substitui | `apps/api/src/email/index.test.ts` |
+| REG-029a | só quem gerencia usuários gera o link; perfil, instância e especialidade são validados | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029b | o link leva ao /cadastro, aparece como pendente com o endereço e a tela pública mostra instância e especialidade | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029c | a pessoa se cadastra com e-mail de qualquer domínio, cai na instância do link e já entra; o link vale uma vez | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029d | o link nunca redefine a senha de quem já tem conta | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029e | e-mail fixado no link, conselho de classe, senha curta e termos são exigidos; falha não queima o link | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029f | link revogado ou vencido não cadastra; duas pessoas no mesmo link, só uma passa | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029g | o link do cadastro unitário não serve nas rotas de convite de escola nem de profissional por e-mail | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-029h | médico e RE ganham perfil e especialidade certos; RE exige escola da instância | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-030a | criar usuário sem senha envia o link de acesso (7 dias) pelo remetente verificado e informa o resultado | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-030b | se o e-mail não sai, a resposta diz o motivo, o usuário fica criado e o reenvio funciona | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-030c | sem RESEND_API_KEY o motivo aparece; com senha definida pelo administrador nenhum e-mail é disparado | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-030d | a instância é obrigatória e validada para quem não é da plataforma; escola de outra instância é recusada | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-030e | reenviar acesso exige permissão e usuário existente | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
 
-## API — unitários — 435
+## API — unitários — 436
 
 <details><summary><code>apps/api/src/auth/access-link.test.ts</code> — 5</summary>
 
@@ -59,9 +73,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/email/index.test.ts</code> — 1</summary>
+<details><summary><code>apps/api/src/email/index.test.ts</code> — 2</summary>
 
-- does not initialize Resend when the API key is absent
+- sem RESEND_API_KEY o envio devolve o motivo em vez de lançar, e sendEmail lança
+- [REG-029] o remetente padrão é do domínio verificado no Resend e RESEND_FROM_EMAIL o substitui
 
 </details>
 
@@ -847,7 +862,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 263
+## API — E2E (banco de teste, fluxo pela API real) — 276
 
 <details><summary><code>apps/api/src/e2e/admin-kpis.e2e.test.ts</code> — 5 · KPIs do admin (REG-020)</summary>
 
@@ -899,6 +914,24 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **746 casos 
 - feedback de outra pessoa ou de outro município é recusado
 - overview devolve os painéis básicos para cada papel permitido
 - RE não acessa o BI do gestor nem o assistente (403, sem dado)
+
+</details>
+
+<details><summary><code>apps/api/src/e2e/cadastro-por-link.e2e.test.ts</code> — 13 · [REG-029/030] cadastro por link e envio de acesso (E2E)</summary>
+
+- [REG-029a] só quem gerencia usuários gera o link; perfil, instância e especialidade são validados
+- [REG-029b] o link leva ao /cadastro, aparece como pendente com o endereço e a tela pública mostra instância e especialidade
+- [REG-029c] a pessoa se cadastra com e-mail de qualquer domínio, cai na instância do link e já entra; o link vale uma vez
+- [REG-029d] o link nunca redefine a senha de quem já tem conta
+- [REG-029e] e-mail fixado no link, conselho de classe, senha curta e termos são exigidos; falha não queima o link
+- [REG-029f] link revogado ou vencido não cadastra; duas pessoas no mesmo link, só uma passa
+- [REG-029g] o link do cadastro unitário não serve nas rotas de convite de escola nem de profissional por e-mail
+- [REG-029h] médico e RE ganham perfil e especialidade certos; RE exige escola da instância
+- [REG-030a] criar usuário sem senha envia o link de acesso (7 dias) pelo remetente verificado e informa o resultado
+- [REG-030b] se o e-mail não sai, a resposta diz o motivo, o usuário fica criado e o reenvio funciona
+- [REG-030c] sem RESEND_API_KEY o motivo aparece; com senha definida pelo administrador nenhum e-mail é disparado
+- [REG-030d] a instância é obrigatória e validada para quem não é da plataforma; escola de outra instância é recusada
+- [REG-030e] reenviar acesso exige permissão e usuário existente
 
 </details>
 

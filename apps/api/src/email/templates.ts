@@ -100,17 +100,18 @@ export function resetPasswordEmail(name: string, url: string) {
 }
 
 /** Link para criar (primeiro acesso) ou redefinir a senha de quem já está cadastrado. */
-export function accessLinkEmail(name: string, url: string) {
+export function accessLinkEmail(name: string, url: string, opts: { validity?: string; invited?: boolean } = {}) {
+  const validity = opts.validity ?? "1 hora";
   return {
-    subject: "Crie ou redefina sua senha — Periscópio Saúde",
+    subject: opts.invited ? "Seu acesso ao Periscópio Saúde — crie sua senha" : "Crie ou redefina sua senha — Periscópio Saúde",
     html: layout({
       preheader: "Use o link para definir a sua senha de acesso ao Periscópio.",
       title: "Defina a sua senha",
       bodyHtml: `<p style="margin:0 0 12px;line-height:1.5;">Olá, <strong>${escapeHtml(name)}</strong>.</p>
-          <p style="margin:0;line-height:1.5;">Recebemos um pedido para criar ou redefinir a senha de acesso ao Periscópio Saúde com este e-mail. Clique no botão abaixo para escolher a sua senha.</p>`,
+          <p style="margin:0;line-height:1.5;">${opts.invited ? "Seu acesso ao Periscópio Saúde foi liberado com este e-mail. Clique no botão abaixo para escolher a sua senha e entrar." : "Recebemos um pedido para criar ou redefinir a senha de acesso ao Periscópio Saúde com este e-mail. Clique no botão abaixo para escolher a sua senha."}</p>`,
       ctaLabel: "Definir minha senha",
       ctaUrl: url,
-      footnote: "O link vale por 1 hora e só pode ser usado uma vez. Se você não fez este pedido, ignore este e-mail: nada será alterado.",
+      footnote: `O link vale por ${validity} e só pode ser usado uma vez. ${opts.invited ? "Se você não esperava este acesso, ignore este e-mail." : "Se você não fez este pedido, ignore este e-mail: nada será alterado."}`,
     }),
   };
 }
