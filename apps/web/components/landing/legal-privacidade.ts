@@ -118,7 +118,7 @@ export const HTML = `<p><strong>Versão 1.0 Oficial, homologada para o período 
 <h2>6. Com quem compartilhamos</h2>
 <ul>
 <li><strong>Instituição parceira</strong> responsável pelo caso.</li>
-<li><strong>Fornecedores de tecnologia (operadores)</strong> que nos ajudam a manter o serviço: hospedagem do site e da API, banco de dados, armazenamento de arquivos e envio de e-mail. Para o piloto, estão previstos Vercel (site), Render (API), Neon (banco de dados) e Supabase (arquivos). Eles só tratam os dados para nos prestar o serviço, sob contrato.</li>
+<li><strong>Fornecedores de tecnologia (operadores)</strong> que nos ajudam a manter o serviço: hospedagem do site e da API, banco de dados, armazenamento de arquivos e envio de e-mail. Para o piloto, estão previstos Vercel (site), Render (API) e Neon (banco de dados, que também guarda os arquivos). Eles só tratam os dados para nos prestar o serviço, sob contrato.</li>
 <li><strong>Autoridades</strong>, quando a lei ou uma ordem judicial exigir.</li>
 </ul>
 <p><strong>Transferência para fora do Brasil.</strong> Parte desses fornecedores tem servidores no exterior. Quando isso acontece, usamos os mecanismos que a LGPD permite (art. 33) e as regras da ANPD.</p>
