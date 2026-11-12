@@ -17,6 +17,8 @@ const SPECIALTIES: Record<string, string> = {
 interface LinkInfo {
   role: string;
   specialty: string | null;
+  chooseSpecialty?: boolean;
+  specialtyOptions?: string[];
   tenantName: string | null;
   schoolName: string | null;
   email: string | null;
@@ -35,6 +37,7 @@ export default function CadastroPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [classCode, setClassCode] = useState("");
+  const [specialty, setSpecialty] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -66,6 +69,7 @@ export default function CadastroPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (info?.chooseSpecialty && !specialty) return setError("Escolha a sua especialidade.");
     if (password.length < 8) return setError("A senha deve ter pelo menos 8 caracteres.");
     if (password !== confirm) return setError("As senhas não conferem.");
     if (!accepted) return setError("Aceite os termos de uso e a política de privacidade para continuar.");
@@ -81,6 +85,7 @@ export default function CadastroPage() {
           email,
           phone: phone || undefined,
           classCode: classCode || undefined,
+          specialty: info?.chooseSpecialty ? specialty : undefined,
           password,
           acceptedTerms: accepted,
         }),
@@ -178,6 +183,17 @@ export default function CadastroPage() {
               <label className="form-label" htmlFor="email">E-mail</label>
               <input id="email" type="email" className="form-input" autoComplete="email" required value={email} readOnly={Boolean(info.email)} onChange={(e) => setEmail(e.target.value)} />
             </div>
+            {info.chooseSpecialty && (
+              <div className="form-group">
+                <label className="form-label" htmlFor="specialty">Sua especialidade *</label>
+                <select id="specialty" className="form-input" required value={specialty} onChange={(e) => setSpecialty(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {(info.specialtyOptions ?? Object.keys(SPECIALTIES)).map((v) => (
+                    <option key={v} value={v}>{SPECIALTIES[v] ?? v}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label" htmlFor="classCode">
                 Registro no conselho (CRM, CRP, CRFa...){needsClassCode ? " *" : ""}

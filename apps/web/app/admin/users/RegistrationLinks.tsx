@@ -14,6 +14,8 @@ type LinkItem = {
   email: string | null;
   expiresAt: string;
   usedAt: string | null;
+  maxUses: number;
+  usesCount: number;
   createdAt: string;
   tenantName: string | null;
   schoolName: string | null;
@@ -37,6 +39,7 @@ const ROLE_OPTIONS = [
 ];
 
 const STATUS_LABEL: Record<LinkItem["status"], string> = { pending: "Aguardando cadastro", used: "Cadastro feito", expired: "Expirado / revogado" };
+const ANY_SPECIALTY = "__any__";
 const STATUS_CLASS: Record<LinkItem["status"], string> = {
   pending: "bg-amber-500/15 text-amber-800 border-amber-500/40",
   used: "bg-emerald-500/15 text-emerald-800 border-emerald-500/40",
@@ -61,9 +64,11 @@ export function RegistrationLinksModal({
   const [label, setLabel] = useState("");
   const [email, setEmail] = useState("");
   const [days, setDays] = useState(7);
+  const [collective, setCollective] = useState(false);
+  const [maxUses, setMaxUses] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ url: string; expiresAt: string; label: string } | null>(null);
+  const [created, setCreated] = useState<{ url: string; expiresAt: string; label: string; maxUses: number } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [links, setLinks] = useState<LinkItem[]>([]);
 
@@ -106,16 +111,18 @@ export function RegistrationLinksModal({
         body: JSON.stringify({
           tenantId,
           role,
-          specialty: role === "specialist" ? specialty || undefined : undefined,
+          specialty: role === "specialist" && specialty !== ANY_SPECIALTY ? specialty || undefined : undefined,
+          chooseSpecialty: role === "specialist" && specialty === ANY_SPECIALTY ? true : undefined,
           schoolId: schoolId || undefined,
           label: label || undefined,
-          email: email || undefined,
+          email: collective ? undefined : email || undefined,
           expiresInDays: days,
+          maxUses: collective ? maxUses : 1,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Não foi possível gerar o link.");
-      setCreated({ url: data.url, expiresAt: data.expiresAt, label });
+      setCreated({ url: data.url, expiresAt: data.expiresAt, label, maxUses: data.maxUses ?? 1 });
       setLabel("");
       setEmail("");
       loadLinks();
@@ -139,8 +146,12 @@ export function RegistrationLinksModal({
     }
   };
 
-  const whatsapp = (url: string, who: string | null) =>
-    `https://wa.me/?text=${encodeURIComponent(`${who ? `Olá, ${who}! ` : "Olá! "}Este é o seu link para se cadastrar no Periscópio Saúde (vale para uma pessoa só): ${url}`)}`;
+  const whatsapp = (url: string, who: string | null, uses: number) =>
+    `https://wa.me/?text=${encodeURIComponent(
+      uses > 1
+        ? `Olá, pessoal! Este é o link para cada um(a) fazer o seu cadastro no Periscópio Saúde (use o seu e-mail e crie a sua senha; não compartilhe fora do grupo): ${url}`
+        : `${who ? `Olá, ${who}! ` : "Olá! "}Este é o seu link para se cadastrar no Periscópio Saúde (vale para uma pessoa só): ${url}`,
+    )}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-200/70 backdrop-blur-sm">
@@ -149,7 +160,7 @@ export function RegistrationLinksModal({
           <div>
             <h3 className="text-lg font-bold text-black">Link de cadastro de profissional</h3>
             <p className="text-xs text-slate-600 mt-0.5">
-              Gere um link por pessoa e envie por onde preferir. Ela abre, informa o próprio e-mail (qualquer domínio) e cria a senha.
+              Gere um link por pessoa ou um link coletivo para o grupo do WhatsApp. Cada pessoa abre, informa o próprio e-mail (qualquer domínio) e cria a própria senha.
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-600 hover:text-black" aria-label="Fechar">✕</button>
@@ -158,6 +169,25 @@ export function RegistrationLinksModal({
         {error && <div role="alert" className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-sm">⚠️ {error}</div>}
 
         <form onSubmit={submit} className="mt-5 space-y-4">
+          <div role="radiogroup" aria-label="Tipo de link" className="grid sm:grid-cols-2 gap-2">
+            {[
+              { v: false, t: "Um link por pessoa", d: "Vale para um cadastro." },
+              { v: true, t: "Link coletivo (grupo)", d: "Um link para várias pessoas, com limite." },
+            ].map((o) => (
+              <button
+                key={String(o.v)}
+                type="button"
+                role="radio"
+                aria-checked={collective === o.v}
+                onClick={() => { setCollective(o.v); if (o.v) setEmail(""); }}
+                className={`text-left p-3 rounded-xl border text-sm ${collective === o.v ? "border-blue-500 bg-[#F0F9FC]" : "border-[#E1E9ED] bg-white"}`}
+              >
+                <span className="font-semibold text-black block">{o.t}</span>
+                <span className="text-xs text-slate-600">{o.d}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-tenant">Instância (município) *</label>
@@ -180,6 +210,7 @@ export function RegistrationLinksModal({
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-spec">Especialidade *</label>
                 <select id="rl-spec" required value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
                   <option value="">Selecione...</option>
+                  {collective && <option value={ANY_SPECIALTY}>Cada pessoa escolhe a sua</option>}
                   {Object.entries(SPECIALTIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
@@ -200,10 +231,17 @@ export function RegistrationLinksModal({
               <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-label">Para quem é <span className="font-normal text-slate-500">(só para você se organizar)</span></label>
               <input id="rl-label" type="text" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: Dra. Mariana — fono" className={inputClass} />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-email">E-mail fixo</label>
-              <input id="rl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deixe vazio para a pessoa informar" className={inputClass} />
-            </div>
+            {collective ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-max">Quantas pessoas podem se cadastrar *</label>
+                <input id="rl-max" type="number" required min={2} max={200} value={maxUses} onChange={(e) => setMaxUses(Math.max(2, Math.min(200, Number(e.target.value) || 2)))} className={inputClass} />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="rl-email">E-mail fixo</label>
+                <input id="rl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deixe vazio para a pessoa informar" className={inputClass} />
+              </div>
+            )}
           </div>
 
           <div className="flex items-end justify-between gap-4">
@@ -221,11 +259,11 @@ export function RegistrationLinksModal({
 
         {created && (
           <div className="mt-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-            <p className="text-sm font-semibold text-emerald-800">Link gerado. Vale para um cadastro e expira em {new Date(created.expiresAt).toLocaleDateString("pt-BR")}.</p>
+            <p className="text-sm font-semibold text-emerald-800">Link gerado. Vale para {created.maxUses > 1 ? `até ${created.maxUses} cadastros` : "um cadastro"} e expira em {new Date(created.expiresAt).toLocaleDateString("pt-BR")}.</p>
             <input readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} aria-label="Link de cadastro" className={`${inputClass} mt-2 font-mono text-xs`} />
             <div className="mt-2 flex flex-wrap gap-2">
               <Button type="button" onClick={() => copy(created.url)} variant="secondary" size="sm">{copied === created.url ? "Copiado ✓" : "Copiar link"}</Button>
-              <a href={whatsapp(created.url, created.label || null)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E1E9ED] text-slate-700 hover:bg-[#F0F9FC]">
+              <a href={whatsapp(created.url, created.label || null, created.maxUses)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E1E9ED] text-slate-700 hover:bg-[#F0F9FC]">
                 Enviar por WhatsApp
               </a>
             </div>
@@ -247,6 +285,7 @@ export function RegistrationLinksModal({
                       {l.specialty ? ` · ${SPECIALTIES[l.specialty] ?? l.specialty}` : ""} · {l.tenantName}
                       {l.schoolName ? ` · ${l.schoolName}` : ""}
                       {l.email ? ` · ${l.email}` : ""}
+                      {l.maxUses > 1 ? ` · coletivo: ${l.usesCount} de ${l.maxUses} cadastros` : ""}
                     </div>
                     <div className="text-slate-500">Criado em {new Date(l.createdAt).toLocaleDateString("pt-BR")}{l.status === "pending" ? ` · vale até ${new Date(l.expiresAt).toLocaleDateString("pt-BR")}` : ""}</div>
                   </div>

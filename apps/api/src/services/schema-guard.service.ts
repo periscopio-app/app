@@ -33,6 +33,7 @@ export const SCHEMA_GUARD_FILES = [
   "0036_foto_ate_3mb.sql",
   "0037_board_google_calendar.sql",
   "0038_convite_sem_escola.sql",
+  "0039_link_coletivo.sql",
 ] as const;
 
 /**

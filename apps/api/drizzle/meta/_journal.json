@@ -281,6 +281,13 @@
       "when": 1793839200000,
       "tag": "0038_convite_sem_escola",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793925600000,
+      "tag": "0039_link_coletivo",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 > Gerado por `pnpm qa:catalogo` a partir dos testes. **Não edite à mão.** A CI confere se está atualizado.
 
-O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos de teste automáticos** em 110 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
+O que o sistema já garante, sem ninguém precisar repetir à mão: **764 casos de teste automáticos** em 110 arquivos. Quem mexe em algo listado aqui e quebra a garantia vê a CI ficar vermelha.
 
 ## Bugs que já aconteceram (testes `[REG-…]`)
 
@@ -49,6 +49,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos 
 | REG-030c | sem RESEND_API_KEY o motivo aparece; com senha definida pelo administrador nenhum e-mail é disparado | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
 | REG-030d | a instância é obrigatória e validada para quem não é da plataforma; escola de outra instância é recusada | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
 | REG-030e | reenviar acesso exige permissão e usuário existente | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-031a | link coletivo: validações de criação (limite, sem e-mail fixo, especialidade em aberto só para especialista) | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-031b | um link, várias pessoas: cada uma cria o próprio cadastro e escolhe a própria especialidade; o teto de usos vale | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-031c | muita gente de uma vez no mesmo link: nunca passa do teto | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
+| REG-031d | falha ao criar a conta devolve a vaga; e-mail que já existe não gasta vaga; revogar fecha o link para os próximos | `apps/api/src/e2e/cadastro-por-link.e2e.test.ts` |
 
 ## API — unitários — 436
 
@@ -862,7 +866,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos 
 
 </details>
 
-## API — E2E (banco de teste, fluxo pela API real) — 276
+## API — E2E (banco de teste, fluxo pela API real) — 280
 
 <details><summary><code>apps/api/src/e2e/admin-kpis.e2e.test.ts</code> — 5 · KPIs do admin (REG-020)</summary>
 
@@ -917,7 +921,7 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos 
 
 </details>
 
-<details><summary><code>apps/api/src/e2e/cadastro-por-link.e2e.test.ts</code> — 13 · [REG-029/030] cadastro por link e envio de acesso (E2E)</summary>
+<details><summary><code>apps/api/src/e2e/cadastro-por-link.e2e.test.ts</code> — 17 · [REG-029/030] cadastro por link e envio de acesso (E2E)</summary>
 
 - [REG-029a] só quem gerencia usuários gera o link; perfil, instância e especialidade são validados
 - [REG-029b] o link leva ao /cadastro, aparece como pendente com o endereço e a tela pública mostra instância e especialidade
@@ -932,6 +936,10 @@ O que o sistema já garante, sem ninguém precisar repetir à mão: **760 casos 
 - [REG-030c] sem RESEND_API_KEY o motivo aparece; com senha definida pelo administrador nenhum e-mail é disparado
 - [REG-030d] a instância é obrigatória e validada para quem não é da plataforma; escola de outra instância é recusada
 - [REG-030e] reenviar acesso exige permissão e usuário existente
+- [REG-031a] link coletivo: validações de criação (limite, sem e-mail fixo, especialidade em aberto só para especialista)
+- [REG-031b] um link, várias pessoas: cada uma cria o próprio cadastro e escolhe a própria especialidade; o teto de usos vale
+- [REG-031c] muita gente de uma vez no mesmo link: nunca passa do teto
+- [REG-031d] falha ao criar a conta devolve a vaga; e-mail que já existe não gasta vaga; revogar fecha o link para os próximos
 
 </details>
 
